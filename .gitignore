@@ -1,0 +1,59 @@
+# --- OS-specific ---
+.DS_Store
+Thumbs.db
+
+# --- IDEs & Editors ---
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- Python Bytecode ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Virtual Environments ---
+myenv/
+.venv/
+env/
+
+# --- Build & Distribution ---
+build/
+dist/
+*.egg-info/
+*.spec
+
+# --- PyInstaller ---
+*.spec
+
+# --- Jupyter Notebook checkpoints ---
+.ipynb_checkpoints/
+
+# --- Logs & Temp Files ---
+*.log
+*.tmp
+*.bak
+*.swp
+temp_image_*.png
+out.txt
+
+# --- Data/Cache ---
+*.pkl
+*.pickle
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Reports & Exports ---
+*.pdf
+*.xlsx
+*.xls
+*.html
+*.png
+*.jpg
+*.jpeg
+
+# --- Local Config ---
+*.env

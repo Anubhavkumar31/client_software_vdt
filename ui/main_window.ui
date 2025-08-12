@@ -1,0 +1,2134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="windowModality">
+   <enum>Qt::WindowModal</enum>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1604</width>
+    <height>969</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>0</width>
+    <height>969</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Pipe, Inspect, Extract: PIE</string>
+  </property>
+  <property name="autoFillBackground">
+   <bool>true</bool>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QTabWidget" name="tabWidgetM">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>410</y>
+      <width>1561</width>
+      <height>561</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>0</width>
+      <height>0</height>
+     </size>
+    </property>
+    <property name="autoFillBackground">
+     <bool>true</bool>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QTabWidget::pane { /* The tab widget frame */
+    border-top: 2px solid #C2C7CB;
+}
+
+QTabWidget::tab-bar {
+    left: 5px; /* move to the right by 5px */
+}
+
+/* Style the tab using the tab sub-control. Note that
+    it reads QTabBar _not_ QTabWidget */
+QTabBar::tab {
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                stop: 0 #E1E1E1, stop: 0.4 #DDDDDD,
+                                stop: 0.5 #D8D8D8, stop: 1.0 #D3D3D3);
+    border: 2px solid #C4C4C3;
+    border-bottom-color: #C2C7CB; /* same as the pane color */
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    min-width: 8ex;
+    padding: 2px;
+}
+
+QTabBar::tab:selected, QTabBar::tab:hover {
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                stop: 0 #fafafa, stop: 0.4 #f4f4f4,
+                                stop: 0.5 #e7e7e7, stop: 1.0 #fafafa);
+}
+
+QTabBar::tab:selected {
+    border-color: #9B9B9B;
+    border-bottom-color: #C2C7CB; /* same as pane color */
+}
+
+QTabBar::tab:!selected {
+    margin-top: 2px; /* make non-selected tabs look smaller */
+}
+
+QTabBar::tear {
+    image: url(tear_indicator.png);
+}
+
+QTabBar::scroller { /* the width of the scroll buttons */
+    width: 20px;
+}
+
+QTabBar QToolButton { /* the scroll buttons are tool buttons */
+    border-image: url(scrollbutton.png) 2;
+    border-width: 2px;
+}
+
+QTabBar QToolButton::right-arrow { /* the arrow mark in the tool buttons */
+    image: url(rightarrow.png);
+}
+
+QTabBar QToolButton::left-arrow {
+    image: url(leftarrow.png);
+}</string>
+    </property>
+    <property name="tabShape">
+     <enum>QTabWidget::Rounded</enum>
+    </property>
+    <property name="currentIndex">
+     <number>0</number>
+    </property>
+    <property name="iconSize">
+     <size>
+      <width>13</width>
+      <height>13</height>
+     </size>
+    </property>
+    <property name="usesScrollButtons">
+     <bool>true</bool>
+    </property>
+    <property name="documentMode">
+     <bool>true</bool>
+    </property>
+    <property name="tabsClosable">
+     <bool>false</bool>
+    </property>
+    <property name="movable">
+     <bool>true</bool>
+    </property>
+    <property name="tabBarAutoHide">
+     <bool>true</bool>
+    </property>
+    <widget class="QWidget" name="DefectSheet">
+     <attribute name="icon">
+      <iconset>
+       <normaloff>icons/assess.png</normaloff>icons/assess.png</iconset>
+     </attribute>
+     <attribute name="title">
+      <string>Heatmap</string>
+     </attribute>
+     <attribute name="toolTip">
+      <string>Defects and Anomalies</string>
+     </attribute>
+     <widget class="QTableWidget" name="tableWidgetDefect">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>1798</width>
+        <height>500</height>
+       </rect>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="frameShape">
+       <enum>QFrame::WinPanel</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Raised</enum>
+      </property>
+      <property name="lineWidth">
+       <number>1</number>
+      </property>
+      <property name="verticalScrollBarPolicy">
+       <enum>Qt::ScrollBarAlwaysOn</enum>
+      </property>
+      <property name="horizontalScrollBarPolicy">
+       <enum>Qt::ScrollBarAlwaysOff</enum>
+      </property>
+      <property name="gridStyle">
+       <enum>Qt::DashDotDotLine</enum>
+      </property>
+      <property name="sortingEnabled">
+       <bool>true</bool>
+      </property>
+      <attribute name="horizontalHeaderDefaultSectionSize">
+       <number>130</number>
+      </attribute>
+      <attribute name="horizontalHeaderMinimumSectionSize">
+       <number>45</number>
+      </attribute>
+      <attribute name="verticalHeaderDefaultSectionSize">
+       <number>40</number>
+      </attribute>
+      <row>
+       <property name="text">
+        <string>1</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>2</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>3</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>4</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>5</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>6</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>7</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>8</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>9</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>10</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>11</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>12</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>13</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>14</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>15</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>16</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>17</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>18</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>19</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>20</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>21</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>22</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>23</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>24</string>
+       </property>
+      </row>
+      <row>
+       <property name="text">
+        <string>25</string>
+       </property>
+      </row>
+      <column>
+       <property name="text">
+        <string>Defect_id</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Absolute_Distance</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Upstream_Distance</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Feature_Type</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Dimension_Class</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Orientation</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>WT</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Length</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Width</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Depth_Peak</string>
+       </property>
+      </column>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="Data">
+     <attribute name="icon">
+      <iconset>
+       <normaloff>icons/report.png</normaloff>icons/report.png</iconset>
+     </attribute>
+     <attribute name="title">
+      <string>Line Chart</string>
+     </attribute>
+     <attribute name="toolTip">
+      <string>Pipe Data</string>
+     </attribute>
+     <widget class="QTableView" name="tableView">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>1561</width>
+        <height>613</height>
+       </rect>
+      </property>
+      <property name="autoFillBackground">
+       <bool>false</bool>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QTableView QTableCornerButton::section {
+    background: red;
+    border: 2px outset red;
+}
+</string>
+      </property>
+      <property name="verticalScrollBarPolicy">
+       <enum>Qt::ScrollBarAlwaysOn</enum>
+      </property>
+      <property name="horizontalScrollBarPolicy">
+       <enum>Qt::ScrollBarAlwaysOn</enum>
+      </property>
+      <property name="sizeAdjustPolicy">
+       <enum>QAbstractScrollArea::AdjustToContents</enum>
+      </property>
+      <property name="autoScroll">
+       <bool>true</bool>
+      </property>
+      <property name="dragEnabled">
+       <bool>true</bool>
+      </property>
+      <property name="alternatingRowColors">
+       <bool>true</bool>
+      </property>
+      <property name="verticalScrollMode">
+       <enum>QAbstractItemView::ScrollPerItem</enum>
+      </property>
+      <property name="horizontalScrollMode">
+       <enum>QAbstractItemView::ScrollPerItem</enum>
+      </property>
+      <property name="showGrid">
+       <bool>true</bool>
+      </property>
+      <property name="sortingEnabled">
+       <bool>true</bool>
+      </property>
+      <attribute name="horizontalHeaderCascadingSectionResizes">
+       <bool>true</bool>
+      </attribute>
+      <attribute name="horizontalHeaderDefaultSectionSize">
+       <number>300</number>
+      </attribute>
+      <attribute name="horizontalHeaderMinimumSectionSize">
+       <number>50</number>
+      </attribute>
+      <attribute name="horizontalHeaderStretchLastSection">
+       <bool>false</bool>
+      </attribute>
+      <attribute name="verticalHeaderVisible">
+       <bool>false</bool>
+      </attribute>
+      <attribute name="verticalHeaderCascadingSectionResizes">
+       <bool>true</bool>
+      </attribute>
+      <attribute name="verticalHeaderDefaultSectionSize">
+       <number>50</number>
+      </attribute>
+      <attribute name="verticalHeaderHighlightSections">
+       <bool>false</bool>
+      </attribute>
+      <attribute name="verticalHeaderMinimumSectionSize">
+       <number>20</number>
+      </attribute>
+      <attribute name="verticalHeaderShowSortIndicator" stdset="0">
+       <bool>true</bool>
+      </attribute>
+      <attribute name="verticalHeaderStretchLastSection">
+       <bool>false</bool>
+      </attribute>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="Plot">
+     <attribute name="icon">
+      <iconset>
+       <normaloff>icons/plot.png</normaloff>icons/plot.png</iconset>
+     </attribute>
+     <attribute name="title">
+      <string>3D Graph</string>
+     </attribute>
+     <attribute name="toolTip">
+      <string>Graph Plotting</string>
+     </attribute>
+     <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <item>
+       <layout class="QGridLayout" name="graphLayout"/>
+      </item>
+     </layout>
+    </widget>
+   </widget>
+   <widget class="QPushButton" name="maxTabWidg">
+    <property name="geometry">
+     <rect>
+      <x>1520</x>
+      <y>940</y>
+      <width>41</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="autoFillBackground">
+     <bool>false</bool>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton {
+	min-height: 23px;
+    min-width: 30px;
+	background-color: rgb(136, 136, 136);
+}
+
+QPushButton:pressed {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                      stop: 0 #dadbde, stop: 1 #f6f7fa);
+}
+
+QPushButton:flat {
+    border: none; /* no border for a flat push button */
+}
+</string>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="icon">
+     <iconset>
+      <normaloff>icons/cascade.png</normaloff>icons/cascade.png</iconset>
+    </property>
+    <property name="iconSize">
+     <size>
+      <width>16</width>
+      <height>16</height>
+     </size>
+    </property>
+    <property name="autoDefault">
+     <bool>false</bool>
+    </property>
+    <property name="default">
+     <bool>true</bool>
+    </property>
+    <property name="flat">
+     <bool>false</bool>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="minTabWidg">
+    <property name="geometry">
+     <rect>
+      <x>1520</x>
+      <y>410</y>
+      <width>38</width>
+      <height>25</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton {
+	min-height: 23px;
+    min-width: 30px;
+}
+
+QPushButton:pressed {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                      stop: 0 #dadbde, stop: 1 #f6f7fa);
+}
+
+QPushButton:flat {
+    border: none; /* no border for a flat push button */
+}
+</string>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="icon">
+     <iconset>
+      <normaloff>icons/minus.png</normaloff>icons/minus.png</iconset>
+    </property>
+    <property name="iconSize">
+     <size>
+      <width>20</width>
+      <height>20</height>
+     </size>
+    </property>
+    <property name="flat">
+     <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QWidget" name="verticalLayoutWidget_2">
+    <property name="geometry">
+     <rect>
+      <x>-1</x>
+      <y>0</y>
+      <width>2024</width>
+      <height>971</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayoutUpper" stretch="0,2">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="sizeConstraint">
+      <enum>QLayout::SetMaximumSize</enum>
+     </property>
+     <item>
+      <widget class="QWidget" name="horizontaWidget" native="true">
+       <property name="autoFillBackground">
+        <bool>true</bool>
+       </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <item>
+         <spacer name="horizontalSpacer_6">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::Fixed</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>10</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QComboBox" name="comboBox">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="contextMenuPolicy">
+           <enum>Qt::DefaultContextMenu</enum>
+          </property>
+          <property name="layoutDirection">
+           <enum>Qt::LeftToRight</enum>
+          </property>
+          <property name="currentText">
+           <string>Color</string>
+          </property>
+          <property name="frame">
+           <bool>false</bool>
+          </property>
+          <item>
+           <property name="text">
+            <string>Color</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Grayscale</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Lines</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::Fixed</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>0</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_2">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="toolTip">
+           <string>Brightness</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+          <property name="icon">
+           <iconset>
+            <normaloff>icons/lightbulb.png</normaloff>icons/lightbulb.png</iconset>
+          </property>
+          <property name="iconSize">
+           <size>
+            <width>18</width>
+            <height>18</height>
+           </size>
+          </property>
+          <property name="flat">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="spinBox">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="maximum">
+           <number>1000</number>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_3">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::Fixed</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>10</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="Line" name="line_2">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_9">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::Fixed</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>10</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_3">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Ignored">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>20</width>
+            <height>10</height>
+           </size>
+          </property>
+          <property name="toolTip">
+           <string>Auto Delay</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+          <property name="icon">
+           <iconset>
+            <normaloff>icons/running.png</normaloff>icons/running.png</iconset>
+          </property>
+          <property name="iconSize">
+           <size>
+            <width>18</width>
+            <height>18</height>
+           </size>
+          </property>
+          <property name="flat">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="spinBox_2">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_10">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::Fixed</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>10</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="Line" name="line_3">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_4">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::Fixed</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>10</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="baseSize">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>10</pointsize>
+           </font>
+          </property>
+          <property name="toolTip">
+           <string>Zoom Multiplier</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+          <property name="icon">
+           <iconset>
+            <normaloff>icons/magnify.png</normaloff>icons/magnify.png</iconset>
+          </property>
+          <property name="iconSize">
+           <size>
+            <width>18</width>
+            <height>18</height>
+           </size>
+          </property>
+          <property name="flat">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="spinBox_3">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_7">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::Fixed</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>10</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="Line" name="line_4">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_8">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::Fixed</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>10</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        
+        <item>
+         <widget class="QPushButton" name="pushButtonPrev">
+          <property name="toolTip">
+           <string>Previous Pipe</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+          <property name="icon">
+           <iconset>
+            <normaloff>icons/previous.png</normaloff>icons/previous.png</iconset>
+          </property>
+          <property name="flat">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButtonNext">
+          <property name="toolTip">
+           <string>Next Pipe</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+          <property name="icon">
+           <iconset>
+            <normaloff>icons/next.png</normaloff>icons/next.png</iconset>
+          </property>
+          <property name="flat">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="comboBoxPipe">
+          <property name="toolTip">
+           <string>Select Pipe</string>
+          </property>
+          <item>
+           <property name="text">
+            <string>-Pipe-</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::Fixed</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>981</width>
+            <height>0</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="Line" name="line">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayoutGraph"/>
+     </item>
+    </layout>
+   </widget>
+   <zorder>maxTabWidg</zorder>
+   <zorder>verticalLayoutWidget_2</zorder>
+   <zorder>tabWidgetM</zorder>
+   <zorder>minTabWidg</zorder>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1604</width>
+     <height>15</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QMenuBar {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                      stop:0 lightgray, stop:1 darkgray);
+    spacing: 3px; /* spacing between menu bar items */
+}
+
+QMenuBar::item {
+    padding: 1px 4px;
+    background: transparent;
+    border-radius: 4px;
+}
+
+QMenuBar::item:selected { /* when selected using mouse or keyboard */
+    background: #a8a8a8;
+}
+
+QMenuBar::item:pressed {
+    background: #888888;
+}</string>
+   </property>
+   <widget class="QMenu" name="menu_File">
+    <property name="title">
+      <string>&amp;File</string>
+    </property>
+    <addaction name="action_Create_Proj"/>
+    <addaction name="action_Pipe_Tally"/>
+    <addaction name="action_Close_Proj"/>
+    <addaction name="separator"/>
+    <!-- <addaction name="menuTables"/>  Add the Tables menu as a submenu -->
+    <addaction name="action_Quit"/>
+    </widget>
+
+    <widget class="QMenu" name="menuTables">
+    <property name="title">
+      <string>Tables</string>
+    </property>
+    <addaction name="action_Pipe_Tally"/>
+    </widget>
+
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>View</string>
+    </property>
+    <!-- <addaction name="action_Change_Log"/>
+    <addaction name="action_View_Log"/>
+    <addaction name="separator"/> -->
+    <addaction name="action_Pipe_Locator"/>
+    <addaction name="action_ERF"/>
+    <addaction name="action_XYZ"/>
+    <addaction name="separator"/>
+    <!-- <addaction name="menuPlots"/> -->
+    <addaction name="action_graphs"/>
+    <!-- <addaction name="action_Info"/> -->
+   </widget>
+   <widget class="QMenu" name="menuReport">
+    <property name="title">
+     <string>Report</string>
+    </property>
+    <widget class="QMenu" name="menu_Generate">
+     <property name="title">
+      <string>&amp;Generate</string>
+     </property>
+     <!-- <widget class="QMenu" name="menu_Dig_Sheet">
+      <property name="title">
+       <string>&amp;Dig &amp;Sheet</string>
+      </property>
+      <addaction name="actionStandard"/>
+      <addaction name="actionDetailed"/>
+     </widget> -->
+     <!-- <addaction name="action_Final_Report"/> -->
+     <addaction name="Final_Report"/>
+     <addaction name="action_Preliminary_Report"/>
+     <addaction name="action__pipetally"/>
+     <addaction name="actionStandard"/>
+     <!-- <addaction name="menu_Dig_Sheet"/> -->
+    </widget>
+    <addaction name="action_Pipe_High"/>
+    <addaction name="action_Pipe_Sch"/>
+    <addaction name="separator"/>
+    <addaction name="menu_Generate"/>
+   </widget>
+   <widget class="QMenu" name="menuWindow">
+    <property name="title">
+     <string>Window</string>
+    </property>
+    <addaction name="action_Cascade"/>
+    <addaction name="action_Tile_Horizontal"/>
+    <addaction name="action_Tile_Vertical"/>
+   </widget>
+   <widget class="QMenu" name="menuSettings">
+    <property name="title">
+     <string>Settings</string>
+    </property>
+    <widget class="QMenu" name="menuLanguage">
+     <property name="title">
+      <string>Language</string>
+     </property>
+     <addaction name="action_English"/>
+    </widget>
+    <widget class="QMenu" name="menuAccount">
+     <property name="title">
+      <string>Account</string>
+     </property>
+     <addaction name="actionAdmin_Panel"/>
+    </widget>
+    <addaction name="action_Fonts"/>
+    <addaction name="menuAccount"/>
+    <addaction name="menuLanguage"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="action_Manual"/>
+    <addaction name="action_About"/>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>Edit</string>
+    </property>
+    <widget class="QMenu" name="menuPlots">
+    <property name="icon">
+    <iconset>
+     <normaloff>icons/plot.png</normaloff>icons/plot.png</iconset>
+   </property>
+     <property name="title">
+      <string>Plots</string>
+     </property>
+     <widget class="QMenu" name="menuDistribution">
+      <property name="title">
+       <string>Distribution</string>
+      </property>
+      <addaction name="actionMetal_Loss_Distribution_MLD"/>
+      <addaction name="separator"/>
+      <addaction name="actionDepth_Based_Anomalies_Distribution_DBAD"/>
+      <addaction name="separator"/>
+      <addaction name="actionERF_Based_Anomalies_Distribution_E_AD"/>
+     </widget>
+     <addaction name="menuDistribution"/>
+     <addaction name="separator"/>
+     <addaction name="action_Deepest_Anamoly_Per_Joint"/>
+     <addaction name="action_Joint_Length"/>
+     <addaction name="action_Joint_Severity"/>
+     <addaction name="action_Anomalies_per_Joint"/>
+     <addaction name="separator"/>
+     <addaction name="action_Failure_Pressure"/>
+     <addaction name="action_Telemetry"/>
+     <addaction name="separator"/>
+     <addaction name="action_Custom"/>
+    </widget>
+    <!-- <addaction name="action_Undo"/>
+    <addaction name="action_Redo"/>
+    <addaction name="separator"/>
+    <addaction name="action_Find"/>
+    <addaction name="action_Replace"/> -->
+    <addaction name="separator"/>
+    <addaction name="menuTables"/>
+   </widget>
+   <addaction name="menu_File"/>
+   <!-- <addaction name="menuEdit"/> -->
+   <addaction name="menuView"/>
+   <addaction name="menuReport"/>
+   <!-- <addaction name="menuSettings"/> -->
+   <!-- <addaction name="menuWindow"/> -->
+   <addaction name="menuHelp"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QToolBar {
+    spacing: 3px; /* spacing between items in the tool bar */
+}
+
+
+
+QToolButton[popupMode=&quot;1&quot;] { /* only for MenuButtonPopup */
+    padding-right: 20px; /* make way for the popup button */
+}
+
+QToolButton:pressed {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                      stop: 0 #dadbde, stop: 1 #f6f7fa);
+}
+
+/* the subcontrols below are used only in the MenuButtonPopup mode */
+QToolButton::menu-button {
+    border: 2px solid gray;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+    /* 16px width + 4px for border = 20px allocated above */
+    width: 16px;
+}
+
+QToolButton::menu-arrow {
+    image: url(downarrow.png);
+}
+
+QToolButton::menu-arrow:open {
+    top: 1px; left: 1px; /* shift it a bit */
+}</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>LeftToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="action_Edit_Table"/>
+   <addaction name="action_Export_Table"/>
+   <addaction name="separator"/>
+   <addaction name="action_Save_All"/>
+   <addaction name="action_Cancel_All"/>
+   <addaction name="separator"/>
+   <addaction name="action_Undo_All"/>
+   <addaction name="action_Refresh_All"/>
+   <addaction name="separator"/>
+   <addaction name="actionHeatmap"/>
+   <addaction name="action_DefectDetect"/>
+  </widget>
+  <action name="action_Create_Proj">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/create-proj.png</normaloff>icons/create-proj.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Create Project</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+C</string>
+   </property>
+  </action>
+  <action name="action_Close_Proj">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/close-proj.png</normaloff>icons/close-proj.png</iconset>
+   </property>
+   <property name="text">
+    <string>C&amp;lose Project</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+C</string>
+   </property>
+  </action>
+  <!-- <action name="action_Change_Log">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/change.png</normaloff>icons/change.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Change &amp;Log</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+Alt+C</string>
+   </property>
+  </action> -->
+  <!-- <action name="action_View_Log">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/view.png</normaloff>icons/view.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;View &amp;Log</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+Alt+V</string>
+   </property>
+  </action> -->
+  <action name="action_Open">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/open-proj.png</normaloff>icons/open-proj.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Open</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="action_Open_All">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/open-proj.png</normaloff>icons/open-proj.png</iconset>
+   </property>
+   <property name="text">
+    <string>Open &amp;All</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+Ctrl+O</string>
+   </property>
+  </action>
+  <action name="action_Quit">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/exit.png</normaloff>icons/exit.png</iconset>
+   </property>
+   <property name="text">
+    <string>Quit</string>
+   </property>
+   <property name="toolTip">
+    <string>Quit App</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="action_Undo">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/undo.png</normaloff>icons/undo.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Undo</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Z</string>
+   </property>
+  </action>
+  <action name="action_Redo">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/redo.png</normaloff>icons/redo.png</iconset>
+   </property>
+   <property name="text">
+    <string>R&amp;edo</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+X</string>
+   </property>
+  </action>
+  <action name="action_Find">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/find.png</normaloff>icons/find.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Find</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+F</string>
+   </property>
+  </action>
+  <action name="action_Replace">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/replace.png</normaloff>icons/replace.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Re&amp;place</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+Ctrl+R</string>
+   </property>
+  </action>
+  <action name="action_Pipe_Locator">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/locate.png</normaloff>icons/locate.png</iconset>
+   </property>
+   <property name="text">
+    <string>Pipe &amp;Locator</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+Alt+L</string>
+   </property>
+  </action>
+  <action name="action_ERF">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/erf.png</normaloff>icons/erf.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;E&amp;RF Calculator</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+Alt+E</string>
+   </property>
+  </action>
+  <action name="action_XYZ">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/xyz.png</normaloff>icons/xyz.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;X&amp;YZ Mapping</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+Alt+X</string>
+   </property>
+  </action>
+  <action name="action_graphs">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/graph.png</normaloff>icons/graph.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Graphs</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+Alt+G</string>
+   </property>
+  </action>
+  <action name="action_Info">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/information.png</normaloff>icons/information.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Info</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+Alt+I</string>
+   </property>
+  </action>
+  <action name="action_Pipe_Tally">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/tally.png</normaloff>icons/tally.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Load &amp;Pipe &amp;Tally</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+T</string>
+   </property>
+  </action>
+  <action name="action_Anomalies">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/anomaly.png</normaloff>icons/anomaly.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Anomalies</string>
+   </property>
+   <property name="shortcut">
+    <string>Alt+A</string>
+   </property>
+  </action>
+  <action name="action_Components">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/components.png</normaloff>icons/components.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Components</string>
+   </property>
+   <property name="shortcut">
+    <string>Alt+C</string>
+   </property>
+  </action>
+  <action name="action_Metal_Losses">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/metal.png</normaloff>icons/metal.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Metal &amp;Losses</string>
+   </property>
+   <property name="shortcut">
+    <string>Alt+M</string>
+   </property>
+  </action>
+  <action name="action_Weld_Info">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/weld.png</normaloff>icons/weld.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Weld Info</string>
+   </property>
+   <property name="shortcut">
+    <string>Alt+W</string>
+   </property>
+  </action>
+  <action name="action_All_Data">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/all.png</normaloff>icons/all.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;All &amp;Data</string>
+   </property>
+   <property name="shortcut">
+    <string>Alt+A</string>
+   </property>
+  </action>
+  <action name="action_A_ttachments">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/attach.png</normaloff>icons/attach.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;A&amp;ttachments</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+A</string>
+   </property>
+  </action>
+  <action name="action_Pipe_High">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/pipe-high.png</normaloff>icons/pipe-high.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Pipe &amp;Highlight</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+Alt+H</string>
+   </property>
+  </action>
+  <action name="action_Pipe_Sch">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/pipe-sch.png</normaloff>icons/pipe-sch.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Pipe &amp;Scheme</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+Alt+S</string>
+   </property>
+  </action>
+  <action name="action_Kappa">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/table.png</normaloff>icons/table.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Kappa &amp;Table</string>
+   </property>
+  </action>
+  <action name="action_Final_Report">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/report.png</normaloff>icons/report.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Final &amp;Report</string>
+   </property>
+  </action>
+  <action name="Final_Report">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/report.png</normaloff>icons/report.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Final &amp;Report</string>
+   </property>
+  </action>
+  <action name="action_Preliminary_Report">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/report.png</normaloff>icons/report.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Preliminary &amp;Report</string>
+   </property>
+  </action>
+  <action name="action__pipetally">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/report.png</normaloff>icons/report.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Pipetally</string>
+   </property>
+  </action>
+
+
+  <action name="action_Assessment">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/assess.png</normaloff>icons/assess.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Assessment &amp;Methods</string>
+   </property>
+  </action>
+  <action name="action_Cluster">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/cluster.png</normaloff>icons/cluster.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Cluster&amp;s</string>
+   </property>
+  </action>
+  <action name="action_Repair_Time">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/time.png</normaloff>icons/time.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Repair &amp;Time</string>
+   </property>
+  </action>
+  <action name="action_Severity">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/severe.png</normaloff>icons/severe.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Severity</string>
+   </property>
+  </action>
+  <action name="action_Cascade">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/cascade.png</normaloff>icons/cascade.png</iconset>
+   </property>
+   <property name="text">
+    <string>Cascade</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+Shift+C</string>
+   </property>
+  </action>
+  <action name="action_Tile_Horizontal">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/hori.png</normaloff>icons/hori.png</iconset>
+   </property>
+   <property name="text">
+    <string>Tile Horizontal</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+Shift+H</string>
+   </property>
+  </action>
+  <action name="action_Tile_Vertical">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/vert.png</normaloff>icons/vert.png</iconset>
+   </property>
+   <property name="text">
+    <string>Tile Vertical</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+Shift+V</string>
+   </property>
+  </action>
+  <action name="action_Manual">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/manual.png</normaloff>icons/manual.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Manual</string>
+   </property>
+  </action>
+  <action name="action_About">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/information.png</normaloff>icons/information.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;A&amp;bout</string>
+   </property>
+  </action>
+  <action name="action_Fonts">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/font.png</normaloff>icons/font.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Additional &amp;Fonts</string>
+   </property>
+  </action>
+  <action name="action_English">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/en.png</normaloff>icons/en.png</iconset>
+   </property>
+   <property name="text">
+    <string>English</string>
+   </property>
+  </action>
+  <action name="actionAdmin_Panel">
+   <property name="text">
+    <string>Admin Panel</string>
+   </property>
+  </action>
+  <action name="actionAnomalies_Distribution">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Anomalies Distribution (AD)</string>
+   </property>
+  </action>
+  <action name="actionMetal_Loss_Distribution_MLD">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Circumferential Metal Loss Distribution (CMLD)</string>
+   </property>
+  </action>
+  <action name="action_Deepest_Anamoly_Per_Joint">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/joint.png</normaloff>icons/joint.png</iconset>
+   </property>
+   <property name="text">
+    <string>Deepest Anomaly Per Joint</string>
+   </property>
+  </action>
+  <action name="action_Joint_Length">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/joint.png</normaloff>icons/joint.png</iconset>
+   </property>
+   <property name="text">
+    <string>Joint Length</string>
+   </property>
+  </action>
+  <action name="action_Joint_Severity">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/joint.png</normaloff>icons/joint.png</iconset>
+   </property>
+   <property name="text">
+    <string>Joint Severity</string>
+   </property>
+  </action>
+  <action name="actionDepth_Based_Anomalies_Distribution_DBAD">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Depth Based Anomalies Distribution (D-AD)</string>
+   </property>
+  </action>
+  <action name="actionERF_Based_Anomalies_Distribution_E_AD">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>ERF Based Anomalies Distribution (E-AD)</string>
+   </property>
+  </action>
+  <action name="action_Anomalies_per_Joint">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/joint.png</normaloff>icons/joint.png</iconset>
+   </property>
+   <property name="text">
+    <string>Anomalies per Joint</string>
+   </property>
+  </action>
+  <action name="action_Failure_Pressure">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/pressure.png</normaloff>icons/pressure.png</iconset>
+   </property>
+   <property name="text">
+    <string>Metal Loss Failure Pressure</string>
+   </property>
+  </action>
+  <action name="action_Pressure_Sentence">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/pressure.png</normaloff>icons/pressure.png</iconset>
+   </property>
+   <property name="text">
+    <string>Pressure Sentence</string>
+   </property>
+  </action>
+  <action name="action_Wall_Thickness">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/thick.png</normaloff>icons/thick.png</iconset>
+   </property>
+   <property name="text">
+    <string>Pipeline Remaining Wall Thickness</string>
+   </property>
+  </action>
+  <action name="action_Telemetry">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/telemetry.png</normaloff>icons/telemetry.png</iconset>
+   </property>
+   <property name="text">
+    <string>Telemetry</string>
+   </property>
+  </action>
+  <action name="action_Custom">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/custom.png</normaloff>icons/custom.png</iconset>
+   </property>
+   <property name="text">
+    <string>Custom</string>
+   </property>
+  </action>
+  <action name="actionCMLD_as_Function_of_Distance_to_Closest_Girth_Weld">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>CMLD as Function of Distance to Closest Girth Weld</string>
+   </property>
+  </action>
+  <action name="actionCircumferential_External_MLD">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>External CMLD</string>
+   </property>
+  </action>
+  <action name="actionCircumferential_Internal_MLD">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Internal CMLD</string>
+   </property>
+  </action>
+  <action name="actionMid_Wall_AD">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Mid-Wall AD</string>
+   </property>
+  </action>
+  <action name="actionExternal_D_AD">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>External D-AD</string>
+   </property>
+  </action>
+  <action name="actionInternal_D_AD">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Internal D-AD</string>
+   </property>
+  </action>
+  <action name="actionExternal_E_AD">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>External E-AD</string>
+   </property>
+  </action>
+  <action name="actionInternal_E_AD">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Internal E-AD</string>
+   </property>
+  </action>
+  <action name="actionStandard">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/report.png</normaloff>icons/report.png</iconset>
+   </property>
+   <property name="text">
+    <string>Dig Sheet</string>
+   </property>
+  </action>
+  <action name="actionDetailed">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Detailed</string>
+   </property>
+  </action>
+  <action name="action_Export_Table">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/export-excel.png</normaloff>icons/export-excel.png</iconset>
+   </property>
+   <property name="text">
+    <string>Export_Table</string>
+   </property>
+   <property name="toolTip">
+    <string>Export Table in MS Excel</string>
+   </property>
+  </action>
+  <action name="action_Edit_Table">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/edit-excel.png</normaloff>icons/edit-excel.png</iconset>
+   </property>
+   <property name="text">
+    <string>Edit Table</string>
+   </property>
+   <property name="toolTip">
+    <string>Edit Table in MS Excel</string>
+   </property>
+  </action>
+  <action name="action_Save_All">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/accept.png</normaloff>icons/accept.png</iconset>
+   </property>
+   <property name="text">
+    <string>Save All</string>
+   </property>
+   <property name="toolTip">
+    <string>Save All changes made</string>
+   </property>
+  </action>
+  <action name="action_Undo_All">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/undo-all.png</normaloff>icons/undo-all.png</iconset>
+   </property>
+   <property name="text">
+    <string>Undo All</string>
+   </property>
+   <property name="toolTip">
+    <string>Undo changes to active record</string>
+   </property>
+  </action>
+  <action name="action_Cancel_All">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/cancel.png</normaloff>icons/cancel.png</iconset>
+   </property>
+   <property name="text">
+    <string>Cancel All</string>
+   </property>
+   <property name="toolTip">
+    <string>Cancel All unsaved changes</string>
+   </property>
+  </action>
+  <action name="action_Refresh_All">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/reload.png</normaloff>icons/reload.png</iconset>
+   </property>
+   <property name="text">
+    <string>Refresh All</string>
+   </property>
+   <property name="toolTip">
+    <string>Refresh All calculated columns</string>
+   </property>
+  </action>
+  <action name="actionHeatmap">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/edit-mode.png</normaloff>icons/edit-mode.png</iconset>
+   </property>
+   <property name="text">
+    <string>Heat map</string>
+   </property>
+   <property name="iconText">
+    <string>Heat map</string>
+   </property>
+   <property name="toolTip">
+    <string>Plot Heat map</string>
+   </property>
+  </action>
+  <action name="action_DefectDetect">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/defectD.png</normaloff>icons/defectD.png</iconset>
+   </property>
+   <property name="text">
+    <string>Defect Detect</string>
+   </property>
+   <property name="toolTip">
+    <string>Find defects by creating boxes</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
+

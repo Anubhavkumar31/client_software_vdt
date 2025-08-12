@@ -1,0 +1,3 @@
+Box Number,Type,Width,Height,x0,y0,x1,y1,StartS,EndS,Absolute Distance,Peak Value,Avg_Val,Ori Val,Breadth,Distance to U/S GW(m),Feature Type,Dimensions  Classification,Orientation o' clock,Length(mm),Width(mm),WT (mm),Depth % ,Depth(mm),ERF (ASME B31G),Psafe (ASME B31G) Barg
+46,External,2.0,1.0,24251.56,88.5,24251.56,89.5,89,90,24251.56,0.0,0.0,,3.9871697695960058,2.482,Metal Loss,GENERAL,1900-01-02 04:01:40,49,35,7.1,28.16,2.0,0.632,47.477
+52,External,2.0,1.0,24251.56,92.5,24251.56,93.5,93,94,24251.56,0.0,0.0,,3.9871697695960058,2.482,Metal Loss,GENERAL,1900-01-02 02:20:40,49,43,7.1,29.57,2.1,0.635,47.229

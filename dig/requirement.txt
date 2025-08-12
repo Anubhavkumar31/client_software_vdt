@@ -1,0 +1,5 @@
+tkinter
+pillow
+reportlab
+mysql-connector-python
+fpdf
