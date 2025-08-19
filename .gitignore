@@ -46,14 +46,14 @@ out.txt
 *.sqlite
 *.sqlite3
 
-# --- Reports & Exports ---
-*.pdf
-*.xlsx
-*.xls
-*.html
-*.png
-*.jpg
-*.jpeg
+# # --- Reports & Exports ---
+# *.pdf
+# *.xlsx
+# *.xls
+# *.html
+# *.png
+# *.jpg
+# *.jpeg
 
 # --- Local Config ---
 *.env
