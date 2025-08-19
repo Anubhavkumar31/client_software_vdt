@@ -1036,7 +1036,7 @@ QMenuBar::item:pressed {
       <string>&amp;File</string>
     </property>
     <addaction name="action_Create_Proj"/>
-    <addaction name="action_Pipe_Tally"/>
+    <!-- <addaction name="action_Pipe_Tally"/> -->
     <addaction name="action_Close_Proj"/>
     <addaction name="separator"/>
     <!-- <addaction name="menuTables"/>  Add the Tables menu as a submenu -->
