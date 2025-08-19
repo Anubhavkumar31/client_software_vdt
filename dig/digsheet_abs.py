@@ -367,6 +367,9 @@ for col in range(5):
 mid_x = int(canvas_width/2)
 mid_y = int(canvas_height/2)
 
+pipe_canvas.create_line(mid_x, 30, mid_x, mid_y + 150, arrow=tk.FIRST, width=1, tags="center_arrow")
+
+
 # Upstream weld info label areas etc. (static lines same as original)
 pipe_canvas.create_text(mid_x, 5, text="Upstream Weld", font=("Arial", 10))
 
@@ -396,10 +399,10 @@ for i in range(6):
     pipe_canvas.create_rectangle(x1, mid_y + 120, x2, mid_y + 180, width=1)
 
 # --- Right side inputs (keep styling same; not used for ABS flow, but we keep them) ---
-tk.Label(input_frame, text="Enter Defect S.no:", bg="white").grid(row=1, column=0, sticky="e", pady=5)
-defect_entry = tk.Entry(input_frame, width=10)
-defect_entry.grid(row=1, column=1, pady=5)
-tk.Button(input_frame, text="Load (ABS)", command=lambda: None).grid(row=2, column=0, columnspan=2, pady=5)
+# tk.Label(input_frame, text="Enter Defect S.no:", bg="white").grid(row=1, column=0, sticky="e", pady=5)
+# defect_entry = tk.Entry(input_frame, width=10)
+# defect_entry.grid(row=1, column=1, pady=5)
+# tk.Button(input_frame, text="Load (ABS)", command=lambda: None).grid(row=2, column=0, columnspan=2, pady=5)
 tk.Button(input_frame, text="Save as Image", command=save_as_image).grid(row=3, column=0, columnspan=2, pady=5)
 
 # -------------------- ABS column detection + row selection --------------------

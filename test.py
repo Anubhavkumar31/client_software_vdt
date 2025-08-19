@@ -1,4 +1,6 @@
 
+import os
+os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-logging --log-level=3 --disable-features=AccessibilityAriaVirtualContent"
 
 
 # main.py
@@ -1384,9 +1386,47 @@ class MyMainWindow(QMainWindow):
         except Exception as e:
             self.open_Error(f"Error opening ABS-distance digsheet:\n{e}")
 
+    # def close_project(self):
+    #     try:
+    #         self._close_graphs_view()
+    #         self.project_is_open = False
+    #         self.project_root = None
+    #         self.pkl_files = []
+    #         self.hmap = self.hmap_r = self.lplot = self.lplot_r = self.pipe3d = self.heatmap_box = None
+    #         self.curr_data = None
+    #         self.header_list = []
+
+    #         cb = self.ui.comboBoxPipe
+    #         cb.blockSignals(True); cb.clear(); cb.addItem("-Pipe-"); cb.blockSignals(False)
+
+    #         self.model.clear()
+    #         self.ui.tableWidgetDefect.clear()
+
+    #         self.web_view.setUrl(QUrl()); self.web_view2.setUrl(QUrl())
+    #         self.bottom_stack.setCurrentIndex(0)
+    #         self._show_watermark()
+    #         self._toggle_plot_ui(False)
+
+    #         try: self.ui.tabWidgetM.setCurrentIndex(0)
+    #         except Exception: pass
+
+    #         self.btnDigsheetAbs.setEnabled(False)
+    #         self._update_project_actions()
+
+    #         QMessageBox.information(self, "Project Closed", "The project has been successfully closed.")
+    #     except Exception as e:
+    #         self.open_Error(e)
+
     def close_project(self):
         try:
+            # Stop graphs view and guard tab-change side effects
             self._close_graphs_view()
+
+            tw = getattr(self.ui, "tabWidgetM", None)
+            if tw is not None:
+                tw.blockSignals(True)          # <<< prevent _on_middle_tab_changed from firing
+
+            # Flip the state and clear everything
             self.project_is_open = False
             self.project_root = None
             self.pkl_files = []
@@ -1400,13 +1440,18 @@ class MyMainWindow(QMainWindow):
             self.model.clear()
             self.ui.tableWidgetDefect.clear()
 
-            self.web_view.setUrl(QUrl()); self.web_view2.setUrl(QUrl())
+            self.web_view.setUrl(QUrl())
+            self.web_view2.setUrl(QUrl())
             self.bottom_stack.setCurrentIndex(0)
             self._show_watermark()
             self._toggle_plot_ui(False)
 
-            try: self.ui.tabWidgetM.setCurrentIndex(0)
-            except Exception: pass
+            # Reset the tab index quietly
+            if tw is not None:
+                try:
+                    tw.setCurrentIndex(0)       # no signal -> no popup
+                except Exception:
+                    pass
 
             self.btnDigsheetAbs.setEnabled(False)
             self._update_project_actions()
@@ -1414,6 +1459,11 @@ class MyMainWindow(QMainWindow):
             QMessageBox.information(self, "Project Closed", "The project has been successfully closed.")
         except Exception as e:
             self.open_Error(e)
+        finally:
+            # Re-enable signals
+            if tw is not None:
+                tw.blockSignals(False)
+
 
     def open_CMLD(self):
         selected_columns = [r"Abs. Distance (m)", r"Type", r"Orientation o' clock"]
