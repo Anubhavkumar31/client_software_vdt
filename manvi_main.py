@@ -1,82 +1,61 @@
+
+# main.py
 import sys
 import os
 import time
-import threading
 import subprocess
-import webbrowser
 import re
+from glob import glob
+from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import pandas as pd
-import chardet
 import matplotlib
-
-matplotlib.use("Qt5Agg")  # Use Qt5 backend for matplotlib
-import matplotlib.pyplot as plt
+matplotlib.use("Qt5Agg")
 import plotly.graph_objects as go
-import importlib.util
-from PyQt6.QtCore import QUrl
-from pathlib import Path
-# PyQt6 Core
-from PyQt6.QtCore import (
-    Qt, QSortFilterProxyModel, QFile, QIODevice, QThread, pyqtSignal,
-    QTimer, QDateTime, QUrl
-)
 
+# PyQt6 Core
+from PyQt6 import uic, QtWidgets
+from PyQt6.QtCore import (
+    Qt, QSortFilterProxyModel, QThread, pyqtSignal,
+    QTimer, QUrl, QEvent
+)
 # PyQt6 GUI
 from PyQt6.QtGui import (
-    QStandardItemModel, QStandardItem, QAction, QIcon, QMovie, QPixmap, QImage
+    QStandardItemModel, QStandardItem, QMovie, QPixmap, QImage, QAction, QIcon,
+    QCursor
 )
-
 # PyQt6 Widgets
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QFileDialog, QHeaderView, QMenu,
-    QInputDialog, QSpacerItem, QLabel, QSizePolicy, QTableWidget,
-    QTableWidgetItem, QStatusBar, QVBoxLayout, QWidget, QHBoxLayout,
-    QMessageBox, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem,
-    QDialog, QTextEdit, QPushButton
+    QApplication, QMainWindow, QFileDialog, QHeaderView, QInputDialog,
+    QSpacerItem, QLabel, QSizePolicy, QTableWidget, QTableWidgetItem,
+    QStatusBar, QVBoxLayout, QWidget, QHBoxLayout, QMessageBox,
+    QDialog, QTextEdit, QPushButton, QSplitter, QStackedWidget,
+    QTabBar, QFrame, QHBoxLayout as _QHBoxLayout, QSplitterHandle, QComboBox
 )
-
 # PyQt6 WebEngine
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from utils import resource_path
 
-# UI Designer
-from PyQt6 import uic, QtWidgets
-
-# Excel
-from openpyxl import load_workbook
-
-# Matplotlib with Qt backend
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-
-# --- Project-specific imports ---
-from reportlab.pdfgen import canvas
+# Project imports (leave as-is)
+from reportlab.pdfgen import canvas  # noqa
 from pages.customPlot import CPlot_Frame as customPlot
 from pages.telemetryPlot import TPlot_Frame as telePlot
 from pages.anamolyPlot import ADPlot_Frame as adPlot
 from pages.about import About_Dialog
 from pages.adminPanel import Admin_Panel
 from pages.ERF import ERF
-from pages.XYZ import XYZ
-from pages.metrics import Metric_Dialog
+from pages.XYZ import XYZ  # noqa
+from pages.metrics import Metric_Dialog  # noqa
 from pages.cluster import Cluster_Dialog
 from pages.assessMethod import Assess_Dialog
-from pages.errorBox import Error_Dialog
+from pages.errorBox import Error_Dialog  # noqa
 from pages.report1 import Report01, Main01Tab, Main02Tab, Main03Tab
 from pages.Report import Report, Main1Tab, Main2Tab, Main3Tab
 from backend.line_plot import PlotWindow
-from backend.heatmap import HeatmapWindow as hm, pre_process, pre_process2
-# from pages.Pipe_Highlights import run_app
+from backend.heatmap import HeatmapWindow as hm, pre_process, pre_process2  # noqa
 from ui.graphs_ui import GraphApp
-from Data_Gen.DataGenApp import ScriptRunnerApp
-
-base_dir = os.path.dirname(__file__)
-ui_path = os.path.join(base_dir, "ui", "landing.ui")
-SplashScreen, SplashWindow = uic.loadUiType(ui_path)
-
-ui_path_main = os.path.join(base_dir, "ui", "main_window.ui")
-Form, Window = uic.loadUiType(ui_path_main)
+from Data_Gen.DataGenApp import ScriptRunnerApp  # noqa
 
 
 def resource_path(relative_path):
@@ -85,24 +64,75 @@ def resource_path(relative_path):
     return os.path.join(os.path.abspath("."), relative_path)
 
 
-excel_path = resource_path("14inch Petrofac pipetally.xlsx")
+base_dir = os.path.dirname(__file__)
+ui_path = os.path.join(base_dir, "ui", "landing.ui")
+SplashScreen, SplashWindow = uic.loadUiType(ui_path)
+ui_path_main = os.path.join(base_dir, "ui", "main_window.ui")
+Form, Window = uic.loadUiType(ui_path_main)
 
 
-class Worker(QThread):
-    finished = pyqtSignal(object)
-    error = pyqtSignal(str)
+class MidBarHandle(QSplitterHandle):
+    def __init__(self, orientation, parent, tabbar: QTabBar):
+        super().__init__(orientation, parent)
+        self.setObjectName("MidBarHandle")
+        self.setCursor(Qt.CursorShape.SplitVCursor)
 
-    def __init__(self, data, mode_index):
-        super().__init__()
-        self.data = data
-        self.mode_index = mode_index
+        self.frame = QFrame(self)
+        self.frame.setObjectName("MidBarFrame")
+        self.frame.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame.setCursor(Qt.CursorShape.SplitVCursor)
 
-    def run(self):
-        try:
-            ds = pre_process2(self.data)
-            self.finished.emit((ds, self.mode_index))
-        except Exception as e:
-            self.error.emit(str(e))
+        self.tabbar = tabbar
+        self.tabbar.setParent(self.frame)
+        self.tabbar.setDrawBase(False)
+        self.tabbar.setCursor(Qt.CursorShape.ArrowCursor)
+
+        self.tabbar.setMouseTracking(True)
+        self.tabbar.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
+
+        lay = _QHBoxLayout(self.frame)
+        lay.setContentsMargins(8, 4, 8, 4)
+        lay.addWidget(self.tabbar)
+
+        self.tabbar.installEventFilter(self)
+
+    def resizeEvent(self, ev):
+        super().resizeEvent(ev)
+        self.frame.setGeometry(0, 0, self.width(), self.height())
+
+    def eventFilter(self, obj, ev):
+        if obj is self.tabbar:
+            t = ev.type()
+            p = None
+            if t in (QEvent.Type.MouseMove, QEvent.Type.HoverMove):
+                if hasattr(ev, "position"):
+                    p = ev.position().toPoint()
+                elif hasattr(ev, "pos"):
+                    p = ev.pos()
+            elif t in (QEvent.Type.Enter, QEvent.Type.HoverEnter):
+                p = self.tabbar.mapFromGlobal(QCursor.pos())
+            elif t in (QEvent.Type.Leave, QEvent.Type.HoverLeave):
+                self.tabbar.setCursor(Qt.CursorShape.ArrowCursor)
+                return False
+
+            if p is not None:
+                idx = self.tabbar.tabAt(p)
+                if idx != -1 and self.tabbar.isTabEnabled(idx):
+                    self.tabbar.setCursor(Qt.CursorShape.PointingHandCursor)
+                else:
+                    self.tabbar.setCursor(Qt.CursorShape.ArrowCursor)
+            return False
+
+        return QSplitterHandle.eventFilter(self, obj, ev)
+
+
+class MidBarSplitter(QSplitter):
+    def __init__(self, parent=None, tabbar: Optional[QTabBar] = None):
+        super().__init__(Qt.Orientation.Vertical, parent)
+        self._tabbar = tabbar
+
+    def createHandle(self):
+        return MidBarHandle(self.orientation(), self, self._tabbar)
 
 
 class SplashScreenWidget(QtWidgets.QWidget, SplashScreen):
@@ -118,21 +148,14 @@ class MainApp(QApplication):
         self.main_window = None
 
     def show_splash_screen(self):
-        """Create and show the splash screen with animated GIF."""
         self.splash = SplashScreenWidget()
         self.splash.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-
-        self.label = self.splash.findChild(QLabel, 'label')
-        if self.label:
+        label = self.splash.findChild(QLabel, 'label')
+        if label:
             gif_path = os.path.join(os.path.dirname(__file__), "ui", "icons", "VDT_ani.gif")
-            if not os.path.exists(gif_path):
-                print(f"GIF not found at: {gif_path}")
             self.movie = QMovie(gif_path)
-            self.label.setMovie(self.movie)
+            label.setMovie(self.movie)
             self.movie.start()
-        else:
-            print("QLabel 'label' not found in splash UI.")
-
         self.splash.show()
 
     def close_splash_screen(self):
@@ -148,7 +171,7 @@ class MainApp(QApplication):
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.initialize_app)
-        self.timer.start(4000)  # Show splash for 4 seconds
+        self.timer.start(1200)
 
     def initialize_app(self):
         self.close_splash_screen()
@@ -156,277 +179,392 @@ class MainApp(QApplication):
 
 
 class MyMainWindow(QMainWindow):
+    REQUIRED_TALLY_COLS = [
+        r"Abs. Distance (m)", r"Depth %", r"Type",
+        r"ERF (ASME B31G)", r"Orientation o' clock"
+    ]
+
     def __init__(self):
         super().__init__()
-        self.child_windows = {}
         self.ui = Form()
         self.ui.setupUi(self)
-        self.ui.comboBoxPipe.setEditable(False)  # non-editable at startup
-        self.ui.comboBoxPipe.clear()
-        self.ui.comboBoxPipe.addItem("-Pipe-")  # shows full text
+        self.child_windows = {}
 
-        #self.ui.comboBoxPipe.setEditable(True)
-        # self.ui.comboBoxPipe.completer().setCompletionMode(
-        #     QtWidgets.QCompleter.CompletionMode.PopupCompletion
-        # )
-        # self.ui.comboBoxPipe.lineEdit().returnPressed.connect(self.jump_to_number)
-        # --- Project state for folder / pkl modes ---
-        self.folders = []  # for folder-mode (existing behavior)
-        self.pkl_files = []  # for .pkl-mode (new)
-        self.current_index = -1  # index of current page (for pkl pagination)
-        self.page_size = 10  # how many filenames per page in combo
-        self.project_mode = None  # 'folder' or 'pkl' or None
+        self._central_original = self.centralWidget()
+        self._central_graphs = None
+        self._graphs_widget = None
 
-        # act = self.findChild(QAction, "action_Pipe_High")
-        # if act:
-        #     act.triggered.connect(self.open_PipeHigh)
-        # else:
-        #     print("⚠ action_Pipe_Highlights not found; skipping hookup")
-
-        try:
-            excel_path = resource_path("14inch Petrofac pipetally.xlsx")
-            self.pipe_tally = pd.read_excel(excel_path)
-        except Exception as e:
-            self.pipe_tally = None
-            self.open_Error(f"Error loading pipe tally file:\n{e}")
-
-        self.model = QStandardItemModel()
-        self.proxy_model = QSortFilterProxyModel()
-        self.proxy_model.setSourceModel(self.model)
-        self.ui.tableView.setModel(self.proxy_model)
-
+        self.project_is_open = False
+        self.project_root = None
+        self.pkl_files = []
+        self.curr_data = None
         self.header_list = []
-        self.heatmap_box = None
+        self.pipe_tally = None
+        self.prox_linechart = None
+
         self.hmap = None
         self.hmap_r = None
         self.lplot = None
         self.lplot_r = None
         self.pipe3d = None
+        self.heatmap_box = None
 
-        self.canvas = PlotWindow(self, width=5, height=4, dpi=100)
-        self.scene = QtWidgets.QGraphicsScene()
+        # guard state
+        self._reverting_tab = False
+        self._last_allowed_tab_index = 0
+        self._ui_ready = False  # set true after first layout/show
 
-        # self.heatmaplabel = QLabel(self)
-        # self.ui.verticalLayoutGraph.addWidget(self.heatmaplabel, stretch=1)
+        self.ui.comboBoxPipe.setEditable(True)
+        self.ui.comboBoxPipe.clear()
+        self.ui.comboBoxPipe.addItem("-Pipe-")
+        self.ui.comboBoxPipe.setMaxVisibleItems(12)
+        self.ui.comboBoxPipe.completer().setCompletionMode(
+            QtWidgets.QCompleter.CompletionMode.PopupCompletion
+        )
+        self.ui.comboBoxPipe.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
 
-        self.verticalGraphSpacer = QSpacerItem(20, 550, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.ui.verticalLayoutUpper.addSpacerItem(self.verticalGraphSpacer)
+        self.model = QStandardItemModel(self)
+        self.proxy_model = QSortFilterProxyModel(self)
+        self.proxy_model.setSourceModel(self.model)
+        self.ui.tableView.setModel(self.proxy_model)
 
-        self.web_view = QWebEngineView()
-        self.web_view2 = QWebEngineView()
+        # Digsheet button (ABS-based)
+        self.btnDigsheetAbs = QPushButton("Digsheet")
+        self.btnDigsheetAbs.setToolTip \
+            ("Select an Absolute Distance cell in the defect table (on Heatmap/3D) to enable.")
+        self.btnDigsheetAbs.setEnabled(False)
+        try:
+            _parent = self.ui.comboBoxPipe.parentWidget()
+            _lay = _parent.layout()
+            if _lay is not None:
+                pos = _lay.indexOf(self.ui.comboBoxPipe)
+                if pos != -1:
+                    _lay.insertWidget(pos + 1, self.btnDigsheetAbs)
+                else:
+                    _lay.addWidget(self.btnDigsheetAbs)
+            else:
+                self.btnDigsheetAbs.setParent(_parent)
+        except Exception:
+            self.statusBar().addPermanentWidget(self.btnDigsheetAbs)
+        self.btnDigsheetAbs.clicked.connect(self.open_digsheet_by_abs_from_selection)
 
-        # watermark_html = resource_path("ui/icons/VDT_watermark.html")
-        # self.web_view.setUrl(QUrl.fromLocalFile(watermark_html))
-        html_path = Path(resource_path("ui/icons/VDT_watermark.html"))
-        base_url = QUrl.fromLocalFile(str(html_path.parent) + "/")
+        # Global event filter for disabled-button popups + tabbar clicks
+        QtWidgets.QApplication.instance().installEventFilter(self)
 
-        with open(html_path, "r", encoding="utf-8") as f:
-            html_content = f.read()
+        # Resizable splitter with tabbar-handle
+        self.mid_tabbar = QTabBar()
+        for i in range(self.ui.tabWidgetM.count()):
+            self.mid_tabbar.addTab(self.ui.tabWidgetM.tabText(i))
+        self.mid_tabbar.setExpanding(False)
+        self.mid_tabbar.currentChanged.connect(lambda i: self.ui.tabWidgetM.setCurrentIndex(i))
+        self.ui.tabWidgetM.currentChanged.connect(lambda i: self.mid_tabbar.setCurrentIndex(i))
+        self.mid_tabbar.installEventFilter(self)  # intercept clicks on the mid tab bar
+        self.ui.tabWidgetM.hide()
+        self._build_splitter()
+        from PyQt6.QtWidgets import QAbstractItemView
 
-        self.web_view.setHtml(html_content, base_url)
+        # --- hook table signals so the button can update when user selects a row ---
+        tw = self.ui.tableWidgetDefect
+        tw.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        tw.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
 
-        self.ui.verticalLayoutGraph.addWidget(self.web_view, stretch=3)
-        self.ui.verticalLayoutGraph.addWidget(self.web_view2, stretch=1)
+        # update the button state whenever selection changes or a cell is clicked
+        try:
+            tw.itemSelectionChanged.disconnect()
+        except Exception:
+            pass
+        tw.itemSelectionChanged.connect(self.update_digsheet_button_state)
 
-        # self.ui.tableWidgetDefect.setVisible(False)
-        self.web_view2.setVisible(False)
-        # self.setCentralWidget(self.web_view)
+        try:
+            tw.cellClicked.disconnect()
+        except Exception:
+            pass
+        tw.cellClicked.connect(lambda *_: self.update_digsheet_button_state())
 
-        self.curr_file_path = ''
-        self.erf_file_path = 'backend/files/ASME.html'
-        self.curr_data = None
-        self.tele_data = None
 
-        self.defect_sheet = None
-        # self.pipe_tally = None  # <-- Set to None, not a string
-        self.pipe_tally_path = '/14inch Petrofac pipetally/'
-        # self.pipe_tally_path = None
-        self.setup_table_view()
+        self.canvas = PlotWindow(self, width=5, height=4, dpi=100)  # noqa
 
-        self.setup_actions()
-
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #FFFFFF;
-                color: #000000; 
-            }
-        """)
-
-        self.showMaximized()
-        # self.setup_tab_switcher()
-        self.setup_tab_switcher2()
-        self.tabplots = {
-            'custom': None,
-            'telemetry': None,
-            'anomaly': None
-        }
-
-        self.ui.tableWidgetDefect.selectionModel().selectionChanged.connect(self.on_row_selection_changed)
-        # self.ui.comboBoxPipe.currentIndexChanged.connect(self.load_selected_file)
-        #self.ui.comboBoxPipe.currentIndexChanged.connect(self.load_selected_folder)
-        # single dispatcher for combobox changes (decides folder vs pkl at runtime)
-        self.ui.comboBoxPipe.currentIndexChanged.connect(self.on_combo_index_changed)
-
-        self.setup_status_bar()
-        self.child_windows = {}
-        if not hasattr(self, 'child_windows'):
-            self.child_windows = {}
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_elapsed_time_display)
-        self.start_time = None
-        self.elapsed_time = 0
-
-    def setup_status_bar(self):
-        if not self.statusBar():
-            self.setStatusBar(QStatusBar(self))
-
+        self.setStatusBar(QStatusBar(self))
         self.current_message = 'App running'
         self.statusBar().showMessage(f'           Status:      {self.current_message}')
-
         right_container = QWidget()
-        right_layout = QHBoxLayout(right_container)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-
-        self.right_status_label = QLabel('0.0s    ')
-        right_layout.addWidget(self.right_status_label)
-
+        rl = QHBoxLayout(right_container); rl.setContentsMargins(0, 0, 0, 0)
+        self.right_status_label = QLabel('0.0s    '); rl.addWidget(self.right_status_label)
         self.statusBar().addPermanentWidget(right_container)
+        self.timer = QTimer(); self.timer.timeout.connect(self._tick)
+        self._t0 = None
 
-        # def setup_tab_switcher(self):
+        self.setup_actions()
+        self._connect_guarded_graph_controls()
 
-    #     self.ui.tabWidgetM.currentChanged.connect(self.tab_switcher)
+        self.ui.comboBoxPipe.currentIndexChanged.connect(self.on_combo_index_changed)
+        # replace direct tab switcher with guarded handler
+        try:
+            self.ui.tabWidgetM.currentChanged.disconnect()
+        except Exception:
+            pass
+        self.ui.tabWidgetM.currentChanged.connect(self._on_middle_tab_changed)
 
-    def setup_tab_switcher2(self):
-        self.ui.tabWidgetM.currentChanged.connect(self.tab_switcher2)
+        # initial UI state
+        self._toggle_plot_ui(False)
+        self._update_project_actions()  # Create enabled, Close disabled
 
-    def set_loading_status(self):
-        self.current_message = 'Loading'
+        self.setStyleSheet("QMainWindow { background-color: #FFFFFF; color: #000000; }")
+        self.showMaximized()
+
+        # mark UI ready on next tick (prevents popup at startup)
+        QTimer.singleShot(0, lambda: setattr(self, "_ui_ready", True))
+
+        try:
+            excel_path = resource_path("14inch Petrofac pipetally.xlsx")
+            if os.path.exists(excel_path) and self.pipe_tally is None:
+                self.pipe_tally = pd.read_excel(excel_path)
+        except Exception:
+            pass
+
+        self._show_watermark()
+
+    # ---------- action enable/disable toggler ----------
+    def _update_project_actions(self):
+        a = self.ui
+        act_create = getattr(a, "action_Create_Proj", None)
+        act_close  = getattr(a, "action_Close_Proj", None)
+        if isinstance(act_create, QAction):
+            act_create.setEnabled(not self.project_is_open)
+        if isinstance(act_close, QAction):
+            act_close.setEnabled(self.project_is_open)
+    # ---------------------------------------------------
+
+    # ---------- guarded connections for heatmap/line/3D ----------
+    def _connect_guarded_graph_controls(self):
+        a = self.ui
+        # QActions from menu/toolbar
+        action_map = [
+            ("actionHeatmap", "Heatmap"),
+            ("action_LineChart", "LineChart"),
+            ("action_3D_Graph", "3D"),
+        ]
+        for aname, tab in action_map:
+            act = getattr(a, aname, None)
+            if isinstance(act, QAction):
+                try: act.triggered.disconnect()
+                except Exception: pass
+                act.triggered.connect(lambda _=False, t=tab: self._guarded_open_tab(t))
+
+        # Buttons / toolbuttons
+        widget_map = [
+            ("btnHeatmap", "Heatmap"),
+            ("toolButtonHeatmap", "Heatmap"),
+            ("btnLinechart", "LineChart"),
+            ("toolButtonLine", "LineChart"),
+            ("btn3D", "3D"),
+            ("toolButton3D", "3D"),
+        ]
+        for wname, tab in widget_map:
+            w = getattr(a, wname, None)
+            if w is not None and hasattr(w, "clicked"):
+                try: w.clicked.disconnect()
+                except Exception: pass
+                w.clicked.connect(lambda _=False, t=tab: self._guarded_open_tab(t))
+
+    def _guarded_open_tab(self, tab_name: str):
+        if not self.project_is_open:
+            if self._ui_ready:
+                self._project_required_popup()
+            return
+        wanted = {
+            "Heatmap": {"Heatmap"},
+            "LineChart": {"LineChart", "Line Chart", "Line Plot"},
+            "3D": {"3D Graph", "3D"},
+        }.get(tab_name, {tab_name})
+
+        tw = self.ui.tabWidgetM
+        for i in range(tw.count()):
+            if tw.tabText(i) in wanted:
+                tw.setCurrentIndex(i)
+                self.tab_switcher2()
+                return
+        QMessageBox.information(self, "Tab not found", f"Could not locate tab: {tab_name}")
+    # ---------------------------------------------------
+
+    def _build_splitter(self):
+        self.web_view = QWebEngineView()
+        self.bottom_stack = QStackedWidget()
+
+        self.defect_table_page = QWidget()
+        dl = QVBoxLayout(self.defect_table_page); dl.setContentsMargins(0, 0, 0, 0)
+        old_parent_def = self.ui.tableWidgetDefect.parentWidget()
+        if old_parent_def and old_parent_def.layout():
+            try: old_parent_def.layout().removeWidget(self.ui.tableWidgetDefect)
+            except Exception: pass
+        self.ui.tableWidgetDefect.setParent(self.defect_table_page)
+        dl.addWidget(self.ui.tableWidgetDefect)
+
+        self.data_table_page = QWidget()
+        tl = QVBoxLayout(self.data_table_page); tl.setContentsMargins(0, 0, 0, 0)
+        old_parent_data = self.ui.tableView.parentWidget()
+        if old_parent_data and old_parent_data.layout():
+            try: old_parent_data.layout().removeWidget(self.ui.tableView)
+            except Exception: pass
+        self.ui.tableView.setParent(self.data_table_page)
+        tl.addWidget(self.ui.tableView)
+
+        self.web_page = QWidget()
+        wl = QVBoxLayout(self.web_page); wl.setContentsMargins(0, 0, 0, 0)
+        self.web_view2 = QWebEngineView()
+        self.web_view2.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        wl.addWidget(self.web_view2)
+
+        self.bottom_stack.addWidget(self.defect_table_page)
+        self.bottom_stack.addWidget(self.data_table_page)
+        self.bottom_stack.addWidget(self.web_page)
+
+        self.splitter = MidBarSplitter(self, tabbar=self.mid_tabbar)
+        self.splitter.addWidget(self.web_view)
+        self.splitter.addWidget(self.bottom_stack)
+        self.splitter.setChildrenCollapsible(False)
+        self.splitter.setHandleWidth(40)
+        self.splitter.setStretchFactor(0, 1)
+        self.splitter.setStretchFactor(1, 1)
+        self.splitter.setStyleSheet("""
+            QSplitter::handle#MidBarHandle { background: #16181c; }
+            #MidBarFrame { background: #16181c; }
+            QTabBar::tab { color: #d8d8d8; padding: 6px 14px; margin: 0px; border: 0; background: transparent; }
+            QTabBar::tab:selected { color: white; font-weight: 600; }
+        """)
+        self.ui.verticalLayoutGraph.addWidget(self.splitter)
+        QTimer.singleShot(0, lambda: self.splitter.setSizes([self.height() // 2, self.height() // 2]))
+
+    def _show_watermark(self):
+        try:
+            html_path = Path(resource_path("ui/icons/VDT_watermark.html"))
+            base_url = QUrl.fromLocalFile(str(html_path.parent) + "/")
+            with open(html_path, "r", encoding="utf-8") as f:
+                self.web_view.setHtml(f.read(), base_url)
+        except Exception:
+            self.web_view.setUrl(QUrl())
+        self.bottom_stack.setCurrentIndex(0)
+        self.web_view2.setUrl(QUrl())
+
+    def _tick(self):
+        if self._t0:
+            dt = time.time() - self._t0
+            self.right_status_label.setText(f"{dt:.1f}s    ")
+
+    def set_loading(self, msg="Loading"):
+        self.current_message = msg
         self.statusBar().showMessage(f'           Status:      {self.current_message}')
-        self.start_time = time.time()
+        self._t0 = time.time()
         self.timer.start(100)
 
-    def set_idle_status(self):
+    def set_idle(self):
         self.current_message = 'App running'
         self.statusBar().showMessage(f'           Status:      {self.current_message}')
         self.timer.stop()
-        self.elapsed_time = time.time() - self.start_time
-        self.update_elapsed_time_display()
-
-    def update_elapsed_time_display(self):
-        if self.start_time:
-            current_time = time.time()
-            elapsed_time = current_time - self.start_time
-            self.right_status_label.setText(f'{elapsed_time:.1f}s    ')
-
-    def setup_table_view(self):
-        self.ui.tableView.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.ui.tableView.verticalHeader().setVisible(False)
-        self.ui.tableView.setSortingEnabled(True)
-        self.ui.tableView.setSortingEnabled(False)  # Initially disable sorting
+        self._t0 = None
+        self.right_status_label.setText("0.0s    ")
 
     def setup_actions(self):
-        print("⚙️ setup_actions() running")
+        a = self.ui
+        a.action_Create_Proj.triggered.connect(self.open_project)
+        a.action_Close_Proj.triggered.connect(self.close_project)
+        a.action_Quit.triggered.connect(self.quit_app)
+        a.action_About.triggered.connect(self.open_About)
+        a.actionAdmin_Panel.triggered.connect(self.open_Admin)
+        a.action_ERF.triggered.connect(self.open_ERF)
+        a.action_XYZ.triggered.connect(self.open_XYZ)
+        self.ui.action_Export_Table.triggered.connect(self.gen_data)
+        a.action_Final_Report.triggered.connect(self.open_Report)
+        a.action_graphs.triggered.connect(self.open_graphs)
+        a.action_Assessment.triggered.connect(self.open_Assessment)
+        a.action_Cluster.triggered.connect(self.open_Cluster)
+        a.action_Pipe_High.triggered.connect(self.open_PipeHigh)
+        a.action_Pipe_Sch.triggered.connect(self.open_PipeScheme)
+        a.actionMetal_Loss_Distribution_MLD.triggered.connect(self.open_CMLD)
+        a.actionDepth_Based_Anomalies_Distribution_DBAD.triggered.connect(self.open_DBAD)
+        a.actionERF_Based_Anomalies_Distribution_E_AD.triggered.connect(self.open_EAD)
+        a.action_Custom.triggered.connect(self.add_plot_custom)
+        a.action_Telemetry.triggered.connect(self.add_plot_tele)
+        a.actionAnomalies_Distribution.triggered.connect(self.add_plot_ad)
+        a.action_DefectDetect.triggered.connect(self.draw_boxes_v2)
+        if hasattr(a, "pushButtonNext"): a.pushButtonNext.clicked.connect(lambda: None)
+        if hasattr(a, "pushButtonPrev"): a.pushButtonPrev.clicked.connect(lambda: None)
+        a.Final_Report.triggered.connect(self.open_Final_Report)
+        a.action_Preliminary_Report.triggered.connect(self.open_Preliminary_Report)
+        a.action__pipetally.triggered.connect(self.open_pipe_tally)
+        a.action_Manual.triggered.connect(self.open_manual)
+        a.actionStandard.triggered.connect(self.open_digs)  # original (by defect no.)
+        # a.action_Pipe_Tally.triggered.connect(self.open_Ptal)
 
+    def open_project(self):
         try:
-            self.ui.action_Create_Proj.triggered.connect(self.open_project)
-            # self.ui.menu_File.addAction(self.ui.action_Create_Proj)
-            self.ui.action_Close_Proj.triggered.connect(self.close_project)
-            # self.ui.menu_File.addAction(self.ui.action_Close_Proj)
-            self.ui.action_Quit.triggered.connect(self.quit_app)
-            self.ui.action_About.triggered.connect(self.open_About)
-            self.ui.actionAdmin_Panel.triggered.connect(self.open_Admin)
-            # self.action_Edit_Table.triggered.connect(self.edit_table)
-            self.ui.action_ERF.triggered.connect(self.open_ERF)
-            self.ui.action_XYZ.triggered.connect(self.open_XYZ)
-            self.ui.action_Final_Report.triggered.connect(self.open_Report)
-            self.ui.action_graphs.triggered.connect(self.open_graphs)
-            self.ui.action_Assessment.triggered.connect(self.open_Assessment)
-            self.ui.action_Cluster.triggered.connect(self.open_Cluster)
-            self.ui.action_Pipe_High.triggered.connect(self.open_PipeHigh)
-            self.ui.action_Pipe_Sch.triggered.connect(self.open_PipeScheme)
-            self.ui.actionMetal_Loss_Distribution_MLD.triggered.connect(self.open_CMLD)
-            self.ui.actionDepth_Based_Anomalies_Distribution_DBAD.triggered.connect(self.open_DBAD)
-            self.ui.actionERF_Based_Anomalies_Distribution_E_AD.triggered.connect(self.open_EAD)
-            self.ui.action_Custom.triggered.connect(self.add_plot_custom)
-            self.ui.action_Telemetry.triggered.connect(self.add_plot_tele)
-            self.ui.actionAnomalies_Distribution.triggered.connect(self.add_plot_ad)
-            self.ui.actionHeatmap.triggered.connect(self.plot_heatmap)
-            self.ui.action_Export_Table.triggered.connect(self.gen_data)
-            # self.ui.action_DefectDetect.triggered.connect(self.draw_boxes)
-            self.ui.action_DefectDetect.triggered.connect(self.draw_boxes2)
-
-            self.ui.minTabWidg.clicked.connect(self.minimize_tabs)
-            self.ui.maxTabWidg.clicked.connect(self.maximize_tabs)
-            # self.ui.pushButtonNext.clicked.connect(self.load_next_file)
-            # self.ui.pushButtonPrev.clicked.connect(self.load_prev_file)
-            # self.ui.pushButtonNext.clicked.connect(self.load_next_folder)
-            # self.ui.pushButtonPrev.clicked.connect(self.load_prev_folder)
-            # mode-aware next/prev (works for folder-mode and .pkl-mode)
-            self.ui.pushButtonNext.clicked.connect(self.next_item)
-            self.ui.pushButtonPrev.clicked.connect(self.prev_item)
-
-            self.ui.Final_Report.triggered.connect(self.open_Final_Report)
-            self.ui.action_Preliminary_Report.triggered.connect(self.open_Preliminary_Report)
-            self.ui.action__pipetally.triggered.connect(self.open_pipe_tally)
-            self.ui.action_Manual.triggered.connect(self.open_manual)
-
-            self.ui.actionStandard.triggered.connect(self.open_digs)
-            self.ui.action_Pipe_Tally.triggered.connect(self.open_Ptal)
-            # self.ui.action_Pipe_Highlights.triggered.connect(run_app)
-            # self.ui.action_Pipe_Highlights.triggered.connect(self.open_PipeHigh)
-
-
-        except Exception as e:
-            self.open_Error(e)
-
-    def minimize_tabs(self):
-        self.ui.tabWidgetM.hide()
-        # self.ui.tabWidgetM.setVisible(False)
-        self.ui.minTabWidg.setVisible(False)
-        self.ui.maxTabWidg.raise_()
-        self.ui.maxTabWidg.setVisible(True)
-        self.ui.verticalLayoutUpper.removeItem(self.verticalGraphSpacer)
-        self.web_view2.setVisible(True)
-
-        current_index = self.ui.tabWidgetM.currentIndex()
-        current_tab_name = self.ui.tabWidgetM.tabText(current_index)
-        if current_tab_name == 'Plot':
-            self.web_view2.setVisible(False)
-
-    def open_graphs(self):
-        try:
-            print("📊 Importing GraphApp...")
-            import traceback
-            import sys
-
-            def try_import_graphapp():
-                try:
-                    # Correct path to the graphs_ui.py file in the bundled executable
-                    ui_file_path = resource_path(os.path.join("ui", "graphs_ui.py"))
-
-                    spec = importlib.util.spec_from_file_location("graphs_ui", ui_file_path)
-                    graphs_ui = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(graphs_ui)
-                    print("✅ graphs_ui imported")
-                    return graphs_ui.GraphApp
-                except Exception as e:
-                    print("❌ Import crashed:", e)
-                    print(traceback.format_exc())
-                    sys.exit(1)
-
-            GraphApp = try_import_graphapp()
-            # self.graph_window = GraphApp()
-            if self.pipe_tally is None:
-                self.open_Error("Pipe tally not loaded yet.")
+            dlg = QFileDialog(self)
+            dlg.setFileMode(QFileDialog.FileMode.Directory)
+            dlg.setOption(QFileDialog.Option.ShowDirsOnly)
+            dlg.setWindowTitle("Select Project Folder (PKLs + pipe_* folders)")
+            if dlg.exec() != QFileDialog.DialogCode.Accepted:
+                self.project_is_open = False
+                self._toggle_plot_ui(False)
+                self._show_watermark()
+                self._update_project_actions()
                 return
 
-            self.graph_window = GraphApp(dataframe=self.pipe_tally)
-            self.graph_window.show()
+            root = dlg.selectedFiles()[0]
+            self.project_root = root
+
+            self.pipe_tally = None
+            loaded_tally = self._auto_load_pipe_tally(root)
+            if not loaded_tally:
+                print("[pipe_tally] No tally file found in this project; graphs/reports will warn if needed.")
+
+            self.pkl_files = [
+                os.path.join(root, f)
+                for f in os.listdir(root)
+                if f.lower().endswith(".pkl")
+            ]
+
+            def nkey(path):
+                filename = os.path.basename(path)
+                return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", filename)]
+            self.pkl_files.sort(key=nkey)
+
+            cb = self.ui.comboBoxPipe
+            cb.blockSignals(True)
+            cb.clear()
+            names = [os.path.splitext(os.path.basename(f))[0] for f in self.pkl_files]
+            if names:
+                cb.addItems(names)
+                cb.setCurrentIndex(0)
+            cb.lineEdit().setPlaceholderText("Type pipe number...")
+            cb.completer().setCompletionMode(QtWidgets.QCompleter.CompletionMode.PopupCompletion)
+            cb.setInsertPolicy(QtWidgets.QComboBox.InsertPolicy.NoInsert)
+            cb.blockSignals(False)
+
+            try:
+                cb.lineEdit().returnPressed.disconnect()
+            except Exception:
+                pass
+            cb.lineEdit().returnPressed.connect(self.jump_to_number)
+
+            if self.pkl_files:
+                self.project_is_open = True
+                self._toggle_plot_ui(True)
+                self.load_selected_by_index(0)
+            else:
+                self.project_is_open = False
+                self._toggle_plot_ui(False)
+                self._show_watermark()
+                QMessageBox.warning(self, "No PKLs", "No .pkl files found in the selected folder.")
+
+            self._update_project_actions()
         except Exception as e:
-            print("❌ open_graphs failed:", e)
+            self.project_is_open = False
+            self._toggle_plot_ui(False)
+            self._show_watermark()
+            self._update_project_actions()
+            self.open_Error(e)
 
     def gen_data(self):
-        '''Open Data Generator UI'''
         try:
             if 'genData' not in self.child_windows or not self.child_windows['genData'].isVisible():
                 self.script_runner_window = ScriptRunnerApp()
@@ -438,36 +576,350 @@ class MyMainWindow(QMainWindow):
         except Exception as e:
             self.open_Error(e)
 
+    def _toggle_plot_ui(self, enabled: bool):
+        tab_names = {"Heatmap", "LineChart", "Line Chart", "Line Plot", "3D Graph", "3D"}
+        tw = self.ui.tabWidgetM
+        for i in range(tw.count()):
+            if tw.tabText(i) in tab_names:
+                tw.setTabEnabled(i, enabled)
+        try:
+            self.update_digsheet_button_state()
+        except Exception:
+            pass
+
+    def on_combo_index_changed(self, combo_idx: int):
+        if not self.project_is_open or combo_idx < 0:
+            return
+        self.load_selected_by_index(combo_idx)
+
+    def load_selected_by_index(self, idx: int):
+        try:
+            if idx < 0 or idx >= len(self.pkl_files):
+                return
+            pkl_path = self.pkl_files[idx]
+            df = pd.read_pickle(pkl_path)
+            self.curr_data = df
+            self.header_list = list(df.columns)
+
+            self.model.clear()
+            self.model.setHorizontalHeaderLabels([str(c) for c in df.columns])
+            for _, row in df.iterrows():
+                items = [QStandardItem(str(v)) for v in row.values]
+                self.model.appendRow(items)
+            self.ui.tableView.setModel(self.model)
+            self.ui.tableView.setSortingEnabled(True)
+
+            name = os.path.splitext(os.path.basename(pkl_path))[0]
+            pipe_idx = self._extract_index(name)
+            self.load_assets_for_index(pipe_idx)
+        except Exception as e:
+            self.open_Error(f"load_selected_by_index error: {e}")
+
+    @staticmethod
+    def _extract_index(text: str) -> str:
+        m = re.search(r'\d+', text)
+        return m.group(0) if m else text
+
+    def load_assets_for_index(self, pipe_idx: str):
+        try:
+            if not (self.project_root and self.project_is_open):
+                return
+
+            candidates = [
+                os.path.join(self.project_root, f"pipe_{pipe_idx}"),
+                os.path.join(self.project_root, f"pipe-{pipe_idx}"),
+                os.path.join(self.project_root, f"Pipe_{pipe_idx}"),
+            ]
+            pipe_dir = next((d for d in candidates if os.path.isdir(d)), None)
+            if not pipe_dir:
+                return self.open_Error(f"Folder not found for pipe index {pipe_idx} (looked for pipe_{pipe_idx}).")
+
+            def pick_one(patterns, exclude=None):
+                exclude = exclude or []
+                hits = []
+                for pat in patterns:
+                    hits.extend(glob(os.path.join(pipe_dir, pat)))
+                hits = [h for h in hits if not any(ex in os.path.basename(h).lower() for ex in (exclude or []))]
+                exact = [h for h in hits if re.search(rf'{re.escape(str(pipe_idx))}\b', os.path.basename(h))]
+                return exact[0] if exact else (hits[0] if hits else None)
+
+            self.hmap       = pick_one(["*heatmap*.html"], exclude=["raw", "box"])
+            self.hmap_r     = pick_one(["*heatmap*raw*.html", "*raw*heatmap*.html"])
+            self.heatmap_box= pick_one(["*heatmap*box*.html", "*box*heatmap*.html"])
+            self.lplot      = pick_one(["*lineplot*.html", "*line*.html"], exclude=["raw"])
+            self.lplot_r    = pick_one(["*lineplot*raw*.html", "*line*raw*.html"])
+            self.pipe3d     = pick_one(["*pipe3d*.html", "pipe3d*.html"])
+            self.prox_linechart = pick_one(["proximity_linechart*.html", "*proximity_linechart*.html"])
+
+            ds_csv = pick_one(["*defectS*.csv", "*defects*.csv"])
+            if ds_csv:
+                try:
+                    ds = pd.read_csv(ds_csv)
+                    self._populate_defect_table_from_csv(ds)
+                except Exception as e:
+                    print("⚠️ Failed to load defect CSV:", e)
+
+            self.tab_switcher2()
+        except Exception as e:
+            self.open_Error(f"load_assets_for_index error: {e}")
+
+    # Guarded tab change handler (prevents switching when no project and shows popup)
+    def _on_middle_tab_changed(self, index: int):
+        if self._reverting_tab:
+            return
+
+        if not self.project_is_open:
+            if self._ui_ready:
+                self._project_required_popup()
+            self._reverting_tab = True
+            try:
+                self.ui.tabWidgetM.setCurrentIndex(self._last_allowed_tab_index)
+            finally:
+                self._reverting_tab = False
+            return
+
+        self._last_allowed_tab_index = index
+        self.tab_switcher2()
+        self.update_digsheet_button_state()
+
+    def tab_switcher2(self, *_):
+        if not self.project_is_open:
+            self._show_watermark()
+            return
+        try:
+            tab = self.ui.tabWidgetM.tabText(self.ui.tabWidgetM.currentIndex())
+            if tab == "Heatmap":
+                if self.hmap:
+                    self._load_scrollable_chart(self.web_view, self.hmap, min_w=2200, min_h=1400)
+                else:
+                    self.web_view.setUrl(QUrl())
+                self.bottom_stack.setCurrentIndex(0)
+                self.web_view2.setUrl(QUrl())
+
+            elif tab in ("LineChart", "Line Chart", "Line Plot"):
+                if self.lplot:
+                    self._load_scrollable_chart(self.web_view, self.lplot, min_w=2200, min_h=1400)
+                else:
+                    self.web_view.setUrl(QUrl())
+                if self.prox_linechart and os.path.exists(self.prox_linechart):
+                    self.bottom_stack.setCurrentIndex(2)
+                    self._load_scrollable_chart(self.web_view2, self.prox_linechart, min_w=1800, min_h=900)
+                else:
+                    self.bottom_stack.setCurrentIndex(0)
+                    self.web_view2.setUrl(QUrl())
+
+            elif tab in ("3D Graph", "3D"):
+                if self.pipe3d:
+                    try:
+                        self._load_scrollable_chart(self.web_view, self.pipe3d, min_w=2200, min_h=1400)
+                    except AttributeError:
+                        self.web_view.setUrl(QUrl.fromLocalFile(self.pipe3d))
+                else:
+                    self.web_view.setUrl(QUrl())
+                self.bottom_stack.setCurrentIndex(0)
+                self.web_view2.setUrl(QUrl())
+
+            self.update_digsheet_button_state()
+        except Exception as e:
+            self.open_Error(e)
+
+    def _load_scrollable_chart(self, view: QWebEngineView, html_path: str, min_w: int = 2200, min_h: int = 1400):
+        if not html_path or not os.path.exists(html_path):
+            view.setUrl(QUrl())
+            return
+        safe = html_path.replace('\\', '/')
+        wrapper = f"""<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body {{ height:100%; margin:0; }}
+  .wrap {{ height:100vh; width:100%; overflow:auto; }}
+  iframe {{ border:0; width:{min_w}px; height:{min_h}px; }}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <iframe sandbox="allow-scripts allow-same-origin" src="file:///{safe}"></iframe>
+</div>
+</body>
+</html>"""
+        base = QUrl.fromLocalFile(os.path.dirname(html_path) + os.sep)
+        view.setHtml(wrapper, base)
+
+    def draw_boxes_v2(self):
+        if not self.project_is_open:
+            return
+        try:
+            if self.heatmap_box and os.path.exists(self.heatmap_box):
+                self.web_view.setUrl(QUrl.fromLocalFile(self.heatmap_box))
+            else:
+                self.open_Error("Boxed heatmap not found for the selected pipe.")
+        except Exception as e:
+            self.open_Error(e)
+
+    def minimize_tabs(self):
+        self.ui.tabWidgetM.hide()
+
     def maximize_tabs(self):
         self.ui.tabWidgetM.show()
-        # self.ui.tabWidgetM.setVisible(True)
-        self.ui.minTabWidg.setVisible(True)
-        self.ui.maxTabWidg.hide()
-        self.ui.maxTabWidg.setVisible(False)
-        self.ui.verticalLayoutUpper.addSpacerItem(self.verticalGraphSpacer)
-        self.web_view2.setVisible(False)
 
-    def open_digs(self):
-        import subprocess
-        import sys
-        import os
-        import pickle  # To serialize pipe_tally for passing it through subprocess
-
+    def open_graphs(self):
         try:
-            # Resource path for dig_sheet.py script when running from PyInstaller EXE
-            base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(__file__)
-            dig_py = resource_path(os.path.join("dig", "dig_sheet.py"))  # Path to dig_sheet.py within the bundle
+            if self.pipe_tally is None:
+                self.open_Error("Pipe tally not loaded yet.")
+                return
+            if self._central_graphs is not None and self.centralWidget() is self._central_graphs:
+                return
+            if self._central_original is None:
+                self._central_original = self.centralWidget()
 
-            # Serialize pipe_tally to pass it to subprocess
-            pipe_tally_file = os.path.join(base_dir, "pipe_tally.pkl")
-            with open(pipe_tally_file, "wb") as f:
-                pickle.dump(self.pipe_tally, f)
+            ui_file_path = resource_path(os.path.join("ui", "graphs_ui.py"))
+            if not os.path.exists(ui_file_path):
+                self.open_Error(f"Graphs UI file not found at:\n{ui_file_path}")
+                return
 
-            # Call dig_sheet.py with the pipe_tally file
-            subprocess.Popen([sys.executable, dig_py, pipe_tally_file])  # Launch dig_sheet.py from the bundled exe
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("graphs_ui", ui_file_path)
+            graphs_ui = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(graphs_ui)
 
+            container = QWidget()
+            v = QVBoxLayout(container)
+            v.setContentsMargins(12, 12, 12, 12)
+            v.setSpacing(10)
+
+            header = QHBoxLayout()
+            back_btn = QPushButton("◀ Back")
+            back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            back_btn.clicked.connect(self._close_graphs_view)
+            title = QLabel("Graphs")
+            title.setStyleSheet("font-weight: 600; font-size: 14pt;")
+            header.addWidget(back_btn); header.addSpacing(12); header.addWidget(title); header.addStretch(1)
+            v.addLayout(header)
+
+            graphs_widget = graphs_ui.GraphApp(dataframe=self.pipe_tally)
+            v.addWidget(graphs_widget, stretch=1)
+
+            self._graphs_widget = graphs_widget
+            self._central_graphs = container
+
+            if self._central_original is not None and self._central_original.parent() is self:
+                self.takeCentralWidget()
+            self.setCentralWidget(container)
         except Exception as e:
-            self.open_Error(f"An error occurred: {e}")
+            try:
+                if self.centralWidget() is None and self._central_original is not None:
+                    self.setCentralWidget(self._central_original)
+            except Exception:
+                pass
+            self.open_Error(f"Unable to open graphs inline: {e}")
+
+    def _close_graphs_view(self):
+        try:
+            if self.centralWidget() is self._central_original:
+                return
+            graphs_central = self.takeCentralWidget()
+            if graphs_central is not None:
+                graphs_central.deleteLater()
+            if self._central_original is not None:
+                if self._central_original.parent() is not self:
+                    self._central_original.setParent(self)
+                self.setCentralWidget(self._central_original)
+            self._graphs_widget = None
+            self._central_graphs = None
+        except Exception as e:
+            print("⚠️ _close_graphs_view:", e)
+
+    def _auto_load_pipe_tally(self, root: str) -> bool:
+        candidates = [
+            os.path.join(root, "pipetally", "pipe_tally.xlsx"),
+            os.path.join(root, "pipetally", "pipe_tally.csv"),
+            os.path.join(root, "pipe_tally.xlsx"),
+            os.path.join(root, "pipe_tally.csv"),
+        ]
+        for d in (root, os.path.join(root, "pipetally")):
+            if os.path.isdir(d):
+                for f in os.listdir(d):
+                    name = f.lower()
+                    if name.endswith((".xlsx", ".xls", ".csv")):
+                        candidates.append(os.path.join(d, f))
+        seen = set()
+        for path in candidates:
+            if not path or path in seen:
+                continue
+            seen.add(path)
+            if not os.path.exists(path): continue
+            try:
+                if path.lower().endswith((".xlsx", ".xls")):
+                    df = pd.read_excel(path)
+                else:
+                    df = pd.read_csv(path)
+                df.columns = [str(c).strip() for c in df.columns]
+                missing = [c for c in self.REQUIRED_TALLY_COLS if c not in df.columns]
+                if missing:
+                    print(f"[pipe_tally] Loaded {os.path.basename(path)} (missing cols: {missing})")
+                else:
+                    print(f"[pipe_tally] Loaded {os.path.basename(path)}")
+                self.pipe_tally = df
+                return True
+            except Exception as e:
+                print(f"[pipe_tally] Failed to load {path}: {e}")
+        self.pipe_tally = None
+        return False
+
+    def open_XYZ(self):
+        try:
+            if sys.platform == "win32":
+                path = r"C:\Program Files\Google\Google Earth Pro\client\googleearth.exe"
+            elif sys.platform == "darwin":
+                path = "/Applications/Google Earth Pro.app/Contents/MacOS/Google Earth Pro"
+            else:
+                path = "/usr/bin/google-earth-pro"
+            if os.path.exists(path):
+                subprocess.Popen([path])
+        except Exception:
+            pass
+
+    def open_Cluster(self):
+        Cluster_Dialog().exec()
+
+    def open_Ptal(self):
+        try:
+            file_path, _ = QFileDialog.getOpenFileName(
+                self, "Open Pipe Tally File", "", "CSV/Excel Files (*.csv *.xlsx *.xls);;All Files (*)"
+            )
+            if not file_path: return
+            self.pipe_tally = pd.read_csv(file_path) if file_path.endswith(".csv") else pd.read_excel(file_path)
+            QMessageBox.information(self, "Pipe Tally", "Pipe tally loaded successfully.")
+            self._toggle_plot_ui(self.project_is_open)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Pipe tally load failed: {e}")
+
+    def jump_to_number(self):
+        if not self.project_is_open:
+            return
+        text = self.ui.comboBoxPipe.currentText().strip()
+        if not text: return
+        try:
+            base_names = [os.path.splitext(os.path.basename(f))[0] for f in self.pkl_files]
+            if text in base_names:
+                idx = base_names.index(text)
+            else:
+                idx = next((i for i, n in enumerate(base_names) if re.search(rf'\b{text}\b', n)), None)
+                if idx is None: return
+            self.ui.comboBoxPipe.setCurrentIndex(idx)
+        except Exception as e:
+            self.open_Error(f"Jump error: {e}")
+
+    def open_About(self):
+        About_Dialog().exec()
+
+    def open_Admin(self):
+        self.ap = Admin_Panel(); self.ap.show()
+
+    def open_Assessment(self):
+        Assess_Dialog().exec()
 
     def open_PipeHigh(self):
         try:
@@ -483,539 +935,116 @@ class MyMainWindow(QMainWindow):
         except Exception as e:
             self.open_Error(f"Error running Pipeline Schema:\n{e}")
 
-    # def open_Ptal(self):
-    # import subprocess
-    # subprocess.Popen(["python", "pages/pipe_tally.py"])
+    def open_Report(self):
+        cols = [r"Abs. Distance (m)", r"Depth %", r"Type", r"ERF (ASME B31G)", r"Orientation o' clock"]
+        if not isinstance(self.pipe_tally, pd.DataFrame):
+            QMessageBox.critical(self, "Error", "Pipe tally data is missing or not loaded."); return
+        for c in cols:
+            if c not in self.pipe_tally.columns:
+                QMessageBox.critical(self, "Error", f"Missing column: {c}"); return
+        fil = self.pipe_tally[cols].copy()
+        fil = fil.dropna(subset=["Abs. Distance (m)"])
+        fil["Abs. Distance (m)"] = fil["Abs. Distance (m)"].astype(int)
+        fil["Depth %"] = pd.to_numeric(fil["Depth %"], errors='coerce')
+        fil["Type"] = fil["Type"].astype(str)
+        fil["ERF (ASME B31G)"] = pd.to_numeric(fil["ERF (ASME B31G)"], errors='coerce')
+        fil[r"Orientation o' clock"] = fil[r"Orientation o' clock"].astype(str)
+        fil["Surface Location"] = fil["Type"].apply(
+            lambda x: "Internal" if "Internal" in x else ("External" if "External" in x else "Unknown")
+        )
+        self.fr = Report(fil); self.fr.show()
 
-    def open_Ptal(self):
-        try:
-            file_path, _ = QFileDialog.getOpenFileName(
-                self,
-                "Open Pipe Tally File",
-                "",
-                "CSV/Excel Files (*.csv *.xlsx *.xls);;All Files (*)"
-            )
-
-            if file_path:
-                if file_path.endswith('.csv'):
-                    self.pipe_tally = pd.read_csv(file_path)
-                else:
-                    self.pipe_tally = pd.read_excel(file_path)
-                QMessageBox.information(self, "Pipe Tally", "Pipe tally loaded successfully.")
-
-                # on_load_click(self.pipe_tally)  # Call the function to handle the loaded pipe tally
-            else:
-                QMessageBox.warning(self, "Pipe Tally", "No file selected.")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Pipe tally load failed: {e}")
-
-    ## Folder cases
-
-    # def open_project(self):
-    #     print("Opening project...")
-    #     try:
-    #         self.set_loading_status()
-    #         # Open a folder dialog to select the directory
-    #         folder_dialog = QFileDialog(self)
-    #         folder_dialog.setFileMode(QFileDialog.FileMode.Directory)
-    #         folder_dialog.setOption(QFileDialog.Option.ShowDirsOnly)
-    #         folder_dialog.setWindowTitle("Select Folder")
-    #
-    #         if folder_dialog.exec() == QFileDialog.DialogCode.Accepted:
-    #             folder_path = folder_dialog.selectedFiles()[0]
-    #             if folder_path:
-    #                 # Collect all folders from the selected folder
-    #                 self.folders = [os.path.join(folder_path, d) for d in os.listdir(folder_path)
-    #                                 if os.path.isdir(os.path.join(folder_path, d))]
-    #                 if self.folders:
-    #                     self.current_index = 0
-    #                     self.populate_combobox()
-    #                     self.load_folder(self.folders[self.current_index])
-    #                 else:
-    #                     self.open_Error("No folders found in the selected directory.")
-    #         self.set_idle_status()
-    #
-    #     except Exception as e:
-    #         self.open_Error(e)
-    #
-    # def populate_combobox(self):
-    #     self.ui.comboBoxPipe.clear()
-    #     self.ui.comboBoxPipe.addItems([os.path.basename(f) for f in self.folders])
-
-    def open_project(self):
-        print("Opening project...")
-        try:
-            self.set_loading_status()
-
-            folder_dialog = QFileDialog(self)
-            folder_dialog.setFileMode(QFileDialog.FileMode.Directory)
-            folder_dialog.setOption(QFileDialog.Option.ShowDirsOnly)
-            folder_dialog.setWindowTitle("Select Folder")
-
-            if folder_dialog.exec() == QFileDialog.DialogCode.Accepted:
-                folder_path = folder_dialog.selectedFiles()[0]
-                if folder_path:
-                    # Collect all .pkl files (no loading yet!)
-                    self.pkl_files = [
-                        os.path.join(folder_path, f)
-                        for f in os.listdir(folder_path)
-                        if f.lower().endswith(".pkl")
-                    ]
-                    # self.pkl_files.sort()  # Sort alphabetically for consistent order
-                    import re
-
-                    def natural_sort_key(path):
-                        filename = os.path.basename(path)
-                        return [int(text) if text.isdigit() else text.lower()
-                                for text in re.split(r'(\d+)', filename)]
-
-                    self.pkl_files.sort(key=natural_sort_key)
-
-                    # Switch combobox to editable for search
-                    self.ui.comboBoxPipe.clear()
-                    self.ui.comboBoxPipe.setEditable(True)
-                    self.ui.comboBoxPipe.lineEdit().setPlaceholderText("Type file number...")
-                    self.ui.comboBoxPipe.completer().setCompletionMode(
-                        QtWidgets.QCompleter.CompletionMode.PopupCompletion
-                    )
-                    self.ui.comboBoxPipe.lineEdit().returnPressed.connect(self.jump_to_number)
-
-                    if self.pkl_files:
-                        self.current_index = 0
-                        self.page_size = 10
-                        self.populate_combobox()
-                        # set .pkl project mode
-                        self.project_mode = 'pkl'
-                        self.folders = []  # clear any folder-mode state
-                        self.current_index = 0
-
-                        # Connect combobox change event
-                        # self.ui.comboBoxPipe.currentIndexChanged.connect(self.load_selected_pkl)
-                    else:
-                        self.open_Error("No .pkl files found in the selected directory.")
-
-            self.set_idle_status()
-
-        except Exception as e:
-            self.open_Error(e)
-
-    def populate_combobox(self):
-        # show pkl filenames for the current page, without emitting index change
-        start = self.current_index
-        end = min(start + self.page_size, len(self.pkl_files))
-
-        # display_names = [os.path.basename(f) for f in self.pkl_files[start:end]]
-        display_names = [os.path.splitext(os.path.basename(f))[0]  # remove extension
-                         for f in self.pkl_files[start:end]]
-
-        # Prevent signals while updating items
-        try:
-            self.ui.comboBoxPipe.blockSignals(True)
-            self.ui.comboBoxPipe.clear()
-            if display_names:
-                self.ui.comboBoxPipe.addItems(display_names)
-                # set to first item of current page (no signal due to block)
-                self.ui.comboBoxPipe.setCurrentIndex(0)
-            else:
-                self.ui.comboBoxPipe.clear()
-        finally:
-            self.ui.comboBoxPipe.blockSignals(False)
-
-    def load_selected_pkl(self, idx=None):
-        """
-        idx: index in the currently displayed combobox page (0..page_size-1).
-        If idx is None, read from comboBox currentIndex.
-        """
-        try:
-            if idx is None:
-                idx = self.ui.comboBoxPipe.currentIndex()
-            if idx < 0:
+    def open_ERF(self):
+        self.erf = ERF()
+        def update_result():
+            OD = self.erf.doubleSpinBox.value()
+            WT = self.erf.doubleSpinBox_3.value()
+            SMYS = self.erf.doubleSpinBox_2.value()
+            MAOP = self.erf.doubleSpinBox_4.value()
+            SF = self.erf.doubleSpinBox_5.value()
+            Axial_L = self.erf.doubleSpinBox_8.value()
+            Depth_P = self.erf.doubleSpinBox_9.value()
+            if OD == 0 or WT == 0 or SF == 0:
+                self.erf.lineEdit_2.setText("-"); self.erf.lineEdit_3.setText("-"); return
+            flow_stress = 1.1 * SMYS
+            z_factor = (Axial_L ** 2) / (OD * WT)
+            M = (1 + 0.8 * z_factor) ** 0.5
+            y = 1 - 2/ 3 * Depth_P / WT
+            z = 1 - 2 / 3 * Depth_P / WT / M
+            k = y / z
+            S = (flow_stress * k) if z_factor <= 20 else (flow_stress * (1 - Depth_P / WT))
+            EFP = (2 * S * WT) / OD
+            PSafe = EFP / SF if SF else 0
+            if PSafe == 0:
+                self.erf.lineEdit_2.setText("-");
+                self.erf.lineEdit_3.setText("-");
                 return
+            ERFv = MAOP / PSafe
+            self.erf.lineEdit_2.setText(f"{ERFv:.2f}")
+            self.erf.lineEdit_3.setText(f"{PSafe:.2f}")
+            import numpy as np
+            def calc_B(d_over_t):
+                if d_over_t >= 0.175:
+                    B = np.sqrt(((d_over_t / (1.1 * d_over_t - 0.15)) ** 2) - 1)
+                    return B if B <= 4 else 4
+                return 4
 
-            absolute_index = self.current_index + idx
-            if absolute_index < 0 or absolute_index >= len(self.pkl_files):
-                return
+            xs = np.linspace(0, 1, 100)
+            ys = [calc_B(x) for x in xs]
+            Xc = Axial_L / 300;
+            Yc = Depth_P / 20
+            color = 'green' if Yc < calc_B(Xc) else 'red'
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=xs, y=ys, mode='lines', name='ASME B31G'))
+            fig.add_trace(go.Scatter(x=[Xc], y=[Yc], mode='markers',
+                                     marker=dict(color=color, size=10),
+                                     name='Defect'))
+            fig.update_layout(xaxis_title='Axial Length (mm)', yaxis_title='Peak Depth', height=450, width=1000)
+            fp = resource_path('backend/files/ASME.html');
+            fig.write_html(fp)
+            self.erf.web_viewERF.setUrl(QUrl.fromLocalFile(fp))
 
-            file_path = self.pkl_files[absolute_index]
-            print(f"Loading pickle file: {file_path}")
-            # call existing loader (keeps behavior)
-            self.load_pkl_file(file_path)
+        for w in (self.erf.doubleSpinBox, self.erf.doubleSpinBox_3, self.erf.doubleSpinBox_2,
+                  self.erf.doubleSpinBox_4, self.erf.doubleSpinBox_5,
+                  self.erf.doubleSpinBox_8, self.erf.doubleSpinBox_9):
+            w.valueChanged.connect(update_result)
+        update_result()
+        self.erf.show()
 
-        except Exception as e:
-            self.open_Error(f"load_selected_pkl error: {e}")
+    def open_Final_Report(self):
+        p = resource_path(os.path.join("final_report", "Final_Report.pdf"))
+        if os.path.exists(p):
+            os.startfile(p)
+        else:
+            self.open_Error("Final report PDF not found.")
 
-    def jump_to_number(self):
-        text = self.ui.comboBoxPipe.currentText().strip()
-        if text.isdigit():
-            num = int(text)
-            # Find the index in the current page or full list
-            try:
-                full_list = [os.path.splitext(os.path.basename(f))[0] for f in self.pkl_files]
-                if text in full_list:
-                    idx = full_list.index(text)
-                    # Jump to correct page
-                    self.current_index = (idx // self.page_size) * self.page_size
-                    self.populate_combobox()
-                    self.ui.comboBoxPipe.setCurrentIndex(idx % self.page_size)
-            except Exception as e:
-                self.open_Error(f"Jump error: {e}")
+    def open_Preliminary_Report(self):
+        p = resource_path(os.path.join("preliminary_report", "Preliminary_Report.pdf"))
+        if os.path.exists(p):
+            os.startfile(p)
+        else:
+            self.open_Error("Prelimary report is not found.")
 
-    def load_pkl_file(self, file_path):
-        try:
-            import pandas as pd
-            df = pd.read_pickle(file_path)
-            print(f"Loaded {os.path.basename(file_path)} with shape: {df.shape}")
+    def open_pipe_tally(self):
+        p = resource_path(os.path.join("pipetally", "pipe_tally.xlsx"))
+        if os.path.exists(p):
+            os.startfile(p)
+        else:
+            self.open_Error("Pipetally not found.")
 
-            # TODO: Replace with your heatmap update logic
-            self.display_heatmap(df)
-
-        except Exception as e:
-            self.open_Error(e)
-
-    def on_combo_index_changed(self, index):
-        """Dispatch combobox change to folder or pkl loader."""
-        try:
-            # pkl-mode has priority if pkl_files exists and non-empty
-            if getattr(self, 'pkl_files', None) and len(self.pkl_files) > 0:
-                # index here is position on current page (0..page_size-1)
-                self.load_selected_pkl(index)
-                return
-
-            # otherwise fall back to folder-mode
-            if getattr(self, 'folders', None) and len(self.folders) > 0:
-                if 0 <= index < len(self.folders):
-                    self.load_folder(self.folders[index])
-
-        except Exception as e:
-            self.open_Error(f"on_combo_index_changed error: {e}")
-
-    def next_item(self):
-        """Mode-aware next action (pkl page or next folder)."""
-        try:
-            if getattr(self, 'pkl_files', None) and len(self.pkl_files) > 0:
-                # move to next page of file names
-                self.next_page()
-                # update combobox to first item (signals blocked inside populate)
-                # populate_combobox already sets currentIndex to 0
-            elif getattr(self, 'folders', None) and len(self.folders) > 0:
-                self.load_next_folder()
-        except Exception as e:
-            self.open_Error(f"next_item error: {e}")
-
-    def prev_item(self):
-        """Mode-aware prev action (pkl page or prev folder)."""
-        try:
-            if getattr(self, 'pkl_files', None) and len(self.pkl_files) > 0:
-                self.previous_page()
-            elif getattr(self, 'folders', None) and len(self.folders) > 0:
-                self.load_prev_folder()
-        except Exception as e:
-            self.open_Error(f"prev_item error: {e}")
-
-    def next_page(self):
-        if self.current_index + self.page_size < len(self.pkl_files):
-            self.current_index += self.page_size
-            self.populate_combobox()
-
-    def previous_page(self):
-        if self.current_index - self.page_size >= 0:
-            self.current_index -= self.page_size
-            self.populate_combobox()
-
-    def load_selected_folder(self):
-        index = self.ui.comboBoxPipe.currentIndex()
-        if 0 <= index < len(self.folders):
-            self.load_folder(self.folders[index])
-
-    def load_folder(self, folder_path):
-        try:
-            self.set_loading_status()
-
-            folder_contents = os.listdir(folder_path)
-            self.curr_folder_path = folder_path
-
-            folder_name = os.path.basename(folder_path)
-
-            pipe_name = [f for f in os.listdir(folder_path)
-                         if os.path.isfile(os.path.join(folder_path, f)) and
-                         os.path.splitext(f)[0] == folder_name]
-            pipeD = folder_path + f'/{pipe_name[0]}'
-
-            folder_number = folder_name.split('_')[-1]
-            hmap = hmap_r = hmap_b = lplot = lplot_r = pipe3d = defS = pTal = None
-
-            for file in folder_contents:
-                file_path = os.path.join(folder_path, file)
-
-                if file.endswith(f'{folder_number}.html'):
-                    if 'heatmap' in file:
-                        if 'box' in file:
-                            hmap_b = file_path
-                        elif 'raw' in file:
-                            hmap_r = file_path
-                        else:
-                            hmap = file_path
-                    elif 'lineplot' in file:
-                        if 'raw' in file:
-                            lplot_r = file_path
-                        else:
-                            lplot = file_path
-                    elif 'pipe3d' in file:
-                        pipe3d = file_path
-                elif file.endswith(f'{folder_number}.xlsx'):
-                    if 'pipe' in file:
-                        pipe3d = file_path
-
-                elif file.endswith(f'{folder_number}.csv'):
-                    if 'defectS' in file:
-                        defS = file_path
-                    else:
-                        pTal = file_path
-
-            self.curr_data = pd.read_excel(pipeD)
-            dsheet = pd.read_csv(defS)
-            pTall = pd.read_csv(pTal)
-
-            self.heatmap_box = hmap_b
-            self.hmap = hmap
-            self.hmap_r = hmap_r
-            self.lplot = lplot
-            self.lplot_r = lplot_r
-            self.pipe3d = pipe3d
-            self.pipe_tally = pTall
-
-            self.web_view.setUrl(QUrl.fromLocalFile(self.hmap))
-            self.web_view2.setUrl(QUrl.fromLocalFile(self.hmap_r))
-            # defect sheet
-            column_mapping = {
-                'Box Number': 'Defect_id',
-                'Type': 'Feature_Type',
-                'Width': 'Length',
-                'Absolute Distance': 'Absolute_Distance',
-                # 'Peak Value': 'Depth_Peak',
-                'Depth % ': 'Depth_Peak',
-                'Breadth': 'Width',
-                # 'Ori Val':'Orientation',
-                "Orientation o' clock": 'Orientation',
-                'WT (mm)': 'WT',
-                'Dimensions  Classification': 'Dimension_Class',
-                'Distance to U/S GW(m)': 'Upstream_Distance'
-            }
-            header_indices = {
-                'Defect_id': 0,
-                'Absolute_Distance': 1,
-                'Upstream_Distance': 2,
-                'Feature_Type': 3,
-                'Dimension_Class': 4,
-                'Orientation': 5,
-                'WT': 6,
-                'Length': 7,
-                'Width': 8,
-                'Depth_Peak': 9
-            }
-
-            def populate_table_widget(table_widget: QTableWidget, df: pd.DataFrame, column_mapping: dict):
-                num_rows = len(df)
-                num_cols = len(header_indices)
-                table_widget.setRowCount(num_rows)
-                table_widget.setColumnCount(num_cols)
-                headers = list(header_indices.keys())
-                table_widget.setHorizontalHeaderLabels(headers)
-
-                for row_idx, (_, row) in enumerate(df.iterrows()):
-                    for src_col, dest_col in column_mapping.items():
-                        if dest_col in header_indices:
-                            col_idx = header_indices[dest_col]
-                            value = row[src_col]
-
-                            if isinstance(value, float):
-                                value = f"{value:.2f}"
-
-                            table_widget.setItem(row_idx, col_idx, QTableWidgetItem(str(value)))
-
-                for row_idx in range(num_rows):
-                    for col_name, col_idx in header_indices.items():
-                        if col_name not in column_mapping.values():
-                            table_widget.setItem(row_idx, col_idx, QTableWidgetItem(''))
-
-                for row_idx in range(num_rows):
-                    table_widget.setItem(row_idx, 6, QTableWidgetItem('7.5'))
-
-            populate_table_widget(self.ui.tableWidgetDefect, dsheet, column_mapping)
-            self.load_excel(pipeD)
-
-            self.set_idle_status()
-
-        except Exception as e:
-            self.open_Error(e)
-
-    def draw_boxes2(self):
-        self.web_view.setUrl(QUrl.fromLocalFile(self.heatmap_box))
-
-    def load_next_folder(self):
-        if self.folders:
-            self.current_index = (self.current_index + 1) % len(self.folders)
-            self.load_folder(self.folders[self.current_index])
-
-    def load_prev_folder(self):
-        if self.folders:
-            self.current_index = (self.current_index - 1) % len(self.folders)
-            self.load_folder(self.folders[self.current_index])
-
-    def load_excel(self, file_path):
-        try:
-            df = pd.read_excel(file_path)
-
-            self.model.clear()
-
-            if not df.empty:
-                self.model.setHorizontalHeaderLabels(df.columns.tolist())
-                self.header_list = df.columns.tolist()
-                self.style_header()
-
-                for _, row in df.iterrows():
-                    row_items = [QStandardItem(str(field)) for field in row]
-                    self.model.appendRow(row_items)
-
-            self.ui.tableView.setModel(self.model)
-            self.ui.tableView.setSortingEnabled(True)
-
-        except Exception as e:
-            self.open_Error(e)
-
-    def style_header(self):
-        header = self.ui.tableView.horizontalHeader()
-        # header.minimumSectionSize(250)
-        header.setStyleSheet("""
-            QHeaderView::section {
-                background-color: lightgray;
-                color: black;
-                font-weight: bold;
-                border: 1px solid black;
-                padding: 4px;
-                width: 100px;            
-            }
-            QHeaderView {
-                background-color: white;
-            }
-        """)
-
-    def tab_switcher2(self, flag=None):
-        try:
-            current_index = self.ui.tabWidgetM.currentIndex()
-            current_tab_name = self.ui.tabWidgetM.tabText(current_index)
-
-            if not self.folders:  # If no project is loaded
-                self.web_view.setUrl(QUrl())  # Clear web view
-                self.web_view2.setUrl(QUrl())  # Clear second web view
-                return
-
-            if current_tab_name == 'Defect Sheet':
-                self.web_view.setUrl(QUrl.fromLocalFile(self.hmap))
-                self.web_view2.setUrl(QUrl.fromLocalFile(self.hmap_r))
-            elif current_tab_name == 'Plot':
-                self.web_view.setUrl(QUrl.fromLocalFile(self.pipe3d))
-            else:
-                self.web_view.setUrl(QUrl.fromLocalFile(self.lplot))
-                self.web_view2.setUrl(QUrl.fromLocalFile(self.lplot_r))
-        except Exception as e:
-            self.open_Error(e)
-
-    def tab_switcher(self, flag=None):
-        try:
-            current_index = self.ui.tabWidgetM.currentIndex()
-            current_tab_name = self.ui.tabWidgetM.tabText(current_index)
-            if current_tab_name == 'Defect Sheet':
-                file_path = 'backend/files/heatmap.html'
-                script_dir = os.path.dirname(__file__)
-                full_path = os.path.join(script_dir, file_path)
-                local_url = QUrl.fromLocalFile(full_path)
-                self.web_view.setUrl(local_url)
-
-                file_path = 'backend/files/heatmap_raw.html'
-                script_dir = os.path.dirname(__file__)
-                full_path = os.path.join(script_dir, file_path)
-                local_url = QUrl.fromLocalFile(full_path)
-                self.web_view2.setUrl(local_url)
-            elif current_tab_name == 'Plot':
-                file_path = 'backend/files/pipe3d.html'
-                script_dir = os.path.dirname(__file__)
-                full_path = os.path.join(script_dir, file_path)
-                local_url = QUrl.fromLocalFile(full_path)
-                self.web_view.setUrl(local_url)
-            else:
-                file_path = 'backend/files/lineplot.html'
-                script_dir = os.path.dirname(__file__)
-                full_path = os.path.join(script_dir, file_path)
-                local_url = QUrl.fromLocalFile(full_path)
-                self.web_view.setUrl(local_url)
-
-                file_path = 'backend/files/lineplot_raw.html'
-                script_dir = os.path.dirname(__file__)
-                full_path = os.path.join(script_dir, file_path)
-                local_url = QUrl.fromLocalFile(full_path)
-                self.web_view2.setUrl(local_url)
-        except Exception as e:
-            self.open_Error(e)
-
-    def sort_column(self, order):
-        header = self.ui.tableView.horizontalHeader()
-        logical_index = header.logicalIndex(header.currentSection())
-        self.proxy_model.sort(logical_index, order)
-
-    def clear_filter(self):
-        self.proxy_model.setFilterRegExp(Qt.RegExp(""))  # Clearing filter
-
-    def apply_filter(self):
-        filter_text, ok = QInputDialog.getText(self, "Apply Filter", "Enter filter text:")
-        if ok:
-            self.proxy_model.setFilterRegExp(Qt.RegExp(filter_text))
-
-    def close_project(self):
-        # self.model.clear()
-        try:
-            # Reset the project-related attributes
-            self.folders = []
-            self.pkl_files = []
-            self.current_index = -1
-            # self.curr_folder_path = None
-            # self.curr_data = None
-            self.project_mode = None
-
-            self.ui.comboBoxPipe.blockSignals(True)
-            self.ui.comboBoxPipe.clear()
-            self.ui.comboBoxPipe.blockSignals(False)
-
-            self.ui.comboBoxPipe.setEditable(False)
-            self.ui.comboBoxPipe.clear()
-            self.ui.comboBoxPipe.addItem("-Pipe-")
-
-            # Clear the UI components
-            #self.ui.comboBoxPipe.clear()
-            self.ui.tableWidgetDefect.clear()
-            self.model.clear()  # Assuming `self.model` is for the table view
-
-            # Reset web views or any other visual components
-            self.web_view.setUrl(QUrl())  # Clear the web view
-            self.web_view2.setUrl(QUrl())  # Clear the second web view
-
-            # Reset table view
-            self.ui.tableView.setModel(QStandardItemModel())  # Reset the model to empty
-
-            # Optionally, you can display a message
-            QMessageBox.information(self, "Project Closed", "The project has been successfully closed.")
-
-        except Exception as e:
-            self.open_Error(e)
+    def open_manual(self):
+        p = resource_path(os.path.join("manual", "user_manual.pdf"))
+        if os.path.exists(p):
+            os.startfile(p)
+        else:
+            self.open_Error("User manual is not found.")
 
     def add_plot_custom(self):
         try:
             self.cplot_widget = customPlot(self.header_list)
             self.ui.graphLayout.addWidget(self.cplot_widget)
-            # Buttons
             self.cplot_widget.closeCustom.clicked.connect(self.cplot_widget.close_window)
             self.cplot_widget.comboBox.currentIndexChanged.connect(self.plot_c)
-            self.tabplots['custom'] = self.cplot_widget
         except Exception as e:
             self.open_Error(e)
 
@@ -1023,321 +1052,400 @@ class MyMainWindow(QMainWindow):
         try:
             y_label = self.cplot_widget.comboBox.currentText()
             x_label = self.cplot_widget.comboBox_2.currentText()
-
             if x_label not in self.curr_data or y_label not in self.curr_data:
                 raise ValueError("Selected labels are not in the current data.")
-
-            x_data = self.curr_data[x_label]
+            x_data = self.curr_data[x_label];
             y_data = self.curr_data[y_label]
-
-            figure = go.Figure()
-            figure.add_trace(go.Scatter(x=x_data, y=y_data, mode='lines', name=y_label))
-            figure.update_layout(title=f'{y_label} vs {x_label}', xaxis_title=x_label, yaxis_title=y_label, height=450)
-
-            file_path = 'backend/files/customplot.html'
-            figure.write_html(file_path)
-            script_dir = os.path.dirname(__file__)
-            full_path = os.path.join(script_dir, file_path)
-            local_url = QUrl.fromLocalFile(full_path)
-            self.cplot_widget.webviewCustom.setUrl(local_url)
-            if self.tabplots['custom']:
-                self.web_view.setUrl(local_url)
-
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=x_data, y=y_data, mode='lines', name=y_label))
+            fig.update_layout(title=f'{y_label} vs {x_label}', xaxis_title=x_label, yaxis_title=y_label, height=450)
+            fp = resource_path('backend/files/customplot.html');
+            fig.write_html(fp)
+            self.cplot_widget.webviewCustom.setUrl(QUrl.fromLocalFile(fp))
+            self.web_view.setUrl(QUrl.fromLocalFile(fp))
         except Exception as e:
             self.open_Error(e)
 
     def add_plot_tele(self):
         try:
             if self.curr_data is None or self.curr_data.empty:
-                QMessageBox.critical(self, "Error", "Please load a folder/project before using Telemetry Plot.")
+                QMessageBox.critical(self, "Error", "Please load a project first.");
                 return
-
-            import re
-            tlist = [col for col in self.header_list if re.match(r'^F\d+', col)]
-            print("✅ Detected telemetry columns:", tlist)
-
+            import re as _re
+            tlist = [c for c in self.header_list if _re.match(r'^F\d+', c)]
             if not tlist:
-                QMessageBox.warning(self, "No Telemetry Data", "No telemetry (F...) columns found in the current file.")
+                QMessageBox.warning(self, "No Telemetry Data", "No telemetry (F...) columns found.");
                 return
-
             self.tplot_widget = telePlot(tlist)
-
             self.ui.graphLayout.addWidget(self.tplot_widget)
-
             self.tplot_widget.closeTele.clicked.connect(self.tplot_widget.close_window)
-
             self.tplot_widget.checkBox.stateChanged.connect(self.magnetisation)
-
             self.tplot_widget.checkBox_2.stateChanged.connect(self.velocity)
-
             self.tplot_widget.comboBox.currentIndexChanged.connect(self.plot_telemetry)
-
-            self.tabplots['telemetry'] = self.tplot_widget
-
-            # ✅ Auto-select first valid telemetry parameter and plot
             if len(tlist) > 0:
                 self.tplot_widget.comboBox.setCurrentIndex(1)
                 self.plot_telemetry()
-
         except Exception as e:
             self.open_Error(e)
-            print("❌ EXCEPTION:", str(e))
 
     def magnetisation(self):
         try:
-            is_checked = self.tplot_widget.checkBox.isChecked()
-            parameter = self.tplot_widget.comboBox.currentText()
-
-            if is_checked:
-                filtered_columns = [col for col in self.curr_data.columns if col.startswith('F')]
-                self.tele_data = self.curr_data[filtered_columns]
-
-                if parameter not in self.tele_data.columns:
-                    raise ValueError("Selected parameter is not in the current data.")
-
-                magnetisation_by_rows = self.tele_data.mean(axis=1)
-                factored_magnetisation = magnetisation_by_rows * 0.0004854
-                x_data = self.curr_data['ODDO1']
-                y_data = factored_magnetisation
-
-                figure = go.Figure()
-                figure.add_trace(go.Scatter(x=x_data, y=y_data, mode='lines', name=parameter))
-                figure.update_layout(title='Magnetisation View', xaxis_title='Oddometer (mm)',
-                                     yaxis_title='Magnetisation', height=450)
-
-                file_path = 'backend/files/magnetisation.html'
-                full_path = resource_path(file_path)
-                figure.write_html(full_path)
-
+            if not self.tplot_widget.checkBox.isChecked():
+                fp = resource_path('backend/files/telemetryplot.html')
+                go.Figure().write_html(fp)
             else:
-                # Still define file_path and full_path even in else
-                file_path = 'backend/files/telemetryplot.html'
-                full_path = resource_path(file_path)
-                figure = go.Figure()
-                figure.write_html(full_path)
-
-            # ✅ After both blocks
-            print("📄 Writing HTML to:", full_path)
-            print("📂 Exists?", os.path.exists(full_path))
-            print("📏 Size:", os.path.getsize(full_path) if os.path.exists(full_path) else "❌")
-
-            local_url = QUrl.fromLocalFile(full_path)
-            self.tplot_widget.webviewTele.setUrl(local_url)
-
-            if self.tabplots['telemetry']:
-                self.web_view.setUrl(local_url)
-
+                filtered = [c for c in self.curr_data.columns if c.startswith('F')]
+                tele = self.curr_data[filtered]
+                mag = tele.mean(axis=1) * 0.0004854
+                x = self.curr_data['ODDO1'];
+                y = mag
+                fig = go.Figure();
+                fig.add_trace(go.Scatter(x=x, y=y, mode='lines', name='Mag'))
+                fig.update_layout(title='Magnetisation View', xaxis_title='Oddometer (mm)', yaxis_title='Magnetisation',
+                                  height=450)
+                fp = resource_path('backend/files/magnetisation.html')
+                fig.write_html(fp)
+            self.tplot_widget.webviewTele.setUrl(QUrl.fromLocalFile(fp))
+            self.web_view.setUrl(QUrl.fromLocalFile(fp))
         except Exception as e:
             self.open_Error(e)
-            print("❌ magnetisation EXCEPTION:", e)
 
     def velocity(self):
         try:
-            is_checked = self.tplot_widget.checkBox_2.isChecked()
-            parameter = self.tplot_widget.comboBox.currentText()
-
-            if is_checked:
-                filtered_columns = [col for col in self.curr_data.columns if col.startswith('F')]
-                self.tele_data = self.curr_data[filtered_columns]
-                if parameter not in self.tele_data.columns:
-                    raise ValueError("Selected parameter is not in the current data.")
-
-                k = []
-                oddoC = self.curr_data['ODDO1']
-                for i in range(len(oddoC) - 1):
-                    t = oddoC[i + 1] - oddoC[i]
-                    sp = t / 0.000666667
-                    k.append(sp)
-                k.append(k[-1])  # repeat last velocity to match length
-
-                x_data = oddoC
-                y_data = k
-
-                figure = go.Figure()
-                figure.add_trace(go.Scatter(x=x_data, y=y_data, mode='lines', name=parameter))
-                figure.update_layout(title='Velocity View', xaxis_title='Oddometer(mm)', yaxis_title='Velocity',
-                                     height=450)
-
-                file_path = 'backend/files/velocity.html'
+            if not self.tplot_widget.checkBox_2.isChecked():
+                fp = resource_path('backend/files/telemetryplot.html')
+                go.Figure().write_html(fp)
             else:
-                file_path = 'backend/files/telemetryplot.html'
-                figure = go.Figure()
-
-            full_path = resource_path(file_path)
-            figure.write_html(full_path)
-
-            print("✅ Velocity HTML written to:", full_path)
-            print("📂 Exists?", os.path.exists(full_path))
-            print("📏 Size:", os.path.getsize(full_path) if os.path.exists(full_path) else "❌")
-
-            local_url = QUrl.fromLocalFile(full_path)
-            self.tplot_widget.webviewTele.setUrl(local_url)
-            if self.tabplots['telemetry']:
-                self.web_view.setUrl(local_url)
+                oddo = self.curr_data['ODDO1'].to_numpy()
+                vel = [(oddo[i + 1] - oddo[i]) / 0.000666667 for i in range(len(oddo) - 1)]
+                if vel: vel.append(vel[-1])
+                fig = go.Figure();
+                fig.add_trace(go.Scatter(x=oddo, y=vel, mode='lines', name='Velocity'))
+                fig.update_layout(title='Velocity View', xaxis_title='Oddometer(mm)', yaxis_title='Velocity',
+                                  height=450)
+                fp = resource_path('backend/files/velocity.html');
+                fig.write_html(fp)
+            self.tplot_widget.webviewTele.setUrl(QUrl.fromLocalFile(fp))
+            self.web_view.setUrl(QUrl.fromLocalFile(fp))
 
         except Exception as e:
             self.open_Error(e)
-            print("❌ velocity() EXCEPTION:", e)
 
     def plot_telemetry(self):
         try:
-            parameter = self.tplot_widget.comboBox.currentText()
-
-            # ✅ Skip invalid selections
-            if parameter == "-Select-" or parameter not in self.curr_data.columns:
-                print("⚠️ Invalid parameter selected, skipping plot.")
-                return
-
-            # ✅ Filter telemetry data
-            filtered_columns = [col for col in self.curr_data.columns if col.startswith('F')]
-            self.tele_data = self.curr_data[filtered_columns]
-
-            x_data = self.tele_data.index
-            y_data = self.tele_data[parameter]
-
-            figure = go.Figure()
-            figure.add_trace(go.Scatter(x=x_data, y=y_data, mode='lines', name=parameter))
-            figure.update_layout(
-                title=f'Telemetry Plot for {parameter}',
-                xaxis_title='Counter',
-                yaxis_title=parameter,
-                height=450
-            )
-
-            # ✅ Save Plotly HTML in a writable location
-            output_html = os.path.join(os.path.abspath("."), "telemetryplot.html")
-            figure.write_html(output_html)
-
-            # ✅ Load in WebView
-            local_url = QUrl.fromLocalFile(output_html)
-            self.tplot_widget.webviewTele.setUrl(local_url)
-
-            if self.tabplots.get('telemetry'):
-                self.web_view.setUrl(local_url)
-
+            param = self.tplot_widget.comboBox.currentText()
+            if param == "-Select-" or param not in self.curr_data.columns: return
+            filtered = [c for c in self.curr_data.columns if c.startswith('F')]
+            tele = self.curr_data[filtered]
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=tele.index, y=tele[param], mode='lines', name=param))
+            fig.update_layout(title=f'Telemetry Plot for {param}', xaxis_title='Counter', yaxis_title=param, height=450)
+            fp = resource_path("telemetryplot.html");
+            fig.write_html(fp)
+            self.tplot_widget.webviewTele.setUrl(QUrl.fromLocalFile(fp))
+            self.web_view.setUrl(QUrl.fromLocalFile(fp))
         except Exception as e:
             self.open_Error(e)
-            print("❌ plot_telemetry ERROR:", str(e))
 
     def add_plot_ad(self):
         try:
-            self.adplot_widget = adPlot(self.defect_sheet[0])
+            self.adplot_widget = adPlot(self.curr_data if isinstance(self.curr_data, list) else self.curr_data)
             self.ui.graphLayout.addWidget(self.adplot_widget)
-            # Buttons
             self.adplot_widget.closeAnamoly.clicked.connect(self.adplot_widget.close_window)
-            self.plot_pipe3d()
-            self.tabplots['anomaly'] = self.adplot_widget
         except Exception as e:
             self.open_Error(e)
 
-    def plot_pipe3d(self):
-        try:
-            # figure = go.Figure()
-            # figure.add_trace(go.Scatter(x=x_data, y=y_data, mode='lines', name=parameter))
-            # figure.update_layout(title=f'Telemetry Plot for {parameter}', xaxis_title='Time', yaxis_title=parameter,height=450)
+    def _populate_defect_table_from_csv(self, df: pd.DataFrame):
+        header_indices = {
+            'Defect_id': 0,
+            'Absolute_Distance': 1,
+            'Upstream_Distance': 2,
+            'Feature_Type': 3,
+            'Dimension_Class': 4,
+            'Orientation': 5,
+            'WT': 6,
+            'Length': 7,
+            'Width': 8,
+            'Depth_Peak': 9
+        }
+        colmap_candidates = {
+            'Box Number': 'Defect_id',
+            'Defect_id': 'Defect_id',
+            'Absolute Distance': 'Absolute_Distance',
+            'Abs. Distance (m)': 'Absolute_Distance',
+            'Upstream': 'Upstream_Distance',
+            'Distance to U/S GW(m)': 'Upstream_Distance',
+            'Type': 'Feature_Type',
+            'Dimensions  Classification': 'Dimension_Class',
+            "Orientation o' clock": 'Orientation',
+            'Ori Val': 'Orientation',
+            'WT (mm)': 'WT',
+            'WT': 'WT',
+            'Width': 'Length',
+            'Breadth': 'Width',
+            'Peak Value': 'Depth_Peak',
+            'Depth % ': 'Depth_Peak',
+            'Depth %': 'Depth_Peak',
+            'Length': 'Length'
+        }
+        column_mapping = {}
+        for src, dst in colmap_candidates.items():
+            if src in df.columns: column_mapping[src] = dst
 
-            file_path = 'backend/files/pipe3d.html'
-            # figure.write_html(file_path)
-            script_dir = os.path.dirname(__file__)
-            full_path = os.path.join(script_dir, file_path)
-            local_url = QUrl.fromLocalFile(full_path)
-            self.adplot_widget.webviewAna.setUrl(local_url)
-            # if self.tabplots['anomaly']:
-            self.web_view.setUrl(local_url)
-        except Exception as e:
-            self.open_Error(e)
+        tw = self.ui.tableWidgetDefect
+        num_rows = len(df);
+        num_cols = len(header_indices)
+        tw.setRowCount(num_rows);
+        tw.setColumnCount(num_cols)
+        tw.setHorizontalHeaderLabels(list(header_indices.keys()))
+        for r, (_, row) in enumerate(df.iterrows()):
+            for src, dst in column_mapping.items():
+                if dst in header_indices:
+                    c = header_indices[dst]
+                    v = row[src]
+                    if isinstance(v, float): v = f"{v:.2f}"
+                    tw.setItem(r, c, QTableWidgetItem(str(v)))
 
-    def open_Report(self):
-        selected_columns = [r"Abs. Distance (m)", r"Depth %", r"Type", r"ERF (ASME B31G)", r"Orientation o' clock"]
+        self.update_digsheet_button_state()
 
-        if not isinstance(self.pipe_tally, pd.DataFrame):
-            QMessageBox.critical(self, "Error", "Pipe tally data is missing or not loaded.")
+    def on_row_selection_changed(self, *_):
+        idxs = self.ui.tableWidgetDefect.selectionModel().selectedRows()
+        if not idxs:
+            self.update_digsheet_button_state()
             return
-        try:
-            fil_tally = self.pipe_tally[selected_columns].copy()
-        except KeyError as e:
-            print("❌ Column(s) missing:", e)
-            QMessageBox.critical(self, "Error", f"Missing column(s): {e}")
-            return
+        row = idxs[0].row()
+        item = self.ui.tableWidgetDefect.item(row, 0)
+        if item:
+            defect_id = item.text()
+            try:
+                self.web_view.page().runJavaScript(f"highlightBox({defect_id});")
+            except Exception:
+                pass
+        self.update_digsheet_button_state()
 
-        # Type conversion
-        fil_tally = fil_tally.dropna(subset=["Abs. Distance (m)"])
-        fil_tally["Abs. Distance (m)"] = fil_tally["Abs. Distance (m)"].astype(int)
-        fil_tally["Depth %"] = pd.to_numeric(fil_tally["Depth %"], errors='coerce')
-        fil_tally["Type"] = fil_tally["Type"].astype(str)
-        fil_tally["ERF (ASME B31G)"] = pd.to_numeric(fil_tally["ERF (ASME B31G)"], errors='coerce')
-        fil_tally[r"Orientation o' clock"] = fil_tally[r"Orientation o' clock"].astype(str)
+    def _get_selected_abs_distance_from_defect_table(self) -> Optional[str]:
+        tw = self.ui.tableWidgetDefect
+        if tw.rowCount() == 0 or tw.columnCount() == 0:
+            QMessageBox.warning(self, "No data", "Defect table is empty.")
+            return None
 
-        # ✅ Add missing column
-        fil_tally["Surface Location"] = fil_tally["Type"].apply(
-            lambda x: "Internal" if "Internal" in x else ("External" if "External" in x else "Unknown")
+        abs_col = self._abs_col_index_silent()
+        if abs_col is None:
+            QMessageBox.warning(self, "Missing column", "Could not find the Absolute Distance column.")
+            return None
+
+        sel_model = tw.selectionModel()
+        rows = [idx.row() for idx in sel_model.selectedRows()] or [i.row() for i in tw.selectedIndexes()]
+        rows = list(dict.fromkeys(rows))
+        if len(rows) != 1:
+            QMessageBox.information(self, "Select one row", "Please select exactly one row in the defect table.")
+            return None
+
+        item = tw.item(rows[0], abs_col)
+        if item is None or not item.text().strip():
+            QMessageBox.warning(self, "No Absolute Distance", "Selected row has empty Absolute Distance.")
+            return None
+
+        return item.text().strip()
+
+    # ---------------------------
+    # Helpers + global event filter popups
+    # ---------------------------
+    def _show_disabled_digsheet_hint(self):
+        QMessageBox.information(
+            self,
+            "Digsheet",
+            "Please choose <b>Absolute Distance</b> from the defect table below to generate the digsheet."
         )
 
-        self.fr = Report(fil_tally)
-        self.fr.show()
+    def _project_required_popup(self):
+        QMessageBox.information(
+            self,
+            "Project Required",
+            "Please create project before proceeding further."
+        )
 
-    def open_Final_Report(self):
+    def _project_gate_targets(self):
+        names = [
+            "btnHeatmap", "btnLinechart", "btn3D",
+            "toolButtonHeatmap", "toolButtonLine", "toolButton3D",
+        ]
+        widgets = [self.btnDigsheetAbs]
+        for n in names:
+            w = getattr(self.ui, n, None)
+            if w is not None:
+                widgets.append(w)
+        return [w for w in widgets if hasattr(w, "mapFromGlobal")]
+
+    def eventFilter(self, obj, ev):
         try:
-            # Path to the Final Report PDF
-            final_report_path = resource_path(os.path.join("final_report", "Final_Report.pdf"))
+            # Intercept mid tab bar clicks when no project (so repeated clicks also show popup)
+            if obj is self.mid_tabbar and ev.type() == QEvent.Type.MouseButtonPress:
+                if self._ui_ready and not self.project_is_open:
+                    self._project_required_popup()
+                    return True  # consume
 
-            # Check if the file exists
-            if not os.path.exists(final_report_path):
-                self.open_Error("Final report PDF not found.")
+            if ev.type() == QEvent.Type.MouseButtonPress:
+                # PROJECT GATE for widget buttons
+                if self._ui_ready and not self.project_is_open:
+                    if hasattr(ev, "globalPosition"):
+                        gp = ev.globalPosition().toPoint()
+                    else:
+                        gp = ev.globalPos()
+                    for w in self._project_gate_targets():
+                        if w and w.isVisible():
+                            local = w.mapFromGlobal(gp)
+                            if w.rect().contains(local):
+                                self._project_required_popup()
+                                return True  # consume
+
+                # DISABLED DIGSHEET HINT
+                btn = getattr(self, "btnDigsheetAbs", None)
+                if btn is not None and btn.isVisible() and not btn.isEnabled():
+                    if hasattr(ev, "globalPosition"):
+                        gp = ev.globalPosition().toPoint()
+                    else:
+                        gp = ev.globalPos()
+                    local = btn.mapFromGlobal(gp)
+                    if btn.rect().contains(local):
+                        self._show_disabled_digsheet_hint()
+                        return True  # consume
+        except Exception:
+            pass
+        return super().eventFilter(obj, ev)
+
+    # ---------------------------
+
+    # ---------------------------
+    # Digsheet enable logic + cursor/tooltip polish
+    # ---------------------------
+    def _abs_col_candidates(self):
+        return ("Absolute_Distance", "Abs. Distance (m)", "Absolute Distance")
+
+    def _abs_col_index_silent(self) -> Optional[int]:
+        tw = self.ui.tableWidgetDefect
+        if tw.columnCount() == 0:
+            return None
+        for c in range(tw.columnCount()):
+            hdr = tw.horizontalHeaderItem(c)
+            name = hdr.text().strip() if hdr else ""
+            if name in self._abs_col_candidates():
+                return c
+        return 1 if tw.columnCount() > 1 else (0 if tw.columnCount() == 1 else None)
+
+    def _has_valid_abs_selection(self) -> bool:
+        tw = self.ui.tableWidgetDefect
+        if tw.rowCount() == 0 or tw.columnCount() == 0:
+            return False
+
+        abs_col = self._abs_col_index_silent()
+        if abs_col is None:
+            return False
+
+        sel_model = tw.selectionModel()
+        if sel_model is None:
+            return False
+
+        # Prefer row-based selection (what we configured). Fallback to generic indexes.
+        rows = [idx.row() for idx in sel_model.selectedRows()] or [i.row() for i in tw.selectedIndexes()]
+        rows = list(dict.fromkeys(rows))  # unique, order preserved
+
+        if len(rows) != 1:
+            return False
+
+        row = rows[0]
+        item = tw.item(row, abs_col)
+        return bool(item and item.text().strip())
+
+    def _is_graph_tab_ok(self) -> bool:
+        tab = self.ui.tabWidgetM.tabText(self.ui.tabWidgetM.currentIndex())
+        return tab in ("Heatmap", "3D Graph", "3D")
+
+    def update_digsheet_button_state(self):
+        can_show = (
+                self.project_is_open
+                and isinstance(self.pipe_tally, pd.DataFrame)
+                and self._is_graph_tab_ok()
+                and self._has_valid_abs_selection()
+        )
+        self.btnDigsheetAbs.setEnabled(bool(can_show))
+
+        if can_show:
+            self.btnDigsheetAbs.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.btnDigsheetAbs.setToolTip("Click to generate Digsheet for the selected Absolute Distance.")
+        else:
+            self.btnDigsheetAbs.setCursor(Qt.CursorShape.ForbiddenCursor)
+            self.btnDigsheetAbs.setToolTip("Select an Absolute Distance cell in the table below to enable.")
+
+    # ---------------------------
+
+    def open_digsheet_by_abs_from_selection(self):
+        try:
+            if not self.project_is_open:
+                QMessageBox.information(self, "Open a project", "Please open a project first.")
+                return
+            if not isinstance(self.pipe_tally, pd.DataFrame):
+                QMessageBox.warning(self, "No Pipe Tally",
+                                    "Pipe tally data is missing. Load a pipe tally and try again.")
                 return
 
-            os.startfile(final_report_path)  # Open the PDF file using the default viewer
-
-        except Exception as e:
-            self.open_Error(f"Error opening Final Report: {str(e)}")
-
-    def open_Preliminary_Report(self):
-        try:
-            # Path to the Final Report PDF
-            final_report_path = resource_path(os.path.join("preliminary_report", "Preliminary_Report.pdf"))
-
-            # Check if the file exists
-            if not os.path.exists(final_report_path):
-                self.open_Error("Prelimary report is not found.")
+            abs_text = self._get_selected_abs_distance_from_defect_table()
+            if not abs_text:
                 return
 
-            os.startfile(final_report_path)  # Open the PDF file using the default viewer
+            import pickle
+            base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(__file__)
+            pipe_tally_file = os.path.join(base_dir, "pipe_tally.pkl")
+            with open(pipe_tally_file, "wb") as f:
+                pickle.dump(self.pipe_tally, f)
 
-
-        except Exception as e:
-            self.open_Error(f"Error opening Preliminary report: {str(e)}")
-
-    def open_pipe_tally(self):
-        try:
-            # Path to the Final Report PDF
-            final_report_path = resource_path(os.path.join("pipetally", "pipe_tally.xlsx"))
-
-            # Check if the file exists
-            if not os.path.exists(final_report_path):
-                self.open_Error("Pipetally not found.")
+            dig_py_abs = resource_path(os.path.join("dig", "digsheet_abs.py"))
+            if not os.path.exists(dig_py_abs):
+                QMessageBox.critical(self, "Script not found",
+                                     f"ABS-distance digsheet script not found:\n{dig_py_abs}\n\n"
+                                     f"Save your ABS-distance Tk script there, or update the path in code.")
                 return
 
-            os.startfile(final_report_path)  # Open the PDF file using the default viewer
-
-
+            subprocess.Popen([sys.executable, dig_py_abs, pipe_tally_file, str(abs_text)])
         except Exception as e:
-            self.open_Error(f"Error opening Pipe_tally: {str(e)}")
+            self.open_Error(f"Error opening ABS-distance digsheet:\n{e}")
 
-    def open_manual(self):
+    def close_project(self):
         try:
-            # Path to the Final Report PDF
-            final_report_path = resource_path(os.path.join("manual", "user_manual.pdf"))
+            self._close_graphs_view()
+            self.project_is_open = False
+            self.project_root = None
+            self.pkl_files = []
+            self.hmap = self.hmap_r = self.lplot = self.lplot_r = self.pipe3d = self.heatmap_box = None
+            self.curr_data = None
+            self.header_list = []
 
-            # Check if the file exists
-            if not os.path.exists(final_report_path):
-                self.open_Error("User manual is not found.")
-                return
+            cb = self.ui.comboBoxPipe
+            cb.blockSignals(True);
+            cb.clear();
+            cb.addItem("-Pipe-");
+            cb.blockSignals(False)
 
-            os.startfile(final_report_path)  # Open the PDF file using the default viewer
+            self.model.clear()
+            self.ui.tableWidgetDefect.clear()
 
+            self.web_view.setUrl(QUrl());
+            self.web_view2.setUrl(QUrl())
+            self.bottom_stack.setCurrentIndex(0)
+            self._show_watermark()
+            self._toggle_plot_ui(False)
 
+            try:
+                self.ui.tabWidgetM.setCurrentIndex(0)
+            except Exception:
+                pass
+
+            self.btnDigsheetAbs.setEnabled(False)
+            self._update_project_actions()
+
+            QMessageBox.information(self, "Project Closed", "The project has been successfully closed.")
         except Exception as e:
-            self.open_Error(f"Error opening User manual: {str(e)}")
+            self.open_Error(e)
 
     def open_CMLD(self):
         selected_columns = [r"Abs. Distance (m)", r"Type", r"Orientation o' clock"]
@@ -1405,333 +1513,57 @@ class MyMainWindow(QMainWindow):
         except Exception as e:
             self.open_Error(e)
 
-    def open_About(self):
-        ad = About_Dialog()
-        ad.exec()
-
-    def open_Admin(self):
-        self.ap = Admin_Panel()
-        self.ap.show()
-
-    def open_ERF(self):
-        self.erf = ERF()
-
-        def update_result():
-            OD = self.erf.doubleSpinBox.value()
-            WT = self.erf.doubleSpinBox_3.value()
-            SMYS = self.erf.doubleSpinBox_2.value()
-            MAOP = self.erf.doubleSpinBox_4.value()
-            SF = self.erf.doubleSpinBox_5.value()
-            Axial_L = self.erf.doubleSpinBox_8.value()
-            Depth_P = self.erf.doubleSpinBox_9.value()
-
-            if OD == 0 or WT == 0 or SF == 0:
-                self.erf.lineEdit_2.setText("-")
-                self.erf.lineEdit_3.setText("-")
-                return
-
-            flow_stress = 1.1 * SMYS
-
-            z_factor = (Axial_L ** 2) / (OD * WT)
-            x = 1 + 0.8 * z_factor
-            Building_stress_magmification_factor_M = pow(x, 1 / 2)
-            y = 1 - 2 / 3 * Depth_P / WT
-            z = 1 - 2 / 3 * Depth_P / WT / Building_stress_magmification_factor_M
-            k = y / z
-
-            if z_factor <= 20:
-                Estimated_failure_stress_level_SF = flow_stress * k
-            else:
-                Estimated_failure_stress_level_SF = flow_stress * (1 - Depth_P / WT)
-
-            EFP = (2 * Estimated_failure_stress_level_SF * WT) / OD  # Estimated Failure Pressure
-            PSafe = EFP / SF
-
-            if PSafe == 0:
-                self.erf.lineEdit_2.setText("-")
-                self.erf.lineEdit_3.setText("-")
-                return
-            ERF = MAOP / PSafe
-
-            self.erf.lineEdit_2.setText(f"{ERF:.2f}")
-            self.erf.lineEdit_3.setText(f"{PSafe:.2f}")
-
-            # ASME Plot
-            def calculate_B(d_over_t):
-                if d_over_t >= 0.175:
-                    B = np.sqrt(((d_over_t / (1.1 * d_over_t - 0.15)) ** 2) - 1)
-                    return B if B <= 4 else 4
-                else:
-                    return 4
-
-            d_over_t_values = np.linspace(0, 1, 100)
-            B_values = [calculate_B(d_over_t) for d_over_t in d_over_t_values]
-
-            X_coord = Axial_L / 300
-            Y_coord = Depth_P / 20
-            curve_B_value = calculate_B(X_coord)
-            color = 'green' if Y_coord < curve_B_value else 'red'
-
-            figERF = go.Figure()
-
-            figERF.add_trace(go.Scatter(x=d_over_t_values, y=B_values, mode='lines', name='ASME B31G'))
-            v = 'Unacceptable' if color == 'red' else 'Acceptable'
-            figERF.add_trace(go.Scatter(
-                x=[X_coord],
-                y=[Y_coord],
-                mode='markers',
-                marker=dict(color=color, size=10),
-                name=f'Defect :{v}'
-            ))
-
-            figERF.update_layout(
-                xaxis_title='Axial Length (mm)',
-                yaxis_title='Peak Depth',
-                title='',
-                xaxis=dict(
-                    range=[0, 1],
-                    tickvals=np.linspace(0, 1, 7),
-                    ticktext=[f'{int(val * 300)}' for val in np.linspace(0, 1, 7)]
-                ),
-                yaxis=dict(
-                    range=[0, 5],
-                    tickvals=np.linspace(0, 5, 6),
-                    ticktext=[f'{int(val * 20)}' for val in np.linspace(0, 5, 6)]
-                ),
-                height=450,
-                width=1000
-            )
-            file_path = 'backend/files/ASME.html'
-            figERF.write_html(file_path)
-            self.erf.web_viewERF.setUrl(QUrl.fromLocalFile(os.path.join(os.path.dirname(__file__), file_path)))
-
-        self.erf.doubleSpinBox.valueChanged.connect(update_result)
-        self.erf.doubleSpinBox_3.valueChanged.connect(update_result)
-        self.erf.doubleSpinBox_2.valueChanged.connect(update_result)
-        self.erf.doubleSpinBox_4.valueChanged.connect(update_result)
-        self.erf.doubleSpinBox_5.valueChanged.connect(update_result)
-        self.erf.doubleSpinBox_8.valueChanged.connect(update_result)
-        self.erf.doubleSpinBox_9.valueChanged.connect(update_result)
-
-        update_result()
-
-        file_path = 'backend/files/ASME.html'
-        self.erf.web_viewERF.setUrl(QUrl.fromLocalFile(os.path.join(os.path.dirname(__file__), file_path)))
-
-        self.erf.show()
-
-    def open_XYZ(self):
+    def open_digs(self):
         try:
-            # Path to the Google Earth executable
-            if sys.platform == "win32":
-                google_earth_path = r"C:\Program Files\Google\Google Earth Pro\client\googleearth.exe"  # Adjust the path if necessary
-            elif sys.platform == "darwin":  # macOS
-                google_earth_path = "/Applications/Google Earth Pro.app/Contents/MacOS/Google Earth Pro"
-            else:
-                google_earth_path = "/usr/bin/google-earth-pro"  # Example for Linux, adjust as needed
-
-            # Check if the path exists
-            if os.path.exists(google_earth_path):
-                # Open Google Earth application
-                subprocess.Popen([google_earth_path])
-            else:
-                print(f"Google Earth not found at: {google_earth_path}")
-
+            import pickle
+            base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(__file__)
+            dig_py = resource_path(os.path.join("dig", "dig_sheet.py"))
+            pipe_tally_file = os.path.join(base_dir, "pipe_tally.pkl")
+            with open(pipe_tally_file, "wb") as f:
+                pickle.dump(self.pipe_tally, f)
+            subprocess.Popen([sys.executable, dig_py, pipe_tally_file])
         except Exception as e:
-            print(f"An error occurred: {e}")
+            self.open_Error(f"An error occurred: {e}")
 
-    def open_pipe_highlights(self):
-        self.pipe_window = PipeHighlightApp()
-        self.pipe_window.show()
-
-    def open_Cluster(self):
-        cl = Cluster_Dialog()
-        cl.exec()
-
-    # def open_PipeScheme(self):
-    #     subprocess.Popen(["python", "pipeline_schema/pipeline_schema.py"])
-    def open_pipeline_schema(self):
-        script_path = os.path.join(os.path.dirname(__file__), "pipeline_schema", "pipeline_schema.py")
-        subprocess.Popen([sys.executable, script_path])
-
-    def open_Assessment(self):
-        assess = Assess_Dialog()
-        assess.exec()
-
-    # def open_Error(self, exception):
-    #     self.error = Error_Dialog(str(exception))
-    #     self.error.exec()
+    def _close_graphs_view(self):
+        try:
+            if self.centralWidget() is self._central_original:
+                return
+            graphs_central = self.takeCentralWidget()
+            if graphs_central is not None:
+                graphs_central.deleteLater()
+            if self._central_original is not None:
+                if self._central_original.parent() is not self:
+                    self._central_original.setParent(self)
+                self.setCentralWidget(self._central_original)
+            self._graphs_widget = None
+            self._central_graphs = None
+        except Exception as e:
+            print("⚠️ _close_graphs_view:", e)
 
     def open_Error(self, e):
-        '''Display a custom error dialog with large window and small text.'''
         try:
-            if 'error' not in self.child_windows or not self.child_windows['error'].isVisible():
-                dialog = QDialog(self)
-                dialog.setWindowTitle("Error")
-                dialog.resize(700, 400)
-
-                layout = QVBoxLayout(dialog)
-
-                error_text = QTextEdit()
-                error_text.setReadOnly(True)
-                error_text.setText(str(e))
-                error_text.setStyleSheet("font-size: 10pt; font-family: Consolas; color: #aa0000;")
-                layout.addWidget(error_text)
-
-                close_btn = QPushButton("Close")
-                close_btn.clicked.connect(dialog.accept)
-                layout.addWidget(close_btn)
-
-                self.child_windows['error'] = dialog
-                dialog.exec()
-
-            else:
-                self.child_windows['error'].raise_()
-                self.child_windows['error'].activateWindow()
-
+            dlg = QDialog(self);
+            dlg.setWindowTitle("Error");
+            dlg.resize(700, 400)
+            lay = QVBoxLayout(dlg)
+            t = QTextEdit();
+            t.setReadOnly(True);
+            t.setText(str(e))
+            t.setStyleSheet("font-size: 10pt; font-family: Consolas; color: #aa0000;")
+            lay.addWidget(t)
+            b = QPushButton("Close");
+            b.clicked.connect(dlg.accept);
+            lay.addWidget(b)
+            dlg.exec()
         except Exception as err:
-            print(f"Failed to open error dialog: {err}")
-
-    def plot_heatmap(self, flag=0):
-        try:
-            self.set_loading_status()
-
-            # Create and start the worker thread
-            self.worker = Worker(self.curr_data, self.ui.comboBoxMode.currentIndex())
-            self.worker.finished.connect(self.handle_worker_finished)
-            self.worker.error.connect(self.open_Error)
-            self.worker.start()
-
-        except Exception as e:
-            self.open_Error(str(e))
-
-    def handle_worker_finished(self, result):
-        ds, mode_index = result
-        self.defect_sheet = ds
-        script_dir = os.path.dirname(__file__)
-
-        if mode_index == 1:
-            file_path = 'backend/files/lineplot.html'
-            full_path = os.path.join(script_dir, file_path)
-            local_url = QUrl.fromLocalFile(full_path)
-            self.web_view.setUrl(local_url)
-
-            file_path = 'backend/files/lineplot_raw.html'
-            full_path = os.path.join(script_dir, file_path)
-            local_url = QUrl.fromLocalFile(full_path)
-            self.web_view2.setUrl(local_url)
-
-        else:
-            file_path = 'backend/files/heatmap.html'
-            full_path = os.path.join(script_dir, file_path)
-            local_url = QUrl.fromLocalFile(full_path)
-            self.web_view.setUrl(local_url)
-
-            file_path = 'backend/files/heatmap_raw.html'
-            full_path = os.path.join(script_dir, file_path)
-            local_url = QUrl.fromLocalFile(full_path)
-            self.web_view2.setUrl(local_url)
-
-        self.set_idle_status()
-
-    def draw_boxes(self):
-        try:
-            self.set_loading_status()
-            if self.ui.comboBoxMode.currentIndex() != 1:
-                file_path = 'backend/files/heatmap_box.html'
-                script_dir = os.path.dirname(__file__)
-                full_path = os.path.join(script_dir, file_path)
-                local_url = QUrl.fromLocalFile(full_path)
-                self.web_view.setUrl(local_url)
-
-                column_mapping = {
-                    'Box Number': 'Defect_id',
-                    'Type': 'Feature_Type',
-                    'Width': 'Length',
-                    'Absolute Distance': 'Absolute_Distance',
-                    'Peak Value': 'Depth_Peak',
-                    'Breadth': 'Width',
-                    'Ori Val': 'Orientation'
-                }
-                header_indices = {
-                    'Defect_id': 0,
-                    'Absolute_Distance': 1,
-                    'Upstream_Distance': 2,
-                    'Feature_Type': 3,
-                    'Dimension_Class': 4,
-                    'Orientation': 5,
-                    'WT': 6,
-                    'Length': 7,
-                    'Width': 8,
-                    'Depth_Peak': 9
-                }
-
-                def populate_table_widget(table_widget: QTableWidget, df: pd.DataFrame, column_mapping: dict):
-                    num_rows = len(df)
-                    num_cols = len(header_indices)
-                    table_widget.setRowCount(num_rows)
-                    table_widget.setColumnCount(num_cols)
-                    headers = list(header_indices.keys())
-                    table_widget.setHorizontalHeaderLabels(headers)
-
-                    for row_idx, (_, row) in enumerate(df.iterrows()):
-                        for src_col, dest_col in column_mapping.items():
-                            if dest_col in header_indices:
-                                col_idx = header_indices[dest_col]
-                                value = row[src_col]
-
-                                # Format the value to 2 decimal places if it's a float
-                                if isinstance(value, float):
-                                    value = f"{value:.2f}"
-
-                                table_widget.setItem(row_idx, col_idx, QTableWidgetItem(str(value)))
-
-                populate_table_widget(self.ui.tableWidgetDefect, self.defect_sheet, column_mapping)
-
-            else:
-                raise Exception("Heatmap mode is not selected")
-            self.set_idle_status()
-        except Exception as e:
-            self.open_Error(e)
-
-    def on_row_selection_changed(self, selected, deselected):
-        print("Selection changed")
-        indexes = self.ui.tableWidgetDefect.selectionModel().selectedRows()
-        if indexes:
-            row = indexes[0].row()
-            defect_id_item = self.ui.tableWidgetDefect.item(row, 0)  # Assuming column 0 has the Defect_id
-            if defect_id_item:
-                defect_id = defect_id_item.text()
-                print(f"Defect id no: {defect_id}")
-                self.highlight_box_in_webview(defect_id)
-            else:
-                print("Defect id item not found")
-        else:
-            print("No rows selected")
-
-    def highlight_box_in_webview(self, defect_id):
-        js_code = f"highlightBox({defect_id});"
-        self.ui.web_view.page().runJavaScript(js_code)
-
-    def close_window(win):
-        win.close()
+            print("Error dialog failed:", err)
 
     def quit_app(self):
         QApplication.quit()
 
-    def get_checked_tally(self, columns):
-        if not isinstance(self.pipe_tally, pd.DataFrame):
-            QMessageBox.critical(self, "Error", "Pipe tally data is missing or not loaded.")
-            return None
-        for col in columns:
-            if col not in self.pipe_tally.columns:
-                QMessageBox.critical(self, "Error", f"Missing column: {col}")
-                return None
-        return self.pipe_tally[columns].copy()
-
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = MyMainWindow()
-    window.show()
+    app = MainApp(sys.argv)
+    app.start()
     sys.exit(app.exec())
