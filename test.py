@@ -654,17 +654,153 @@ class MyMainWindow(QMainWindow):
             self.pipe3d     = pick_one(["*pipe3d*.html", "pipe3d*.html"])
             self.prox_linechart = pick_one(["proximity_linechart*.html", "*proximity_linechart*.html"])
 
-            ds_csv = pick_one(["*defectS*.csv", "*defects*.csv"])
-            if ds_csv:
+            # --- Prefer PipeTally csv over defects.csv ---
+            pipe_tally_csv = pick_one([f"*PipeTally{pipe_idx}.csv", f"*PipeTally{pipe_idx}.xlsx"])
+            if pipe_tally_csv:
                 try:
-                    ds = pd.read_csv(ds_csv)
-                    self._populate_defect_table_from_csv(ds)
+                    if pipe_tally_csv.lower().endswith(".csv"):
+                        df = pd.read_csv(pipe_tally_csv)
+                    else:
+                        df = pd.read_excel(pipe_tally_csv)
+                    self._populate_defect_table_from_tally(df)
                 except Exception as e:
-                    print("⚠️ Failed to load defect CSV:", e)
-
-            self.tab_switcher2()
+                    print(f"⚠️ Failed to load PipeTally file for pipe {pipe_idx}:", e)
+            else:
+                # fallback: old defects.csv if no PipeTally found
+                ds_csv = pick_one(["*defectS*.csv", "*defects*.csv"])
+                if ds_csv:
+                    try:
+                        ds = pd.read_csv(ds_csv)
+                        self._populate_defect_table_from_csv(ds)
+                    except Exception as e:
+                        print("⚠️ Failed to load defect CSV:", e)
         except Exception as e:
             self.open_Error(f"load_assets_for_index error: {e}")
+
+    # def load_assets_for_index(self, pipe_idx: str):
+    #     try:
+    #         if not (self.project_root and self.project_is_open):
+    #             return
+
+    #         candidates = [
+    #             os.path.join(self.project_root, f"pipe_{pipe_idx}"),
+    #             os.path.join(self.project_root, f"pipe-{pipe_idx}"),
+    #             os.path.join(self.project_root, f"Pipe_{pipe_idx}"),
+    #         ]
+    #         pipe_dir = next((d for d in candidates if os.path.isdir(d)), None)
+    #         if not pipe_dir:
+    #             return self.open_Error(f"Folder not found for pipe index {pipe_idx} (looked for pipe_{pipe_idx}).")
+
+    #         def pick_one(patterns, exclude=None):
+    #             exclude = exclude or []
+    #             hits = []
+    #             for pat in patterns:
+    #                 hits.extend(glob(os.path.join(pipe_dir, pat)))
+    #             hits = [h for h in hits if not any(ex in os.path.basename(h).lower() for ex in (exclude or []))]
+    #             exact = [h for h in hits if re.search(rf'{re.escape(str(pipe_idx))}\b', os.path.basename(h))]
+    #             return exact[0] if exact else (hits[0] if hits else None)
+
+    #         self.hmap       = pick_one(["*heatmap*.html"], exclude=["raw", "box"])
+    #         self.hmap_r     = pick_one(["*heatmap*raw*.html", "*raw*heatmap*.html"])
+    #         self.heatmap_box= pick_one(["*heatmap*box*.html", "*box*heatmap*.html"])
+    #         self.lplot      = pick_one(["*lineplot*.html", "*line*.html"], exclude=["raw"])
+    #         self.lplot_r    = pick_one(["*lineplot*raw*.html", "*line*raw*.html"])
+    #         self.pipe3d     = pick_one(["*pipe3d*.html", "pipe3d*.html"])
+    #         self.prox_linechart = pick_one(["proximity_linechart*.html", "*proximity_linechart*.html"])
+
+    #         # ds_csv = pick_one(["*defectS*.csv", "*defects*.csv"])
+    #         ds_csv = pick_one(["*PipeTally*.csv", "*ipeTally*.csv"])
+    #         if ds_csv:
+    #             try:
+    #                 ds = pd.read_csv(ds_csv)
+    #                 self._populate_defect_table_from_csv(ds)
+    #             except Exception as e:
+    #                 print("⚠️ Failed to load defect CSV:", e)
+
+    #         self.tab_switcher2()
+    #     except Exception as e:
+    #         self.open_Error(f"load_assets_for_index error: {e}")
+
+    def _populate_defect_table_from_tally(self, df: pd.DataFrame):
+        """
+        Show PipeTally CSV in the bottom defect table.
+        - Renames s_no → Defect_id
+        - Filters only rows with Feature Type = Metal Loss
+        - Shows fixed column order
+        """
+        if df is None or df.empty:
+            return
+
+        # filter rows with Feature Type = Metal Loss
+        if "Feature Type" in df.columns:
+            df = df[df["Feature Type"].astype(str).str.strip().str.lower() == "metal loss"]
+
+        # fixed column order
+        desired_cols = [
+            "Defect_id",  # renamed from s_no
+            "Abs. Distance (m)",
+            "Distance to U/S GW(m)",
+            "Pipe Number",
+            "Pipe Length (mm)",
+            "Feature Identification",
+            "Feature Type",
+            "Dimensions Classification",
+            "Orientation o' clock",
+            "Length (mm)",
+            "Width (mm)",
+            "WT (mm)",
+            "Depth %",
+            "Depth (mm)",
+            "Type",
+            "ERF (ASME B31G)",
+            "Psafe (ASME B31G) Barg",
+            "Latitude",
+            "Longitude",
+            "Comment",
+        ]
+
+        # normalize variant column names
+        variants = {
+            "s_no": "Defect_id",
+            "Dimensions  Classification": "Dimensions Classification",  # double → single space
+            "Depth % ": "Depth %",
+            "Psafe (ASME B31G) bar": "Psafe (ASME B31G) Barg",
+            "Pipe Length": "Pipe Length (mm)",
+            "Length": "Length (mm)",
+            "Width": "Width (mm)",
+            "WT": "WT (mm)",
+        }
+        for src, dst in variants.items():
+            if src in df.columns and dst not in df.columns:
+                df[dst] = df[src]
+
+        # make Defect_id sequential if missing
+        if "Defect_id" not in df.columns:
+            df = df.reset_index(drop=True)
+            df["Defect_id"] = np.arange(1, len(df) + 1)
+
+        # ensure all desired cols exist
+        for col in desired_cols:
+            if col not in df.columns:
+                df[col] = ""
+
+        # final view
+        view = df[desired_cols].copy()
+
+        # write into tableWidgetDefect
+        tw = self.ui.tableWidgetDefect
+        tw.clear()
+        tw.setRowCount(len(view))
+        tw.setColumnCount(len(view.columns))
+        tw.setHorizontalHeaderLabels([str(c) for c in view.columns])
+
+        for r in range(len(view)):
+            for c, col in enumerate(view.columns):
+                val = view.iloc[r, c]
+                tw.setItem(r, c, QTableWidgetItem("" if pd.isna(val) else str(val)))
+
+        self.update_digsheet_button_state()
+
 
     # Guarded tab change handler (prevents switching when no project and shows popup)
     def _on_middle_tab_changed(self, index: int):
@@ -706,7 +842,7 @@ class MyMainWindow(QMainWindow):
                     self.web_view.setUrl(QUrl())
                 if self.prox_linechart and os.path.exists(self.prox_linechart):
                     self.bottom_stack.setCurrentIndex(2)
-                    self._load_scrollable_chart(self.web_view2, self.prox_linechart, min_w=1800, min_h=900)
+                    self._load_scrollable_chart(self.web_view2, self.prox_linechart, min_w=2200, min_h=900)
                 else:
                     self.bottom_stack.setCurrentIndex(0)
                     self.web_view2.setUrl(QUrl())
