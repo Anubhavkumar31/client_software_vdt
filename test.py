@@ -1488,7 +1488,7 @@ class MyMainWindow(QMainWindow):
             self.open_Error(e)
 
     def open_DBAD(self):
-        selected_columns = [r"Abs. Distance (m)", r"Depth %", r"Type"]
+        selected_columns = [r"Abs. Distance (m)", r"Depth %e", r"Type"]
         if not isinstance(self.pipe_tally, pd.DataFrame):
             QMessageBox.critical(self, "Error", "Pipe tally data is missing or not loaded.")
             return
