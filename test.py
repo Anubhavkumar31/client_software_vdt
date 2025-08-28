@@ -1,3 +1,4 @@
+import tempfile, uuid, runpy
 import os
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-logging --log-level=3 --disable-features=AccessibilityAriaVirtualContent"
 
@@ -78,6 +79,12 @@ def resource_path(relative_path):
     if getattr(sys, 'frozen', False):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(os.path.abspath("."), relative_path)
+
+def _dump_tally_to_temp(df):
+    import pickle
+    p = os.path.join(tempfile.gettempdir(), f"pipe_tally_{uuid.uuid4().hex}.pkl")
+    with open(p, "wb") as f: pickle.dump(df, f)
+    return p
 
 
 base_dir = os.path.dirname(__file__)
@@ -2385,34 +2392,23 @@ class MyMainWindow(QMainWindow):
 
     def open_digsheet_by_abs_from_selection(self):
         try:
-            if not self.project_is_open:
-                QMessageBox.information(self, "Open a project", "Please open a project first.")
-                return
-            if not isinstance(self.pipe_tally, pd.DataFrame):
-                QMessageBox.warning(self, "No Pipe Tally",
-                                    "Pipe tally data is missing. Load a pipe tally and try again.")
-                return
-
+            if not self.project_is_open or not isinstance(self.pipe_tally, pd.DataFrame):
+                QMessageBox.warning(self, "No Pipe Tally", "Load a project/tally first."); return
             abs_text = self._get_selected_abs_distance_from_defect_table()
-            if not abs_text:
-                return
+            if not abs_text: return
 
-            import pickle
-            base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(__file__)
-            pipe_tally_file = os.path.join(base_dir, "pipe_tally.pkl")
-            with open(pipe_tally_file, "wb") as f:
-                pickle.dump(self.pipe_tally, f)
-
+            tally_pkl = _dump_tally_to_temp(self.pipe_tally)
             dig_py_abs = resource_path(os.path.join("dig", "digsheet_abs.py"))
             if not os.path.exists(dig_py_abs):
-                QMessageBox.critical(self, "Script not found",
-                                     f"ABS-distance digsheet script not found:\n{dig_py_abs}\n\n"
-                                     f"Save your ABS-distance Tk script there, or update the path in code.")
-                return
+                QMessageBox.critical(self, "Script not found", f"Missing: {dig_py_abs}"); return
 
-            subprocess.Popen([sys.executable, dig_py_abs, pipe_tally_file, str(abs_text)])
+            if getattr(sys, "frozen", False):
+                subprocess.Popen([sys.executable, "--run-digsheet-abs", tally_pkl, str(abs_text)])
+            else:
+                subprocess.Popen([sys.executable, dig_py_abs, tally_pkl, str(abs_text)])
         except Exception as e:
             self.open_Error(f"Error opening ABS-distance digsheet:\n{e}")
+
 
     def close_project(self):
         try:
@@ -2536,15 +2532,20 @@ class MyMainWindow(QMainWindow):
 
     def open_digs(self):
         try:
-            import pickle
-            base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(__file__)
+            if not isinstance(self.pipe_tally, pd.DataFrame):
+                QMessageBox.warning(self, "No Pipe Tally", "Load a pipe tally first."); return
+            tally_pkl = _dump_tally_to_temp(self.pipe_tally)
             dig_py = resource_path(os.path.join("dig", "dig_sheet.py"))
-            pipe_tally_file = os.path.join(base_dir, "pipe_tally.pkl")
-            with open(pipe_tally_file, "wb") as f:
-                pickle.dump(self.pipe_tally, f)
-            subprocess.Popen([sys.executable, dig_py, pipe_tally_file])
+            if not os.path.exists(dig_py):
+                QMessageBox.critical(self, "Script not found", f"Missing: {dig_py}"); return
+
+            if getattr(sys, "frozen", False):
+                subprocess.Popen([sys.executable, "--run-digsheet", tally_pkl])
+            else:
+                subprocess.Popen([sys.executable, dig_py, tally_pkl])
         except Exception as e:
             self.open_Error(f"An error occurred: {e}")
+
     
     def _arm_topbar(self, virtual_max: int = 2000):
         """Re-sync the top scrollbar with the inner QScrollArea hbar and enable mapping."""
@@ -2660,6 +2661,22 @@ class MyMainWindow(QMainWindow):
 
 
 if __name__ == "__main__":
+    # Handle special modes in the frozen EXE so it doesn't relaunch the main UI
+    if "--run-digsheet-abs" in sys.argv:
+        i = sys.argv.index("--run-digsheet-abs")
+        tally_pkl = sys.argv[i+1]; abs_val = sys.argv[i+2]
+        dig_py_abs = resource_path(os.path.join("dig", "digsheet_abs.py"))
+        sys.argv = [dig_py_abs, tally_pkl, abs_val]
+        runpy.run_path(dig_py_abs, run_name="__main__")
+        sys.exit(0)
+
+    if "--run-digsheet" in sys.argv:
+        i = sys.argv.index("--run-digsheet")
+        tally_pkl = sys.argv[i+1]
+        dig_py = resource_path(os.path.join("dig", "dig_sheet.py"))
+        sys.argv = [dig_py, tally_pkl]
+        runpy.run_path(dig_py, run_name="__main__")
+        sys.exit(0)
     app = MainApp(sys.argv)
     app.start()
     sys.exit(app.exec())
