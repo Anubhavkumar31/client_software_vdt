@@ -51,13 +51,13 @@ if os.path.exists(spec_file):
 # --- Build EXE with PyInstaller ---
 PyInstaller.__main__.run([
     "--noconfirm",
-    "--onefile",           # single-file exe
-    "--windowed",          # no console (client build)
+    "--onefile",           
+    "--windowed",          
     "--exclude-module", "PyQt5",
     "--collect-all", "numpy",
     "--collect-all", "pandas",
-    "--collect-all", "kaleido",    # ✅ include kaleido resources
-    "--hidden-import", "kaleido",  # ✅ ensure kaleido initializes
+    "--collect-all", "kaleido",    
+    "--hidden-import", "kaleido",  
     "--hidden-import", "PyQt6.QtWebEngineWidgets",
     "--hidden-import", "PyQt6.QtWebEngineCore",
     "--hidden-import", "PyQt6.QtPrintSupport",
@@ -70,6 +70,6 @@ PyInstaller.__main__.run([
     "--add-data", "pipetally;pipetally/",
     "--add-data", "final_report;final_report/",
     "--add-data", "preliminary_report;preliminary_report/",
-    "--name", "test_client",   # 👈 Final exe name
-    "test.py"
+    "--name", "test_client",  
+    "test5.py"
 ])

@@ -123,11 +123,11 @@ class ScriptWorker(QThread):
             create_pipe_tally(pdf, output_folder=self.output_folder, output_callback=self.emit_output)
             self.output_signal.emit("pipeTally_filter.py finished.\n")
 
-            # Run the second script function (defectS_creator)
-            self.output_signal.emit("Running defects_creator.py...\n")
-            create_defectSheet_and_heatmap_box(pkl_folder=self.pkl_folder, output_folder=self.output_folder, output_callback=self.emit_output)
-            # create_defectSheet(pkl_folder=self.pkl_folder, output_folder=self.output_folder, output_callback=self.emit_output)
-            self.output_signal.emit("defectS_creator.py finished.\n")
+            # # Run the second script function (defectS_creator)
+            # self.output_signal.emit("Running defects_creator.py...\n")
+            # create_defectSheet_and_heatmap_box(pkl_folder=self.pkl_folder, output_folder=self.output_folder, output_callback=self.emit_output)
+            # # create_defectSheet(pkl_folder=self.pkl_folder, output_folder=self.output_folder, output_callback=self.emit_output)
+            # self.output_signal.emit("defectS_creator.py finished.\n")
 
             # Run the third script function (html_filter)
             self.output_signal.emit("Running html_filter.py...\n")

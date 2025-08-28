@@ -75,6 +75,7 @@ from PyQt6.QtWidgets import QScrollBar
 from PyQt6.QtGui import QPalette, QColor
 
 
+
 def resource_path(relative_path):
     if getattr(sys, 'frozen', False):
         return os.path.join(sys._MEIPASS, relative_path)
