@@ -66,5 +66,6 @@ pip install -r requirements.txt
 
 ## Authors
 
-### Aksshat Govind and Abhishek Gupta, 2024
+### Aksshat Govind and Abhishek Gupta, 2024 
+### Anubhav Kumar and Manvi, 2025
 >>>>>>> master
