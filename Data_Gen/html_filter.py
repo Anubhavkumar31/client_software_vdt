@@ -1064,6 +1064,8 @@ from sklearn.preprocessing import MinMaxScaler
 import plotly.express as px
 from typing import Optional, Union, List
 from glob import glob
+from datetime import datetime, timedelta
+import traceback
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -1081,7 +1083,7 @@ PLOTLY_CONFIG = {
     # , "zoomIn2d", "zoomOut2d",
     #     "pan2d", "toImage", "hoverCompareCartesian", "hoverClosestCartesian"
     "displayModeBar": True, 
-    "scrollZoom": True,
+    "scrollZoom": False,
 }
 
 def write_plotly_html(fig, out_path: str):
@@ -1108,13 +1110,17 @@ WORKERS = 4
 # ------------------------------------------------
 
 
-def pre_process_data(datafile, pipe_number, output_folder):
+def pre_process_data(datafile, pipe_number, output_folder, total_sensors, column_names, minute_sensors, degree_sensors):
 
     datafile_original = datafile.copy(deep=True)
     # Create DataFrame from raw data
+    # df_new_tab9 = pd.DataFrame(
+    #     datafile,
+    #     columns=[f'F{i}H{j}' for i in range(1, 25) for j in range(1, 5)]
+    # )
     df_new_tab9 = pd.DataFrame(
         datafile,
-        columns=[f'F{i}H{j}' for i in range(1, 25) for j in range(1, 5)]
+        columns=column_names
     )
 
     df_new_tab10 = df_new_tab9.copy()
@@ -1163,21 +1169,27 @@ def pre_process_data(datafile, pipe_number, output_folder):
         hours = int(total_seconds // 3600)
         minutes = int((total_seconds % 3600) // 60)
         seconds = int(total_seconds % 60)
-        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        return f"{hours:02d}:{minutes:02d}"
 
     def add_sensor_keys(d):
         for e in d:
             new_dict = {**e}
-            for i in range(1, 96):
-                new_dict[f'Roll_Sensor_{i}'] = e['Roll_Sensor_0'] + (3.75 * i)
+            for i in range(1, total_sensors):
+                new_dict[f'Roll_Sensor_{i}'] = e['Roll_Sensor_0'] + (degree_sensors * i)
             yield new_dict
 
     def check_time_range(time_str):
-        start_time = '00:00:00'
-        end_time = '00:07:29'
-        time_to_check = datetime.strptime(time_str, '%H:%M:%S')
-        start_time_dt = datetime.strptime(start_time, '%H:%M:%S')
-        end_time_dt = datetime.strptime(end_time, '%H:%M:%S')
+        start_time = list(time_dict_1.keys())[0]
+
+        # print(f"start time: {start_time}")
+        end_time_dt = datetime.strptime(list(time_dict_1.keys())[1], '%H:%M') - timedelta(seconds=1)
+        
+        # print(f"end time dt: {end_time_dt}")
+        end_time = list(time_dict_1.keys())[1]
+
+
+        time_to_check = datetime.strptime(time_str, '%H:%M')
+        start_time_dt = datetime.strptime(start_time, '%H:%M')
         return start_time_dt <= time_to_check <= end_time_dt
 
     d = []
@@ -1189,8 +1201,12 @@ def pre_process_data(datafile, pipe_number, output_folder):
     clockData = oriData.applymap(degrees_to_hours_minutes2)
 
     test_clockData = clockData.copy()
-    test_clockData = test_clockData.apply(pd.to_datetime, format='%H:%M:%S')
-    test_clockData = test_clockData.applymap(lambda x: x.strftime('%H:%M:%S'))
+
+    # Parse flexibly with mixed formats (works for both HH:MM and HH:MM:SS)
+    test_clockData = test_clockData.apply(pd.to_datetime, format='mixed')
+
+    # Now format the datetime objects to strings 'HH:MM' dropping seconds
+    test_clockData = test_clockData.applymap(lambda x: x.strftime('%H:%M'))
     test_clockData = test_clockData.applymap(lambda x: x.replace('23:', '11:') if isinstance(x, str) and x.startswith('23:') else x)
     test_clockData = test_clockData.applymap(lambda x: x.replace('22:', '10:') if isinstance(x, str) and x.startswith('22:') else x)
     test_clockData = test_clockData.applymap(lambda x: x.replace('12:', '00:') if isinstance(x, str) and x.startswith('12:') else x)
@@ -1198,21 +1214,24 @@ def pre_process_data(datafile, pipe_number, output_folder):
     test_clockData = test_clockData.rename(columns=dict(zip(test_clockData.columns, df_new_tab9.columns)))
 
     def create_time_dict():
-        time_ranges_2 = [
-            '00:00:00', '00:07:30', '00:15:00', '00:22:30', '00:30:00', '00:37:30', '00:45:00', '00:52:30', '01:00:00', '01:07:30', 
-            '01:15:00', '01:22:30', '01:30:00', '01:37:30', '01:45:00', '01:52:30', '02:00:00', '02:07:30', '02:15:00', '02:22:30', 
-            '02:30:00', '02:37:30', '02:45:00', '02:52:30', '03:00:00', '03:07:30', '03:15:00', '03:22:30', '03:30:00', '03:37:30', 
-            '03:45:00', '03:52:30', '04:00:00', '04:07:30', '04:15:00', '04:22:30', '04:30:00', '04:37:30', '04:45:00', '04:52:30', 
-            '05:00:00', '05:07:30', '05:15:00', '05:22:30', '05:30:00', '05:37:30', '05:45:00', '05:52:30', '06:00:00', '06:07:30', 
-            '06:15:00', '06:22:30', '06:30:00', '06:37:30', '06:45:00', '06:52:30', '07:00:00', '07:07:30', '07:15:00', '07:22:30', 
-            '07:30:00', '07:37:30', '07:45:00', '07:52:30', '08:00:00', '08:07:30', '08:15:00', '08:22:30', '08:30:00', '08:37:30', 
-            '08:45:00', '08:52:30', '09:00:00', '09:07:30', '09:15:00', '09:22:30', '09:30:00', '09:37:30', '09:45:00', '09:52:30', 
-            '10:00:00', '10:07:30', '10:15:00', '10:22:30', '10:30:00', '10:37:30', '10:45:00', '10:52:30', '11:00:00', '11:07:30', 
-            '11:15:00', '11:22:30', '11:30:00', '11:37:30', '11:45:00', '11:52:30'
-        ]
+        
+        time_list = [timedelta(minutes=i * minute_sensors) for i in range(total_sensors)]
+        time_ranges_2 = [(datetime.min + t).strftime('%H:%M') for t in time_list]
+
+        # time_ranges_2 = ['00:00:00', '00:07:30', '00:15:00', '00:22:30', '00:30:00', '00:37:30', '00:45:00', '00:52:30', '01:00:00', '01:07:30', 
+        #     '01:15:00', '01:22:30', '01:30:00', '01:37:30', '01:45:00', '01:52:30', '02:00:00', '02:07:30', '02:15:00', '02:22:30', 
+        #     '02:30:00', '02:37:30', '02:45:00', '02:52:30', '03:00:00', '03:07:30', '03:15:00', '03:22:30', '03:30:00', '03:37:30', 
+        #     '03:45:00', '03:52:30', '04:00:00', '04:07:30', '04:15:00', '04:22:30', '04:30:00', '04:37:30', '04:45:00', '04:52:30', 
+        #     '05:00:00', '05:07:30', '05:15:00', '05:22:30', '05:30:00', '05:37:30', '05:45:00', '05:52:30', '06:00:00', '06:07:30', 
+        #     '06:15:00', '06:22:30', '06:30:00', '06:37:30', '06:45:00', '06:52:30', '07:00:00', '07:07:30', '07:15:00', '07:22:30', 
+        #     '07:30:00', '07:37:30', '07:45:00', '07:52:30', '08:00:00', '08:07:30', '08:15:00', '08:22:30', '08:30:00', '08:37:30', 
+        #     '08:45:00', '08:52:30', '09:00:00', '09:07:30', '09:15:00', '09:22:30', '09:30:00', '09:37:30', '09:45:00', '09:52:30', 
+        #     '10:00:00', '10:07:30', '10:15:00', '10:22:30', '10:30:00', '10:37:30', '10:45:00', '10:52:30', '11:00:00', '11:07:30', 
+        #     '11:15:00', '11:22:30', '11:30:00', '11:37:30', '11:45:00', '11:52:30']
         return {key: [] for key in time_ranges_2}
 
     time_dict_1 = create_time_dict()
+    print(f"time_dict_1: {time_dict_1}")
     rang = list(time_dict_1.keys())
 
     for _, row in test_clockData.iterrows():
@@ -1341,8 +1360,16 @@ def _parse_ori_to_seconds(v) -> Optional[int]:
         return None
 
 def _hhmmss_to_seconds(t: str) -> int:
-    h, m, s = [int(x) for x in str(t).split(":")]
+    parts = str(t).split(":")
+    if len(parts) == 3:
+        h, m, s = [int(x) for x in parts]
+    elif len(parts) == 2:
+        h, m = [int(x) for x in parts]
+        s = 0
+    else:
+        raise ValueError(f"Invalid time format: {t}")
     return (h % 12) * 3600 + m * 60 + s
+
 
 def _nearest_band_label(seconds: int, band_labels: List[str]) -> str:
     band_labels_str = [str(x) for x in band_labels]
@@ -1454,14 +1481,18 @@ def pre_process_for_interactive_heatmap(df_in: pd.DataFrame, datafile: pd.DataFr
     """Process data specifically for interactive heatmap - percentage-based."""
     
     # Get sensor columns (use raw data, not the processed df_new_tab9)
-    expected = [f"F{i}H{j}" for i in range(1, 25) for j in range(1, 5)]
-    sens_cols = [c for c in expected if c in datafile.columns]
+    # expected = [f"F{i}H{j}" for i in range(1, 25) for j in range(1, 5)]
+    sens_cols = df_in.columns.tolist()
+    print(f"Sensor columns in datafile for preprocess_heatmap: {sens_cols}")
+    # sens_cols = [c for c in expected if c in datafile.columns]
     if not sens_cols:
         raise ValueError("No F*H* sensor columns found in the input DataFrame.")
 
     df_sens = pd.DataFrame(datafile, columns=sens_cols).copy()
     df_sens_raw = df_sens.copy(deep=True)  # Keep raw copy for CSV export
-    df_mean_cols = df_sens_raw[[f"F{i}H{j}" for i in range(1, 25) for j in range(1, 5)]]
+    print(f" sens raw : list(df_sens_raw.columns)")
+    df_mean_cols = df_sens_raw
+    print(list(df_mean_cols.columns))
     Mean1 = df_mean_cols.mean()
     df_raw_plot = ((df_mean_cols - Mean1)/Mean1)*100
     
@@ -1508,6 +1539,7 @@ def pre_process_for_interactive_heatmap(df_in: pd.DataFrame, datafile: pd.DataFr
 def save_interactive_heatmap(df_new_tab9, datafile, test_val, map_ori_sens, folder_path, pipe_number,df_new_tab10):
     """Create and save interactive heatmap with overlays."""
     
+
     # Use the specialized preprocessing for interactive heatmap
     df_plot_rearranged, df_raw_plot = pre_process_for_interactive_heatmap(df_new_tab10, datafile, test_val, map_ori_sens)
     
@@ -1642,7 +1674,9 @@ def save_heatmap(test_val, datafile, map_ori_sens, folder_path, pipe_number):
 
 
 # case-insensitive F#P# like F1P1, F12P3
-FP_PATTERN = re.compile(r'^F\d{1,2}P\d{1,2}$', re.IGNORECASE)
+# FP_PATTERN = re.compile(r'^F\d{1,2}P\d{1,2}$', re.IGNORECASE)
+FP_PATTERN = re.compile(r'^F\d+P\d+$', re.IGNORECASE)
+
 
 def save_proximity_linechart(
     folder_path: str,
@@ -1745,127 +1779,127 @@ def save_proximity_linechart(
 
 
 
-def save_heatmap_raw(folder_path, df_raw_straight, dataf, pipe_number):
-    initial_read = INITIAL_READ
-    roll = dataf['ROLL'] - initial_read
+# def save_heatmap_raw(folder_path, df_raw_straight, dataf, pipe_number):
+#     initial_read = INITIAL_READ
+#     roll = dataf['ROLL'] - initial_read
 
-    def degrees_to_hours_minutes2(degrees):
-        if (degrees < 0):
-            degrees = degrees % 360
-        elif degrees >= 360:
-            degrees %= 360
-        degrees_per_second = 360 / (12 * 60 * 60)
-        total_seconds = degrees / degrees_per_second
-        hours = int(total_seconds // 3600)
-        minutes = int((total_seconds % 3600) // 60)
-        seconds = int(total_seconds % 60)
-        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+#     def degrees_to_hours_minutes2(degrees):
+#         if (degrees < 0):
+#             degrees = degrees % 360
+#         elif degrees >= 360:
+#             degrees %= 360
+#         degrees_per_second = 360 / (12 * 60 * 60)
+#         total_seconds = degrees / degrees_per_second
+#         hours = int(total_seconds // 3600)
+#         minutes = int((total_seconds % 3600) // 60)
+#         seconds = int(total_seconds % 60)
+#         return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
-    def add_sensor_keys(d):
-        for e in d:
-            new_dict = {**e}
-            for i in range(1, 96):
-                new_dict[f'Roll_Sensor_{i}'] = e['Roll_Sensor_0'] + (3.75 * i)
-            yield new_dict
+#     def add_sensor_keys(d):
+#         for e in d:
+#             new_dict = {**e}
+#             for i in range(1, 96):
+#                 new_dict[f'Roll_Sensor_{i}'] = e['Roll_Sensor_0'] + (3.75 * i)
+#             yield new_dict
 
-    def check_time_range(time_str):
-        start_time = '00:00:00'
-        end_time = '00:07:29'
-        time_to_check = datetime.strptime(time_str, '%H:%M:%S')
-        start_time_dt = datetime.strptime(start_time, '%H:%M:%S')
-        end_time_dt = datetime.strptime(end_time, '%H:%M:%S')
-        return start_time_dt <= time_to_check <= end_time_dt
+#     def check_time_range(time_str):
+#         start_time = '00:00:00'
+#         end_time = '00:07:29'
+#         time_to_check = datetime.strptime(time_str, '%H:%M:%S')
+#         start_time_dt = datetime.strptime(start_time, '%H:%M:%S')
+#         end_time_dt = datetime.strptime(end_time, '%H:%M:%S')
+#         return start_time_dt <= time_to_check <= end_time_dt
 
-    d = []
-    for pos in roll:
-        d.append({f"Roll_Sensor_0": pos})
+#     d = []
+#     for pos in roll:
+#         d.append({f"Roll_Sensor_0": pos})
 
-    upd_d = list(add_sensor_keys(d))
-    oriData = pd.DataFrame.from_dict(data=upd_d)
-    clockData = oriData.applymap(degrees_to_hours_minutes2)
+#     upd_d = list(add_sensor_keys(d))
+#     oriData = pd.DataFrame.from_dict(data=upd_d)
+#     clockData = oriData.applymap(degrees_to_hours_minutes2)
 
-    test_clockData = clockData.copy()
-    test_clockData = test_clockData.apply(pd.to_datetime, format='%H:%M:%S')
-    test_clockData = test_clockData.applymap(lambda x: x.strftime('%H:%M:%S'))
-    test_clockData = test_clockData.applymap(lambda x: x.replace('23:', '11:') if isinstance(x, str) and x.startswith('23:') else x)
-    test_clockData = test_clockData.applymap(lambda x: x.replace('22:', '10:') if isinstance(x, str) and x.startswith('22:') else x)
-    test_clockData = test_clockData.applymap(lambda x: x.replace('12:', '00:') if isinstance(x, str) and x.startswith('12:') else x)
+#     test_clockData = clockData.copy()
+#     test_clockData = test_clockData.apply(pd.to_datetime, format='%H:%M:%S')
+#     test_clockData = test_clockData.applymap(lambda x: x.strftime('%H:%M:%S'))
+#     test_clockData = test_clockData.applymap(lambda x: x.replace('23:', '11:') if isinstance(x, str) and x.startswith('23:') else x)
+#     test_clockData = test_clockData.applymap(lambda x: x.replace('22:', '10:') if isinstance(x, str) and x.startswith('22:') else x)
+#     test_clockData = test_clockData.applymap(lambda x: x.replace('12:', '00:') if isinstance(x, str) and x.startswith('12:') else x)
 
-    pat1 = re.compile(r'^F\d+H\d+$')   # F%H%
-    sel_col = ['ROLL', 'ODDO1']
-    fil_col = [col for col in dataf.columns if (pat1.match(col) or col in sel_col)]
-    refData = dataf[fil_col]
-    sensD = refData[refData.columns[2:]]
+#     pat1 = re.compile(r'^F\d+H\d+$')   # F%H%
+#     sel_col = ['ROLL', 'ODDO1']
+#     fil_col = [col for col in dataf.columns if (pat1.match(col) or col in sel_col)]
+#     refData = dataf[fil_col]
+#     sensD = refData[refData.columns[2:]]
 
-    test_clockData = test_clockData.rename(columns=dict(zip(test_clockData.columns, df_raw_straight.columns)))
+#     test_clockData = test_clockData.rename(columns=dict(zip(test_clockData.columns, df_raw_straight.columns)))
 
-    def create_time_dict():
-        time_ranges_2 = [
-            '00:00:00', '00:07:30', '00:15:00', '00:22:30', '00:30:00', '00:37:30', '00:45:00', '00:52:30', '01:00:00', '01:07:30', 
-            '01:15:00', '01:22:30', '01:30:00', '01:37:30', '01:45:00', '01:52:30', '02:00:00', '02:07:30', '02:15:00', '02:22:30', 
-            '02:30:00', '02:37:30', '02:45:00', '02:52:30', '03:00:00', '03:07:30', '03:15:00', '03:22:30', '03:30:00', '03:37:30', 
-            '03:45:00', '03:52:30', '04:00:00', '04:07:30', '04:15:00', '04:22:30', '04:30:00', '04:37:30', '04:45:00', '04:52:30', 
-            '05:00:00', '05:07:30', '05:15:00', '05:22:30', '05:30:00', '05:37:30', '05:45:00', '05:52:30', '06:00:00', '06:07:30', 
-            '06:15:00', '06:22:30', '06:30:00', '06:37:30', '06:45:00', '06:52:30', '07:00:00', '07:07:30', '07:15:00', '07:22:30', 
-            '07:30:00', '07:37:30', '07:45:00', '07:52:30', '08:00:00', '08:07:30', '08:15:00', '08:22:30', '08:30:00', '08:37:30', 
-            '08:45:00', '08:52:30', '09:00:00', '09:07:30', '09:15:00', '09:22:30', '09:30:00', '09:37:30', '09:45:00', '09:52:30', 
-            '10:00:00', '10:07:30', '10:15:00', '10:22:30', '10:30:00', '10:37:30', '10:45:00', '10:52:30', '11:00:00', '11:07:30', 
-            '11:15:00', '11:22:30', '11:30:00', '11:37:30', '11:45:00', '11:52:30'
-        ]
-        return {key: [] for key in time_ranges_2}
+#     def create_time_dict():
+#         time_ranges_2 = [
+#             '00:00:00', '00:07:30', '00:15:00', '00:22:30', '00:30:00', '00:37:30', '00:45:00', '00:52:30', '01:00:00', '01:07:30', 
+#             '01:15:00', '01:22:30', '01:30:00', '01:37:30', '01:45:00', '01:52:30', '02:00:00', '02:07:30', '02:15:00', '02:22:30', 
+#             '02:30:00', '02:37:30', '02:45:00', '02:52:30', '03:00:00', '03:07:30', '03:15:00', '03:22:30', '03:30:00', '03:37:30', 
+#             '03:45:00', '03:52:30', '04:00:00', '04:07:30', '04:15:00', '04:22:30', '04:30:00', '04:37:30', '04:45:00', '04:52:30', 
+#             '05:00:00', '05:07:30', '05:15:00', '05:22:30', '05:30:00', '05:37:30', '05:45:00', '05:52:30', '06:00:00', '06:07:30', 
+#             '06:15:00', '06:22:30', '06:30:00', '06:37:30', '06:45:00', '06:52:30', '07:00:00', '07:07:30', '07:15:00', '07:22:30', 
+#             '07:30:00', '07:37:30', '07:45:00', '07:52:30', '08:00:00', '08:07:30', '08:15:00', '08:22:30', '08:30:00', '08:37:30', 
+#             '08:45:00', '08:52:30', '09:00:00', '09:07:30', '09:15:00', '09:22:30', '09:30:00', '09:37:30', '09:45:00', '09:52:30', 
+#             '10:00:00', '10:07:30', '10:15:00', '10:22:30', '10:30:00', '10:37:30', '10:45:00', '10:52:30', '11:00:00', '11:07:30', 
+#             '11:15:00', '11:22:30', '11:30:00', '11:37:30', '11:45:00', '11:52:30'
+#         ]
+#         return {key: [] for key in time_ranges_2}
 
-    time_dict_1 = create_time_dict()
-    rang = list(time_dict_1.keys())
+#     time_dict_1 = create_time_dict()
+#     rang = list(time_dict_1.keys())
 
-    for _, row in test_clockData.iterrows():
-        xl = list(row)
-        xd = dict(row)
-        xkeys = list(xd.keys())
-        c = 0
-        for _, dval in xd.items():
-            if check_time_range(dval):
-                ind = xl.index(dval)
-                _ = xl[ind:] + xl[:ind]
-                break
+#     for _, row in test_clockData.iterrows():
+#         xl = list(row)
+#         xd = dict(row)
+#         xkeys = list(xd.keys())
+#         c = 0
+#         for _, dval in xd.items():
+#             if check_time_range(dval):
+#                 ind = xl.index(dval)
+#                 _ = xl[ind:] + xl[:ind]
+#                 break
 
-        curr = ind
-        while True:
-            ck = xkeys[curr]
-            time_dict_1[rang[c]].append((curr, ck, xd[ck]))
-            c += 1
-            curr = (curr + 1) % len(xkeys)
-            if curr == ind:
-                break
+#         curr = ind
+#         while True:
+#             ck = xkeys[curr]
+#             time_dict_1[rang[c]].append((curr, ck, xd[ck]))
+#             c += 1
+#             curr = (curr + 1) % len(xkeys)
+#             if curr == ind:
+#                 break
 
-    map_ori_sens = pd.DataFrame(time_dict_1)
-    val_ori_sens = map_ori_sens.copy().applymap(lambda cell: cell[1])
-    test_val = val_ori_sens.copy()
+#     map_ori_sens = pd.DataFrame(time_dict_1)
+#     val_ori_sens = map_ori_sens.copy().applymap(lambda cell: cell[1])
+#     test_val = val_ori_sens.copy()
 
-    for r, e in val_ori_sens.iterrows():
-        c = 0
-        for _, tup_value in e.items():
-            cell_v = sensD.at[r, tup_value]
-            test_val.iloc[r, c] = cell_v
-            c += 1
+#     for r, e in val_ori_sens.iterrows():
+#         c = 0
+#         for _, tup_value in e.items():
+#             cell_v = sensD.at[r, tup_value]
+#             test_val.iloc[r, c] = cell_v
+#             c += 1
     
-    figraw = go.Figure(data=go.Heatmap(
-        z=test_val.T,
-        y=test_val.columns,
-        x=(dataf['ODDO1'] / 1000).round(2),
-        colorscale='jet',
-        hovertemplate='(%{x}, %{z})<br>Actual Ori: %{text[2]}<br>Sensor: %{text[0]}',
-        text=[[item for item in map_ori_sens[col]] for col in map_ori_sens.columns],
-        zmin=-12000,
-        zmax=30000
-    ))
+#     figraw = go.Figure(data=go.Heatmap(
+#         z=test_val.T,
+#         y=test_val.columns,
+#         x=(dataf['ODDO1'] / 1000).round(2),
+#         colorscale='jet',
+#         hovertemplate='(%{x}, %{z})<br>Actual Ori: %{text[2]}<br>Sensor: %{text[0]}',
+#         text=[[item for item in map_ori_sens[col]] for col in map_ori_sens.columns],
+#         zmin=-12000,
+#         zmax=30000
+#     ))
 
-    figraw.update_layout(
-        height=300,
-        width=1500,
-        margin=dict(l=20, r=20, t=50, b=20)
-    )
+#     figraw.update_layout(
+#         height=300,
+#         width=1500,
+#         margin=dict(l=20, r=20, t=50, b=20)
+#     )
 
-    write_plotly_html(figraw, f'{folder_path}/heatmap_raw{pipe_number}.html')
+#     write_plotly_html(figraw, f'{folder_path}/heatmap_raw{pipe_number}.html')
 
 
 
@@ -2029,7 +2063,9 @@ def _process_one_pkl(pkl_path, output_folder):
         pipe_folder.mkdir(exist_ok=True)
 
         data = pd.read_pickle(pkl_path)
-        dfile = pre_process_data(data, pipe_number, output_folder)
+        total_sensors_count, column_names, minute_sensors, degree_sensors = count_pattern_minute_degree(pkl_path)
+        print(f" total_sensors_count: {total_sensors_count}, column_names: {column_names}, minute_sensors: {minute_sensors}, degree_sensors: {degree_sensors}")
+        dfile = pre_process_data(data, pipe_number, output_folder, total_sensors_count, column_names, minute_sensors, degree_sensors)
 
         # Save the Excel
         xlsx_path = pipe_folder / f"Pipe_{pipe_number}.xlsx"
@@ -2037,7 +2073,18 @@ def _process_one_pkl(pkl_path, output_folder):
 
         return f"Processed {os.path.basename(pkl_path)} and saved to {pipe_folder}"
     except Exception as e:
+        print(f"Error loading {os.path.basename(pkl_path)}: {e}")
+        traceback.print_exc()
         return f"Error loading {os.path.basename(pkl_path)}: {e}"
+
+def count_pattern_minute_degree(datafile_path):
+    df = pd.read_pickle(datafile_path)
+    pattern = re.compile(r'^F\d+H\d+$')
+    matching_columns = [col for col in df.columns if pattern.match(col)]
+    count = len(matching_columns)
+    minute_sensors = 720 / count 
+    degree_sensors = minute_sensors / 2
+    return count, matching_columns, minute_sensors, degree_sensors
 
 
 def create_html_and_csv_from_pkl(
