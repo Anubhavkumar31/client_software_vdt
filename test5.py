@@ -1,7 +1,6 @@
-
-import tempfile, uuid, runpy
 import os
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-logging --log-level=3 --disable-features=AccessibilityAriaVirtualContent"
+
 
 # main.py
 import sys
@@ -23,7 +22,7 @@ import plotly.graph_objects as go
 from PyQt6 import uic, QtWidgets
 from PyQt6.QtCore import (
     Qt, QSortFilterProxyModel, QThread, pyqtSignal,
-    QTimer, QUrl, QEvent, QEventLoop
+    QTimer, QUrl, QEvent
 )
 # PyQt6 GUI
 from PyQt6.QtGui import (
@@ -36,13 +35,10 @@ from PyQt6.QtWidgets import (
     QSpacerItem, QLabel, QSizePolicy, QTableWidget, QTableWidgetItem,
     QStatusBar, QVBoxLayout, QWidget, QHBoxLayout, QMessageBox,
     QDialog, QTextEdit, QPushButton, QSplitter, QStackedWidget,
-    QTabBar, QFrame, QHBoxLayout as _QHBoxLayout, QSplitterHandle, QComboBox,
-    QAbstractItemView, QAbstractScrollArea, QProgressBar
+    QTabBar, QFrame, QHBoxLayout as _QHBoxLayout, QSplitterHandle, QComboBox
 )
 # PyQt6 WebEngine
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWidgets import QScrollArea, QScrollBar
-from PyQt6.QtGui import QPalette, QColor
 
 # Project imports (leave as-is)
 from reportlab.pdfgen import canvas  # noqa
@@ -63,59 +59,8 @@ from backend.line_plot import PlotWindow
 from backend.heatmap import HeatmapWindow as hm, pre_process, pre_process2  # noqa
 from ui.graphs_ui import GraphApp
 from Data_Gen.DataGenApp import ScriptRunnerApp  # noqa
-
-
-# --- Lightweight DataFrame model (no per-cell Qt items) ---
-from PyQt6.QtCore import QAbstractTableModel, QVariant
-
-class PandasModel(QAbstractTableModel):
-    def __init__(self, df: pd.DataFrame, parent=None):
-        super().__init__(parent)
-        self._df = df
-
-    def rowCount(self, _parent=None):
-        return 0 if self._df is None else len(self._df)
-
-    def columnCount(self, _parent=None):
-        return 0 if self._df is None else self._df.shape[1]
-
-    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
-        if not index.isValid():
-            return QVariant()
-
-        if role == Qt.ItemDataRole.DisplayRole:
-            val = self._df.iat[index.row(), index.column()]
-            if pd.isna(val):
-                return ""
-            # cheap formatting for floats
-            if isinstance(val, float):
-                return f"{val:.6g}"
-            return str(val)
-
-        return QVariant()
-
-    def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
-        if role == Qt.ItemDataRole.DisplayRole:
-            if orientation == Qt.Orientation.Horizontal:
-                return str(self._df.columns[section])
-            return str(section + 1)
-        elif role == Qt.ItemDataRole.FontRole:
-            # Make headers bold
-            from PyQt6.QtGui import QFont
-            font = QFont()
-            font.setBold(True)
-            return font
-        elif role == Qt.ItemDataRole.TextAlignmentRole:
-            return Qt.AlignmentFlag.AlignCenter
-
-        return QVariant()
-
-    def flags(self, index):
-        """Make all items non-editable"""
-        if not index.isValid():
-            return Qt.ItemFlag.NoItemFlags
-        return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
-
+from PyQt6.QtWidgets import QScrollArea
+from PyQt6.QtWidgets import QScrollBar
 
 
 def resource_path(relative_path):
@@ -123,330 +68,12 @@ def resource_path(relative_path):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(os.path.abspath("."), relative_path)
 
-def _dump_tally_to_temp(df):
-    import pickle
-    p = os.path.join(tempfile.gettempdir(), f"pipe_tally_{uuid.uuid4().hex}.pkl")
-    with open(p, "wb") as f: pickle.dump(df, f)
-    return p
-
 
 base_dir = os.path.dirname(__file__)
 ui_path = os.path.join(base_dir, "ui", "landing.ui")
 SplashScreen, SplashWindow = uic.loadUiType(ui_path)
 ui_path_main = os.path.join(base_dir, "ui", "main_window.ui")
 Form, Window = uic.loadUiType(ui_path_main)
-
-
-SCROLLBAR_STYLE = """
-QScrollBar:vertical {
-    background: #2b2b2b;
-    width: 14px;
-}
-QScrollBar::handle:vertical {
-    background: #555;
-    min-height: 20px;
-}
-QScrollBar::handle:vertical:hover {
-    background: #777;
-}
-QScrollBar:horizontal {
-    background: #2b2b2b;
-    height: 14px;
-}
-QScrollBar::handle:horizontal {
-    background: #555;
-    min-width: 20px;
-}
-QScrollBar::handle:horizontal:hover {
-    background: #777;
-}
-"""
-
-def setup_table_scroll(table):
-    from PyQt6.QtWidgets import QHeaderView, QAbstractItemView, QAbstractScrollArea
-    from PyQt6.QtCore import Qt
-
-    # Show scrollbars when needed (or keep AlwaysOn if you prefer)
-    table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-    table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
-
-    # per-pixel scrolling for smooth behavior
-    table.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
-    table.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
-
-    # don't let the view auto-adjust its size to contents (prevents hiding scrollbars)
-    table.setSizeAdjustPolicy(QAbstractScrollArea.SizeAdjustPolicy.AdjustIgnored)
-
-    # Configure horizontal header: interactive sizing and a large default width so total width > viewport
-    header = table.horizontalHeader()
-    header.setStretchLastSection(False)
-    header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-
-    # <- Increase default section size to force horizontal overflow.
-    # Set this to a higher value if you have many columns (try 220 - 320).
-    header.setDefaultSectionSize(380)
-
-    # Configure vertical header (row height)
-    vheader = table.verticalHeader()
-    vheader.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
-    vheader.setDefaultSectionSize(40)
-
-    # Set slower scroll speed
-    table.verticalScrollBar().setSingleStep(2)
-
-
-class PipeLoaderWorker(QThread):
-    # Signals for communication
-    progress_updated = pyqtSignal(int, str)  # progress %, message
-    data_loaded = pyqtSignal(object)  # pandas DataFrame
-    assets_loaded = pyqtSignal(dict)  # asset paths dictionary
-    table_data_ready = pyqtSignal(object)  # processed table data
-    error_occurred = pyqtSignal(str)  # error message
-    time_estimate = pyqtSignal(float)  # estimated time remaining
-
-    def __init__(self, pkl_path, project_root, pipe_idx):
-        super().__init__()
-        self.pkl_path = pkl_path
-        self.project_root = project_root
-        self.pipe_idx = pipe_idx
-        self.start_time = None
-
-    def run(self):
-        try:
-            self.start_time = time.time()
-            total_steps = 6
-
-            # Step 1: Load pickle data
-            self.progress_updated.emit(10, "Loading pipe data...")
-            df = pd.read_pickle(self.pkl_path)
-            self.data_loaded.emit(df)
-            self._update_time_estimate(1, total_steps)
-            print(f"Loaded pickle with {len(df)} rows")
-
-            # Step 2: Find pipe directory
-            self.progress_updated.emit(25, "Locating asset files...")
-            pipe_dir = self._find_pipe_directory()
-            self._update_time_estimate(2, total_steps)
-
-            # Step 3: Load HTML assets
-            self.progress_updated.emit(40, "Loading chart assets...")
-            assets = self._load_html_assets(pipe_dir)
-            self.assets_loaded.emit(assets)
-            self._update_time_estimate(3, total_steps)
-
-            # Step 4: Load pipe tally data
-            self.progress_updated.emit(60, "Processing pipe tally...")
-            table_data = self._load_pipe_tally_data(pipe_dir)
-            self._update_time_estimate(4, total_steps)
-
-            # Step 5: Process table data
-            self.progress_updated.emit(80, "Preparing table data...")
-            if table_data is not None:
-                processed_data = self._process_table_data(table_data)
-                self.table_data_ready.emit(processed_data)
-            else:
-                self.table_data_ready.emit(None)
-            self._update_time_estimate(5, total_steps)
-
-            # Step 6: Complete
-            self.progress_updated.emit(100, "Loading complete!")
-            self._update_time_estimate(6, total_steps)
-
-        except Exception as e:
-            self.error_occurred.emit(str(e))
-
-    def _update_time_estimate(self, current_step, total_steps):
-        elapsed = time.time() - self.start_time
-        if current_step > 0:
-            avg_time_per_step = elapsed / current_step
-            remaining_steps = total_steps - current_step
-            estimated_remaining = avg_time_per_step * remaining_steps
-            self.time_estimate.emit(estimated_remaining)
-
-    def _find_pipe_directory(self):
-        candidates = [
-            os.path.join(self.project_root, f"pipe_{self.pipe_idx}"),
-            os.path.join(self.project_root, f"pipe-{self.pipe_idx}"),
-            os.path.join(self.project_root, f"Pipe_{self.pipe_idx}"),
-        ]
-        return next((d for d in candidates if os.path.isdir(d)), None)
-
-    def _load_html_assets(self, pipe_dir):
-        if not pipe_dir:
-            return {}
-
-        def pick_one(patterns, exclude=None):
-            exclude = exclude or []
-            hits = []
-            for pat in patterns:
-                hits.extend(glob(os.path.join(pipe_dir, pat)))
-            hits = [h for h in hits if not any(ex in os.path.basename(h).lower() for ex in (exclude or []))]
-            exact = [h for h in hits if re.search(rf'{re.escape(str(self.pipe_idx))}\b', os.path.basename(h))]
-            return exact[0] if exact else (hits[0] if hits else None)
-
-        return {
-            'hmap': pick_one(["*heatmap*.html"], exclude=["raw", "box"]),
-            'hmap_r': pick_one(["*heatmap*raw*.html", "*raw*heatmap*.html"]),
-            'heatmap_box': pick_one(["*heatmap*box*.html", "*box*heatmap*.html"]),
-            'lplot': pick_one(["*lineplot*.html", "*line*.html"], exclude=["raw"]),
-            'lplot_r': pick_one(["*lineplot*raw*.html", "*line*raw*.html"]),
-            'pipe3d': pick_one(["*pipe3d*.html", "pipe3d*.html"]),
-            'prox_linechart': pick_one(["proximity_linechart*.html", "*proximity_linechart*.html"])
-        }
-
-    def _load_pipe_tally_data(self, pipe_dir):
-        if not pipe_dir:
-            return None
-
-        def pick_one(patterns, exclude=None):
-            exclude = exclude or []
-            hits = []
-            for pat in patterns:
-                hits.extend(glob(os.path.join(pipe_dir, pat)))
-            hits = [h for h in hits if not any(ex in os.path.basename(h).lower() for ex in (exclude or []))]
-            exact = [h for h in hits if re.search(rf'{re.escape(str(self.pipe_idx))}\b', os.path.basename(h))]
-            return exact[0] if exact else (hits[0] if hits else None)
-
-        pipe_tally_csv = pick_one([f"*PipeTally{self.pipe_idx}.csv", f"*PipeTally{self.pipe_idx}.xlsx"])
-        if pipe_tally_csv:
-            try:
-                if pipe_tally_csv.lower().endswith(".csv"):
-                    df = pd.read_csv(pipe_tally_csv)
-                else:
-                    df = pd.read_excel(pipe_tally_csv)
-                return df
-            except Exception:
-                pass
-
-        # Fallback to defects.csv
-        ds_csv = pick_one(["*defectS*.csv", "*defects*.csv"])
-        if ds_csv:
-            try:
-                return pd.read_csv(ds_csv)
-            except Exception:
-                pass
-
-        return None
-
-    def _process_table_data(self, df):
-        if df is None or df.empty:
-            return None
-
-        # Check if this is a PipeTally file (has Feature Type column) or defects.csv
-        if "Feature Type" in df.columns:
-            # Filter Metal Loss defects
-            original_count = len(df)
-            df = df[df["Feature Type"].astype(str).str.strip().str.lower() == "metal loss"]
-
-            if df.empty:
-                return None
-
-            # Round numeric columns
-            numeric_columns = [
-                'Depth %', 'Depth (mm)', 'ERF (ASME B31G)', 'Psafe (ASME B31G) Barg',
-                'Abs. Distance (m)', 'Distance to U/S GW(m)', 'Length (mm)',
-                'Width (mm)', 'WT (mm)', 'Pipe Length (mm)'
-            ]
-            for col in numeric_columns:
-                if col in df.columns:
-                    df[col] = pd.to_numeric(df[col], errors='coerce').round(3)
-
-        return df
-
-
-class ModernLoadingDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Loading Pipe Data")
-        self.setModal(True)
-        self.setFixedSize(400, 200)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-
-        # Styling
-        self.setStyleSheet("""
-            QDialog {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #f0f0f0, stop:1 #e0e0e0);
-                border: 2px solid #3498db;
-                border-radius: 10px;
-            }
-            QLabel {
-                color: #2c3e50;
-                font-family: 'Segoe UI', Arial;
-            }
-            QProgressBar {
-                border: 2px solid #bdc3c7;
-                border-radius: 8px;
-                background-color: #ecf0f1;
-                text-align: center;
-                font-weight: bold;
-                color: #2c3e50;
-            }
-            QProgressBar::chunk {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #3498db, stop:1 #2980b9);
-                border-radius: 6px;
-            }
-        """)
-
-        layout = QVBoxLayout(self)
-        layout.setSpacing(15)
-        layout.setContentsMargins(20, 20, 20, 20)
-
-        # Title
-        title = QLabel("🔄 Loading Pipe Data")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px;")
-        layout.addWidget(title)
-
-        # Progress bar
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setRange(0, 100)
-        self.progress_bar.setTextVisible(True)
-        layout.addWidget(self.progress_bar)
-
-        # Status label
-        self.status_label = QLabel("Initializing...")
-        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.status_label.setStyleSheet("font-size: 12px; color: #7f8c8d;")
-        layout.addWidget(self.status_label)
-
-        # Time info layout
-        time_layout = QHBoxLayout()
-        self.elapsed_label = QLabel("Elapsed: 0s")
-        self.remaining_label = QLabel("Remaining: --")
-        self.elapsed_label.setStyleSheet("font-size: 10px; color: #95a5a6;")
-        self.remaining_label.setStyleSheet("font-size: 10px; color: #95a5a6;")
-
-        time_layout.addWidget(self.elapsed_label)
-        time_layout.addStretch()
-        time_layout.addWidget(self.remaining_label)
-        layout.addLayout(time_layout)
-
-        # Timer for elapsed time
-        self.start_time = time.time()
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_elapsed_time)
-        self.timer.start(100)  # Update every 100ms
-
-    def update_progress(self, value, message):
-        self.progress_bar.setValue(value)
-        self.status_label.setText(message)
-
-    def update_time_estimate(self, remaining_seconds):
-        if remaining_seconds and remaining_seconds > 0:
-            self.remaining_label.setText(f"Remaining: {remaining_seconds:.1f}s")
-        else:
-            self.remaining_label.setText("Estimating…")
-
-
-    def update_elapsed_time(self):
-        elapsed = time.time() - self.start_time
-        self.elapsed_label.setText(f"Elapsed: {elapsed:.1f}s")
-
-    def closeEvent(self, event):
-        self.timer.stop()
-        super().closeEvent(event)
 
 
 class MidBarHandle(QSplitterHandle):
@@ -555,6 +182,7 @@ class MainApp(QApplication):
         self.close_splash_screen()
         self.show_main_window()
 
+
 class MyMainWindow(QMainWindow):
     REQUIRED_TALLY_COLS = [
         r"Abs. Distance (m)", r"Depth %", r"Type",
@@ -587,23 +215,13 @@ class MyMainWindow(QMainWindow):
         self.heatmap_box = None
         self._hscroll_ready = False  # gate to avoid big first jump
         self._hscroll_ready_main = False  # gate for main web view scrollbar
-        # --- Splitter limits (pixels) ---
-        self._min_top_h     = 220   # top pane (charts) must be at least this tall
-        self._min_bottom_h  = 250   # bottom pane (tables/proximity) must be at least this tall
-        self._max_top_h     = None  # or set e.g. 900
-        self._max_bottom_h  = None  # or set e.g. 900
-        self._right_margin_px = 300
-        self._hscroll_ready_table = False  # gate for table scrollbar... # guard state
+        self._defect_table_ready = False  # gate for defect table scrollbar
+        self._data_table_ready = False  # gate for data table scrollbar
+
+        # guard state
         self._reverting_tab = False
         self._last_allowed_tab_index = 0
         self._ui_ready = False  # set true after first layout/show
-
-        # ✅ Initialize "No Defects Found" label
-        self._no_defects_label = None
-
-        # Threading setup
-        self.loader_worker = None
-        self.loading_dialog = None
 
         self.ui.comboBoxPipe.setEditable(True)
         self.ui.comboBoxPipe.clear()
@@ -621,7 +239,6 @@ class MyMainWindow(QMainWindow):
 
         # after other attrs like self.prox_linechart = None
         self._scroll_scale = 3  # try 5–10; higher => gentler/longer scroll
-        setup_table_scroll(self.ui.tableView)
 
         # Digsheet button (ABS-based)
         self.btnDigsheetAbs = QPushButton("Digsheet")
@@ -642,25 +259,6 @@ class MyMainWindow(QMainWindow):
             self.statusBar().addPermanentWidget(self.btnDigsheetAbs)
         self.btnDigsheetAbs.clicked.connect(self.open_digsheet_by_abs_from_selection)
 
-        # Add Load button next to comboBoxPipe
-        self.btnLoadPipe = QPushButton("Load")
-        self.btnLoadPipe.setEnabled(False)
-        _parent = self.ui.comboBoxPipe.parentWidget()
-        _lay = _parent.layout()
-        if _lay is not None:
-            pos = _lay.indexOf(self.ui.comboBoxPipe)
-            if pos != -1:
-                _lay.insertWidget(pos + 1, self.btnLoadPipe)
-            else:
-                _lay.addWidget(self.btnLoadPipe)
-        else:
-            self.btnLoadPipe.setParent(_parent)
-
-        # connect the load button
-        self.btnLoadPipe.clicked.connect(self.load_selected_pipe)
-
-        self.ui.comboBoxPipe.currentIndexChanged.connect(self.update_load_button_state)
-
         # Global event filter for disabled-button popups + tabbar clicks
         QtWidgets.QApplication.instance().installEventFilter(self)
 
@@ -674,12 +272,13 @@ class MyMainWindow(QMainWindow):
         self.mid_tabbar.installEventFilter(self)  # intercept clicks on the mid tab bar
         self.ui.tabWidgetM.hide()
         self._build_splitter()
+        from PyQt6.QtWidgets import QAbstractItemView
 
         # --- hook table signals so the button can update when user selects a row ---
         tw = self.ui.tableWidgetDefect
         tw.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         tw.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        setup_table_scroll(tw)
+
         # update the button state whenever selection changes or a cell is clicked
         try:
             tw.itemSelectionChanged.disconnect()
@@ -692,13 +291,6 @@ class MyMainWindow(QMainWindow):
         except Exception:
             pass
         tw.cellClicked.connect(lambda *_: self.update_digsheet_button_state())
-
-        # ✅ Setup "No Defects Found" label after table is configured
-        self._setup_no_defects_label()
-        self._setup_create_project_label()
-        self._show_create_project_message()
-
-        self._setup_table_styling()
 
         self.canvas = PlotWindow(self, width=5, height=4, dpi=100)  # noqa
 
@@ -715,8 +307,7 @@ class MyMainWindow(QMainWindow):
         self.setup_actions()
         self._connect_guarded_graph_controls()
 
-        #self.ui.comboBoxPipe.currentIndexChanged.connect(self.on_combo_index_changed)
-
+        self.ui.comboBoxPipe.currentIndexChanged.connect(self.on_combo_index_changed)
         # replace direct tab switcher with guarded handler
         try:
             self.ui.tabWidgetM.currentChanged.disconnect()
@@ -743,148 +334,15 @@ class MyMainWindow(QMainWindow):
 
         self._show_watermark()
 
-    def _setup_no_defects_label(self):
-        """Create and setup the 'No Defects Found' label with absolute positioning"""
-        # Create a container widget to control sizing
-        self._no_defects_container = QWidget()
-        self._no_defects_container.setMaximumSize(500, 200)
-        self._no_defects_container.setMinimumSize(400, 150)
-
-        # Set size policy to prevent expansion
-        self._no_defects_container.setSizePolicy(
-            QSizePolicy.Policy.Fixed,
-            QSizePolicy.Policy.Fixed
-        )
-
-        # Create the layout for the container
-        container_layout = QVBoxLayout(self._no_defects_container)
-        container_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Create the actual label
-        self._no_defects_label = QLabel("No Defects Found in this Pipe")
-        self._no_defects_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._no_defects_label.setStyleSheet("""
-            QLabel {
-                font-size: 16pt;
-                color: #666666;
-                font-weight: bold;
-                background-color: #f8f8f8;
-                border: 2px dashed #cccccc;
-                border-radius: 10px;
-                padding: 20px;
-                margin: 10px;
-            }
-        """)
-
-        container_layout.addWidget(self._no_defects_label)
-        self._no_defects_container.hide()
-
-        # Add to parent WITHOUT layout management
-        table_parent = self.ui.tableWidgetDefect.parentWidget()
-        if table_parent:
-            self._no_defects_container.setParent(table_parent)
-            # Position at specific coordinates (x=100, y=50)
-            self._no_defects_container.move(500, 50)  # ← TWEAK THESE VALUES
-
-    def _setup_table_styling(self):
-        """Setup bold headers and row numbers for tables"""
-        # Style for tableView (pandas model)
-        if hasattr(self.ui, 'tableView'):
-            # Set header style
-            self.ui.tableView.horizontalHeader().setStyleSheet("""
-                QHeaderView::section {
-                    font-weight: bold;
-                    background-color: #f0f0f0;
-                    border: 1px solid #d0d0d0;
-                    padding: 5px;
-                    text-align: center;
-                }
-            """)
-            self.ui.tableView.verticalHeader().setStyleSheet("""
-                QHeaderView::section {
-                    font-weight: bold;
-                    background-color: #f0f0f0;
-                    border: 1px solid #d0d0d0;
-                    padding: 5px;
-                    text-align: center;
-                    min-width: 40px;
-                }
-            """)
-
-        # Style for tableWidgetDefect
-        if hasattr(self.ui, 'tableWidgetDefect'):
-            self.ui.tableWidgetDefect.horizontalHeader().setStyleSheet("""
-                QHeaderView::section {
-                    font-weight: bold;
-                    background-color: #f0f0f0;
-                    border: 1px solid #d0d0d0;
-                    padding: 5px;
-                    text-align: center;
-                }
-            """)
-            self.ui.tableWidgetDefect.verticalHeader().setStyleSheet("""
-                QHeaderView::section {
-                    font-weight: bold;
-                    background-color: #f0f0f0;
-                    border: 1px solid #d0d0d0;
-                    padding: 5px;
-                    text-align: center;
-                    min-width: 40px;
-                }
-            """)
-
-
-    # ✅ Helper methods for showing/hiding message vs table
-    def _show_no_defects_message(self):
-        try:
-            if hasattr(self, '_no_defects_container'):
-                self._no_defects_container.show()
-            if hasattr(self.ui, 'tableWidgetDefect'):
-                self.ui.tableWidgetDefect.hide()
-            if hasattr(self, 'table_scrollbar'):
-                self.table_scrollbar.hide()
-        except Exception as e:
-            print(f"Error showing no defects message: {e}")
-
-    def _show_defects_table(self):
-        try:
-            if hasattr(self, '_no_defects_container') and self._no_defects_container:
-                self._no_defects_container.hide()
-            if hasattr(self, '_create_proj_container') and self._create_proj_container:
-                self._create_proj_container.hide()
-
-            if hasattr(self.ui, 'tableWidgetDefect'):
-                self.ui.tableWidgetDefect.show()
-            if hasattr(self, 'table_scrollbar'):
-                self.table_scrollbar.show()
-
-            print("📊 Displaying defects table")
-        except Exception as e:
-            print(f"Error showing defects table: {e}")
-
     # ---------- action enable/disable toggler ----------
-    # def _update_project_actions(self):
-    #     a = self.ui
-    #     act_create = getattr(a, "action_Create_Proj", None)
-    #     act_close  = getattr(a, "action_Close_Proj", None)
-    #     if isinstance(act_create, QAction):
-    #         act_create.setEnabled(not self.project_is_open)
-    #     if isinstance(act_close, QAction):
-    #         act_close.setEnabled(self.project_is_open)
-
     def _update_project_actions(self):
         a = self.ui
         act_create = getattr(a, "action_Create_Proj", None)
-        act_close = getattr(a, "action_Close_Proj", None)
-        act_graphs = getattr(a, "action_graphs", None)
-
+        act_close  = getattr(a, "action_Close_Proj", None)
         if isinstance(act_create, QAction):
             act_create.setEnabled(not self.project_is_open)
         if isinstance(act_close, QAction):
             act_close.setEnabled(self.project_is_open)
-        if isinstance(act_graphs, QAction):
-            act_graphs.setEnabled(self.project_is_open)
-
     # ---------------------------------------------------
 
     # ---------- guarded connections for heatmap/line/3D ----------
@@ -937,184 +395,95 @@ class MyMainWindow(QMainWindow):
                 self.tab_switcher2()
                 return
         QMessageBox.information(self, "Tab not found", f"Could not locate tab: {tab_name}")
-
-    def _make_topbar_row(
-            self,
-            object_name: str,
-            parent_vbox: QVBoxLayout,
-            bar_h: int = 14,
-            *,
-            left_px: int | None = None,     # ← fixed left spacer (px). None = expanding
-            right_px: int | None = None,    # ← fixed right spacer (px). None = expanding
-            pad_left: int = 8,              # tiny inner padding (optional)
-            pad_right: int = 8
-    ) -> QScrollBar:
-        row_frame = QFrame()
-        row_frame.setObjectName(object_name + "_container")
-        row_frame.setFixedHeight(bar_h)
-        row_frame.setStyleSheet("QFrame{margin:0;padding:0;border:0;background:transparent;}")
-
-        row = QHBoxLayout(row_frame)
-        row.setContentsMargins(pad_left, 0, pad_right, 0)
-        row.setSpacing(0)
-
-        # Left spacer
-        if left_px is None:
-            left_sp = QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        else:
-            left_sp = QSpacerItem(left_px, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
-
-        # Right spacer
-        if right_px is None:
-            right_sp = QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        else:
-            right_sp = QSpacerItem(right_px, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
-
-        bar = QScrollBar(Qt.Orientation.Horizontal)
-        bar.setObjectName(object_name)
-        bar.setFixedHeight(bar_h)
-        bar.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-
-        row.addItem(left_sp)
-        row.addWidget(bar)
-        row.addItem(right_sp)
-
-        parent_vbox.addWidget(row_frame)
-        return bar
+    # ---------------------------------------------------
 
     def _build_splitter(self):
-        # Create main web view with scrollbar
+        # Create main web view WITHOUT scrollbar at top (moved to just above splitter)
         self.main_web_page = QWidget()
         main_web_layout = QVBoxLayout(self.main_web_page)
         main_web_layout.setContentsMargins(0, 0, 0, 0)
         main_web_layout.setSpacing(0)
 
-        # Main chart pane (heatmap / 3D / line main)
+        # Create scroll area for main web view
         self.main_web_scroll_area = QScrollArea()
         self.main_web_scroll_area.setWidgetResizable(False)
         self.main_web_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.main_web_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
 
         self.web_view = QWebEngineView()
-        self.web_view.setFixedSize(2500, 600)
-        self.main_web_scroll_area.setWidget(self.web_view)
+        self.web_view.setFixedSize(2500, 600)  # Increased size for better scrolling
 
-        # 1) scrollable view
+        self.main_web_scroll_area.setWidget(self.web_view)
         main_web_layout.addWidget(self.main_web_scroll_area)
 
-        # 2) tight top bar (MAIN)
-        self.main_top_scrollbar = self._make_topbar_row("mainTopBar", main_web_layout, bar_h=10, left_px=1300, right_px=570)
-
-        # Setup scrollbar sync for main web view
-        main_inner_hbar = self.main_web_scroll_area.horizontalScrollBar()
-        VIRTUAL_MAX = 2000
-
-        def _eff_main_bounds():
-            imin, imax = main_inner_hbar.minimum(), main_inner_hbar.maximum()
-            eff_max = max(imin, imax - self._right_margin_px)
-            return imin, eff_max
-
-        def _map_main_top_to_inner(v_top: int) -> int:
-            imin, eff_max = _eff_main_bounds()
-            rng = max(1, eff_max - imin)
-            return int(round(imin + (v_top / VIRTUAL_MAX) * rng))
-
-        def _map_main_inner_to_top(v_inner: int) -> int:
-            imin, eff_max = _eff_main_bounds()
-            rng = max(1, eff_max - imin)
-            return int(round(((v_inner - imin) / rng) * VIRTUAL_MAX))
-
-        def _apply_main_fixed_range():
-            self.main_top_scrollbar.blockSignals(True)
-            self.main_top_scrollbar.setRange(0, VIRTUAL_MAX)
-            self.main_top_scrollbar.setPageStep(100)
-            self.main_top_scrollbar.setSingleStep(10)
-            self.main_top_scrollbar.setValue(_map_main_inner_to_top(main_inner_hbar.value()))
-            self.main_top_scrollbar.blockSignals(False)
-
-        def _on_main_top_changed(v):
-            if not self._hscroll_ready_main:
-                return
-            main_inner_hbar.setValue(_map_main_top_to_inner(v))
-
-        def _on_main_inner_changed(v):
-            if not self._hscroll_ready_main:
-                return
-            self.main_top_scrollbar.blockSignals(True)
-            self.main_top_scrollbar.setValue(_map_main_inner_to_top(v))
-            self.main_top_scrollbar.blockSignals(False)
-
-        self.main_top_scrollbar.valueChanged.connect(_on_main_top_changed)
-        main_inner_hbar.valueChanged.connect(_on_main_inner_changed)
-
-        def _on_main_inner_range_changed(_min, _max):
-            if _max > _min:
-                self._hscroll_ready_main = True
-                _apply_main_fixed_range()
-
-        main_inner_hbar.rangeChanged.connect(_on_main_inner_range_changed)
-
-        # Bottom stack setup
+        # Bottom stack setup with scrollbars for tables
         self.bottom_stack = QStackedWidget()
-        self.bottom_stack.setContentsMargins(0, 0, 0, 0)
-        self.bottom_stack.currentChanged.connect(lambda idx: self._arm_topbar() if idx == 2 else None)
+        self.bottom_stack.currentChanged.connect(lambda idx: self._arm_topbar() if idx == 2 else (self._arm_defect_table_bar() if idx == 0 else self._arm_data_table_bar()))
 
-        # ---------------------------
-        # Defect table page (bottom)
-        # ---------------------------
+        # Defect table page with horizontal scrollbar
         self.defect_table_page = QWidget()
-        defect_layout = QVBoxLayout(self.defect_table_page)
-        defect_layout.setContentsMargins(0, 0, 0, 0)
-        defect_layout.setSpacing(0)
-
-        # Re-parent table into this page
+        dl = QVBoxLayout(self.defect_table_page)
+        dl.setContentsMargins(0, 0, 0, 0)
+        dl.setSpacing(0)
+        
+        # Add horizontal scrollbar for defect table
+        self.defect_table_scrollbar = QScrollBar(Qt.Orientation.Horizontal)
+        self.defect_table_scrollbar.setMaximumHeight(20)
+        dl.addWidget(self.defect_table_scrollbar)
+        
+        # Create scroll area for defect table
+        self.defect_table_scroll_area = QScrollArea()
+        self.defect_table_scroll_area.setWidgetResizable(False)
+        self.defect_table_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.defect_table_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        
         old_parent_def = self.ui.tableWidgetDefect.parentWidget()
         if old_parent_def and old_parent_def.layout():
-            try:
-                old_parent_def.layout().removeWidget(self.ui.tableWidgetDefect)
-            except Exception:
-                pass
-        self.ui.tableWidgetDefect.setParent(self.defect_table_page)
-        self.ui.tableWidgetDefect.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            try: old_parent_def.layout().removeWidget(self.ui.tableWidgetDefect)
+            except Exception: pass
+        self.ui.tableWidgetDefect.setParent(self.defect_table_scroll_area)
+        self.ui.tableWidgetDefect.setMinimumSize(1200, 400)  # Set minimum size for scrolling
+        
+        self.defect_table_scroll_area.setWidget(self.ui.tableWidgetDefect)
+        dl.addWidget(self.defect_table_scroll_area)
 
-        # Tight top bar (TABLE)
-        self.table_scrollbar = self._make_topbar_row("tableTopBar", defect_layout, bar_h=10, left_px=1300, right_px=570)
-        self.table_scrollbar.hide()
-        # Table directly under the bar
-        defect_layout.addWidget(self.ui.tableWidgetDefect)
-
-        # Sync custom table bar with internal table hbar
-        self._setup_table_scrollbar_sync()
-
-        # ---------------------------
-        # Data table page (model view)
-        # ---------------------------
+        # Data table page with horizontal scrollbar  
         self.data_table_page = QWidget()
         tl = QVBoxLayout(self.data_table_page)
         tl.setContentsMargins(0, 0, 0, 0)
         tl.setSpacing(0)
+        
+        # Add horizontal scrollbar for data table
+        self.data_table_scrollbar = QScrollBar(Qt.Orientation.Horizontal)
+        self.data_table_scrollbar.setMaximumHeight(20)
+        tl.addWidget(self.data_table_scrollbar)
+        
+        # Create scroll area for data table
+        self.data_table_scroll_area = QScrollArea()
+        self.data_table_scroll_area.setWidgetResizable(False)
+        self.data_table_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.data_table_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        
         old_parent_data = self.ui.tableView.parentWidget()
         if old_parent_data and old_parent_data.layout():
-            try:
-                old_parent_data.layout().removeWidget(self.ui.tableView)
-            except Exception:
-                pass
-        self.ui.tableView.setParent(None)
-        self.ui.tableView.setVisible(True)
-        tl.addWidget(self.ui.tableView)
+            try: old_parent_data.layout().removeWidget(self.ui.tableView)
+            except Exception: pass
+        self.ui.tableView.setParent(self.data_table_scroll_area)
+        self.ui.tableView.setMinimumSize(1200, 400)  # Set minimum size for scrolling
+        
+        self.data_table_scroll_area.setWidget(self.ui.tableView)
+        tl.addWidget(self.data_table_scroll_area)
 
-        # ---------------------------
-        # Proximity line chart page (bottom)
-        # ---------------------------
+        # Proximity chart page (keep as is - you said it's perfect)
         self.web_page = QWidget()
         web_layout = QVBoxLayout(self.web_page)
         web_layout.setContentsMargins(0, 0, 0, 0)
         web_layout.setSpacing(0)
 
-        # Tight top bar (PROX)
-        self.top_scrollbar = self._make_topbar_row("proxTopBar", web_layout, bar_h=10, left_px=1300, right_px=570)
+        self.top_scrollbar = QScrollBar(Qt.Orientation.Horizontal)
+        self.top_scrollbar.setMaximumHeight(20)
+        web_layout.addWidget(self.top_scrollbar)
 
-        # Scroll area without bottom horizontal bar
         self.web_scroll_area = QScrollArea()
         self.web_scroll_area.setWidgetResizable(False)
         self.web_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -1122,29 +491,26 @@ class MyMainWindow(QMainWindow):
 
         self.web_view2 = QWebEngineView()
         self.web_view2.setFixedSize(2500, 600)
-        self.web_scroll_area.setWidget(self.web_view2)
 
+        self.web_scroll_area.setWidget(self.web_view2)
         web_layout.addWidget(self.web_scroll_area)
 
-        # Apply scrollbar theme to bars/areas
-        self._apply_scrollbar_theme("#6AA2FF")
-
-        # Sync top scrollbar with scroll area for proximity line chart
+        # Setup scrollbar syncing for tables
+        self._setup_defect_table_scrollbar_sync()
+        self._setup_data_table_scrollbar_sync()
+        
+        # Keep existing proximity chart scrollbar sync (unchanged)
         inner_hbar = self.web_scroll_area.horizontalScrollBar()
-
-        def _eff_prox_bounds():
-            imin, imax = inner_hbar.minimum(), inner_hbar.maximum()
-            eff_max = max(imin, imax - self._right_margin_px)
-            return imin, eff_max
+        VIRTUAL_MAX = 2000
 
         def _map_top_to_inner(v_top: int) -> int:
-            imin, eff_max = _eff_prox_bounds()
-            rng = max(1, eff_max - imin)
+            imin, imax = inner_hbar.minimum(), inner_hbar.maximum()
+            rng = max(1, imax - imin)
             return int(round(imin + (v_top / VIRTUAL_MAX) * rng))
 
         def _map_inner_to_top(v_inner: int) -> int:
-            imin, eff_max = _eff_prox_bounds()
-            rng = max(1, eff_max - imin)
+            imin, imax = inner_hbar.minimum(), inner_hbar.maximum()
+            rng = max(1, imax - imin)
             return int(round(((v_inner - imin) / rng) * VIRTUAL_MAX))
 
         def _apply_fixed_range():
@@ -1176,17 +542,26 @@ class MyMainWindow(QMainWindow):
                 _apply_fixed_range()
 
         inner_hbar.rangeChanged.connect(_on_inner_range_changed)
-
-        # nudge once to ensure a rangeChanged after layout
         QTimer.singleShot(0, lambda: inner_hbar.setValue(inner_hbar.value()))
-        QTimer.singleShot(0, lambda: main_inner_hbar.setValue(main_inner_hbar.value()))
 
-        # Assemble bottom pages
         self.bottom_stack.addWidget(self.defect_table_page)
         self.bottom_stack.addWidget(self.data_table_page)
         self.bottom_stack.addWidget(self.web_page)
 
-        # Splitter with mid tabbar
+        # Create container for main content scrollbar + splitter
+        main_container = QWidget()
+        main_container_layout = QVBoxLayout(main_container)
+        main_container_layout.setContentsMargins(0, 0, 0, 0)
+        main_container_layout.setSpacing(0)
+        
+        # Add the main top scrollbar just above the splitter
+        self.main_top_scrollbar = QScrollBar(Qt.Orientation.Horizontal)
+        self.main_top_scrollbar.setMaximumHeight(20)
+        main_container_layout.addWidget(self.main_top_scrollbar)
+        
+        # Setup main scrollbar sync for the main web view
+        self._setup_main_scrollbar_sync()
+
         self.splitter = MidBarSplitter(self, tabbar=self.mid_tabbar)
         self.splitter.addWidget(self.main_web_page)
         self.splitter.addWidget(self.bottom_stack)
@@ -1200,149 +575,181 @@ class MyMainWindow(QMainWindow):
             QTabBar::tab { color: #d8d8d8; padding: 6px 14px; margin: 0px; border: 0; background: transparent; }
             QTabBar::tab:selected { color: white; font-weight: 600; }
         """)
-        self.ui.verticalLayoutGraph.addWidget(self.splitter)
+        
+        main_container_layout.addWidget(self.splitter)
+        
+        # Apply scrollbar theme to all scrollbars
+        self._apply_scrollbar_theme("#6AA2FF")
+        
+        self.ui.verticalLayoutGraph.addWidget(main_container)
+        
         QTimer.singleShot(0, lambda: self.splitter.setSizes([self.height() // 2, self.height() // 2]))
 
-        def _constrain_splitter_sizes():
-            sizes = self.splitter.sizes()
-            if len(sizes) < 2:
-                return
-            total = sum(sizes)
-            top, bot = sizes[0], sizes[1]
-
-            min_top  = int(self._min_top_h or 0)
-            min_bot  = int(self._min_bottom_h or 0)
-
-            max_top_by_bot_min = max(0, total - min_bot)
-            hard_max_top = self._max_top_h if self._max_top_h is not None else max_top_by_bot_min
-            hard_max_top = min(hard_max_top, max_top_by_bot_min)
-
-            top = max(min_top, min(top, hard_max_top))
-            bot = total - top
-            if self._max_bottom_h is not None:
-                bot = min(bot, self._max_bottom_h)
-                top = total - bot
-
-            if bot < min_bot:
-                bot = min_bot
-                top = total - bot
-                top = max(min_top, top)
-
-            if [top, bot] != sizes[:2]:
-                self.splitter.blockSignals(True)
-                self.splitter.setSizes([top, bot])
-                self.splitter.blockSignals(False)
-
         def _on_splitter_moved(*_):
-            _constrain_splitter_sizes()
             if self._hscroll_ready:
                 _apply_fixed_range()
             if self._hscroll_ready_main:
-                _apply_main_fixed_range()
-            QTimer.singleShot(10, self._refresh_table_scrollbars)
+                self._apply_main_fixed_range()
+            if hasattr(self, '_defect_table_ready') and self._defect_table_ready:
+                self._apply_defect_table_fixed_range()
+            if hasattr(self, '_data_table_ready') and self._data_table_ready:
+                self._apply_data_table_fixed_range()
 
         self.splitter.splitterMoved.connect(_on_splitter_moved)
 
-    def _setup_table_scrollbar_sync(self):
-        """Setup synchronization between custom table scrollbar and table's internal scrollbar"""
-        table_inner_hbar = self.ui.tableWidgetDefect.horizontalScrollBar()
+    def _setup_main_scrollbar_sync(self):
+        """Setup scrollbar sync for main web view"""
+        main_inner_hbar = self.main_web_scroll_area.horizontalScrollBar()
         VIRTUAL_MAX = 2000
+        self._hscroll_ready_main = False
 
-        def _eff_table_bounds():
-            imin, imax = table_inner_hbar.minimum(), table_inner_hbar.maximum()
-            eff_max = max(imin, imax - 50)  # Small right margin
-            return imin, eff_max
-
-        def _map_table_top_to_inner(v_top: int) -> int:
-            imin, eff_max = _eff_table_bounds()
-            rng = max(1, eff_max - imin)
+        def _map_main_top_to_inner(v_top: int) -> int:
+            imin, imax = main_inner_hbar.minimum(), main_inner_hbar.maximum()
+            rng = max(1, imax - imin)
             return int(round(imin + (v_top / VIRTUAL_MAX) * rng))
 
-        def _map_table_inner_to_top(v_inner: int) -> int:
-            imin, eff_max = _eff_table_bounds()
-            rng = max(1, eff_max - imin)
+        def _map_main_inner_to_top(v_inner: int) -> int:
+            imin, imax = main_inner_hbar.minimum(), main_inner_hbar.maximum()
+            rng = max(1, imax - imin)
             return int(round(((v_inner - imin) / rng) * VIRTUAL_MAX))
 
-        def _apply_table_fixed_range():
-            self.table_scrollbar.blockSignals(True)
-            self.table_scrollbar.setRange(0, VIRTUAL_MAX)
-            self.table_scrollbar.setPageStep(100)
-            self.table_scrollbar.setSingleStep(10)
-            self.table_scrollbar.setValue(_map_table_inner_to_top(table_inner_hbar.value()))
-            self.table_scrollbar.blockSignals(False)
+        def _apply_main_fixed_range():
+            self.main_top_scrollbar.blockSignals(True)
+            self.main_top_scrollbar.setRange(0, VIRTUAL_MAX)
+            self.main_top_scrollbar.setPageStep(100)
+            self.main_top_scrollbar.setSingleStep(10)
+            self.main_top_scrollbar.setValue(_map_main_inner_to_top(main_inner_hbar.value()))
+            self.main_top_scrollbar.blockSignals(False)
 
-        def _on_table_top_changed(v):
-            if not self._hscroll_ready_table:
+        def _on_main_top_changed(v):
+            if not self._hscroll_ready_main:
                 return
-            table_inner_hbar.setValue(_map_table_top_to_inner(v))
+            main_inner_hbar.setValue(_map_main_top_to_inner(v))
 
-        def _on_table_inner_changed(v):
-            if not self._hscroll_ready_table:
+        def _on_main_inner_changed(v):
+            if not self._hscroll_ready_main:
                 return
-            self.table_scrollbar.blockSignals(True)
-            self.table_scrollbar.setValue(_map_table_inner_to_top(v))
-            self.table_scrollbar.blockSignals(False)
+            self.main_top_scrollbar.blockSignals(True)
+            self.main_top_scrollbar.setValue(_map_main_inner_to_top(v))
+            self.main_top_scrollbar.blockSignals(False)
 
-        # Connect the signals
-        self.table_scrollbar.valueChanged.connect(_on_table_top_changed)
-        table_inner_hbar.valueChanged.connect(_on_table_inner_changed)
+        self.main_top_scrollbar.valueChanged.connect(_on_main_top_changed)
+        main_inner_hbar.valueChanged.connect(_on_main_inner_changed)
 
-        def _on_table_inner_range_changed(_min, _max):
+        def _on_main_inner_range_changed(_min, _max):
             if _max > _min:
-                self._hscroll_ready_table = True
-                _apply_table_fixed_range()
+                self._hscroll_ready_main = True
+                _apply_main_fixed_range()
 
-        table_inner_hbar.rangeChanged.connect(_on_table_inner_range_changed)
+        main_inner_hbar.rangeChanged.connect(_on_main_inner_range_changed)
+        self._apply_main_fixed_range = _apply_main_fixed_range
+        QTimer.singleShot(0, lambda: main_inner_hbar.setValue(main_inner_hbar.value()))
 
-        # Initial setup nudge
-        QTimer.singleShot(100, lambda: table_inner_hbar.setValue(table_inner_hbar.value()))
+    def _setup_defect_table_scrollbar_sync(self):
+        """Setup scrollbar sync for defect table"""
+        defect_inner_hbar = self.defect_table_scroll_area.horizontalScrollBar()
+        VIRTUAL_MAX = 2000
+        self._defect_table_ready = False
 
-    def _refresh_table_scrollbars(self):
-        """Comprehensive table scrollbar refresh after container resize"""
-        try:
-            # For tableWidgetDefect (QTableWidget)
-            if hasattr(self.ui, 'tableWidgetDefect'):
-                tw = self.ui.tableWidgetDefect
-                # Force scroll mode and policy
-                tw.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
-                tw.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        def _map_defect_top_to_inner(v_top: int) -> int:
+            imin, imax = defect_inner_hbar.minimum(), defect_inner_hbar.maximum()
+            rng = max(1, imax - imin)
+            return int(round(imin + (v_top / VIRTUAL_MAX) * rng))
 
-                # Set scroll speed
-                tw.verticalScrollBar().setSingleStep(2)
+        def _map_defect_inner_to_top(v_inner: int) -> int:
+            imin, imax = defect_inner_hbar.minimum(), defect_inner_hbar.maximum()
+            rng = max(1, imax - imin)
+            return int(round(((v_inner - imin) / rng) * VIRTUAL_MAX))
 
-                # Force geometry updates
-                tw.viewport().update()
-                tw.updateGeometry()
-                tw.resizeRowsToContents()
+        def _apply_defect_table_fixed_range():
+            self.defect_table_scrollbar.blockSignals(True)
+            self.defect_table_scrollbar.setRange(0, VIRTUAL_MAX)
+            self.defect_table_scrollbar.setPageStep(100)
+            self.defect_table_scrollbar.setSingleStep(10)
+            self.defect_table_scrollbar.setValue(_map_defect_inner_to_top(defect_inner_hbar.value()))
+            self.defect_table_scrollbar.blockSignals(False)
 
-                # Force scrollbar range recalculation
-                vsb = tw.verticalScrollBar()
-                vsb.update()
-                # Trigger a fake scroll to force range update
-                current_val = vsb.value()
-                vsb.setValue(min(current_val + 1, vsb.maximum()))
-                vsb.setValue(current_val)
+        def _on_defect_top_changed(v):
+            if not self._defect_table_ready:
+                return
+            defect_inner_hbar.setValue(_map_defect_top_to_inner(v))
 
-            # For tableView (QTableView with model)
-            if hasattr(self.ui, 'tableView'):
-                tv = self.ui.tableView
-                tv.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
-                tv.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        def _on_defect_inner_changed(v):
+            if not self._defect_table_ready:
+                return
+            self.defect_table_scrollbar.blockSignals(True)
+            self.defect_table_scrollbar.setValue(_map_defect_inner_to_top(v))
+            self.defect_table_scrollbar.blockSignals(False)
 
-                # Set scroll speed
-                tv.verticalScrollBar().setSingleStep(2)
+        self.defect_table_scrollbar.valueChanged.connect(_on_defect_top_changed)
+        defect_inner_hbar.valueChanged.connect(_on_defect_inner_changed)
 
-                tv.viewport().update()
-                tv.updateGeometry()
+        def _on_defect_inner_range_changed(_min, _max):
+            if _max > _min:
+                self._defect_table_ready = True
+                _apply_defect_table_fixed_range()
 
-                vsb = tv.verticalScrollBar()
-                vsb.update()
-                current_val = vsb.value()
-                vsb.setValue(min(current_val + 1, vsb.maximum()))
-                vsb.setValue(current_val)
+        defect_inner_hbar.rangeChanged.connect(_on_defect_inner_range_changed)
+        self._apply_defect_table_fixed_range = _apply_defect_table_fixed_range
 
-        except Exception as e:
-            print(f"Error refreshing table scrollbars: {e}")
+    def _setup_data_table_scrollbar_sync(self):
+        """Setup scrollbar sync for data table"""
+        data_inner_hbar = self.data_table_scroll_area.horizontalScrollBar()
+        VIRTUAL_MAX = 2000
+        self._data_table_ready = False
+
+        def _map_data_top_to_inner(v_top: int) -> int:
+            imin, imax = data_inner_hbar.minimum(), data_inner_hbar.maximum()
+            rng = max(1, imax - imin)
+            return int(round(imin + (v_top / VIRTUAL_MAX) * rng))
+
+        def _map_data_inner_to_top(v_inner: int) -> int:
+            imin, imax = data_inner_hbar.minimum(), data_inner_hbar.maximum()
+            rng = max(1, imax - imin)
+            return int(round(((v_inner - imin) / rng) * VIRTUAL_MAX))
+
+        def _apply_data_table_fixed_range():
+            self.data_table_scrollbar.blockSignals(True)
+            self.data_table_scrollbar.setRange(0, VIRTUAL_MAX)
+            self.data_table_scrollbar.setPageStep(100)
+            self.data_table_scrollbar.setSingleStep(10)
+            self.data_table_scrollbar.setValue(_map_data_inner_to_top(data_inner_hbar.value()))
+            self.data_table_scrollbar.blockSignals(False)
+
+        def _on_data_top_changed(v):
+            if not self._data_table_ready:
+                return
+            data_inner_hbar.setValue(_map_data_top_to_inner(v))
+
+        def _on_data_inner_changed(v):
+            if not self._data_table_ready:
+                return
+            self.data_table_scrollbar.blockSignals(True)
+            self.data_table_scrollbar.setValue(_map_data_inner_to_top(v))
+            self.data_table_scrollbar.blockSignals(False)
+
+        self.data_table_scrollbar.valueChanged.connect(_on_data_top_changed)
+        data_inner_hbar.valueChanged.connect(_on_data_inner_changed)
+
+        def _on_data_inner_range_changed(_min, _max):
+            if _max > _min:
+                self._data_table_ready = True
+                _apply_data_table_fixed_range()
+
+        data_inner_hbar.rangeChanged.connect(_on_data_inner_range_changed)
+        self._apply_data_table_fixed_range = _apply_data_table_fixed_range
+
+    def _arm_defect_table_bar(self):
+        """Arm the defect table scrollbar"""
+        if hasattr(self, '_defect_table_ready') and hasattr(self, '_apply_defect_table_fixed_range'):
+            self._defect_table_ready = True
+            self._apply_defect_table_fixed_range()
+
+    def _arm_data_table_bar(self):
+        """Arm the data table scrollbar"""
+        if hasattr(self, '_data_table_ready') and hasattr(self, '_apply_data_table_fixed_range'):
+            self._data_table_ready = True
+            self._apply_data_table_fixed_range()
 
     def _show_watermark(self):
         try:
@@ -1456,7 +863,6 @@ class MyMainWindow(QMainWindow):
 
             if self.pkl_files:
                 self.project_is_open = True
-                self._hide_create_project_message()
                 self._toggle_plot_ui(True)
                 self.load_selected_by_index(0)
             else:
@@ -1472,151 +878,120 @@ class MyMainWindow(QMainWindow):
             self._show_watermark()
             self._update_project_actions()
             self.open_Error(e)
-
-    def _apply_scrollbar_theme(self, _accent_ignored="#b8b8b8"):
+        
+    def _apply_scrollbar_theme(self, accent="#6AA2FF"):
         handle_radius = 10
-        btn_wh = 22         # arrow circle size
-        bar_h  = 14         # unified height for all top bars
-        bar_w  = 16
+        btn_wh = 26
+        bar_h = 22
+        bar_w = 22
 
-        # SVG paths
-        left  = resource_path("ui/icons/arrow_left.svg").replace("\\", "/")
-        right = resource_path("ui/icons/arrow_right.svg").replace("\\", "/")
-        up    = resource_path("ui/icons/arrow_up.svg").replace("\\", "/")
-        down  = resource_path("ui/icons/arrow_down.svg").replace("\\", "/")
-
-        # ---- HORIZONTAL: all three custom top bars ----
         h_style = f"""
-        QScrollBar#proxTopBar:horizontal,
-        QScrollBar#mainTopBar:horizontal,
-        QScrollBar#tableTopBar:horizontal {{
-            height:{bar_h}px;
+        QScrollBar:horizontal {{
+            height: {bar_h}px;
             background: transparent;
-            margin: 0 {btn_wh + 3}px 0 {btn_wh + 3}px;             /* kill outer margin */
-            padding: 0;             /* kill inner padding */
-            border: 0;
+            margin: 0 {btn_wh + 4}px;   /* space for the round arrows */
         }}
-
-        /* handle (thumb) */
-        QScrollBar#proxTopBar::handle:horizontal,
-        QScrollBar#mainTopBar::handle:horizontal,
-        QScrollBar#tableTopBar::handle:horizontal {{
+        QScrollBar::handle:horizontal {{
             min-width: 40px;
-            border-radius:{handle_radius}px;
-            border:1px solid rgba(0,0,0,0.18);
-            background:#d9d9d9;
+            border-radius: {handle_radius}px;
+            border: 1px solid rgba(0,0,0,0.25);
+            background: qlineargradient(x1:0,y1:0,x2:0,y2:1,
+                    stop:0 rgba(255,255,255,0.9),
+                    stop:1 {accent});
         }}
-        QScrollBar#proxTopBar::handle:horizontal:hover,
-        QScrollBar#mainTopBar::handle:horizontal:hover,
-        QScrollBar#tableTopBar::handle:horizontal:hover {{
-            background:#bfbfbf; border-color:rgba(0,0,0,0.28);
+        QScrollBar::handle:horizontal:hover {{
+            border: 1px solid rgba(0,0,0,0.45);
+            background: qlineargradient(x1:0,y1:0,x2:0,y2:1,
+                    stop:0 rgba(255,255,255,1.0),
+                    stop:1 {accent});
         }}
-        QScrollBar#proxTopBar::handle:horizontal:pressed,
-        QScrollBar#mainTopBar::handle:horizontal:pressed,
-        QScrollBar#tableTopBar::handle:horizontal:pressed {{
-            background:#9a9a9a; border-color:rgba(0,0,0,0.38);
+        QScrollBar::handle:horizontal:pressed {{
+            background: qlineargradient(x1:0,y1:0,x2:0,y2:1,
+                    stop:0 rgba(235,235,235,1.0),
+                    stop:1 #4C86FF);
         }}
-
-        /* arrows */
-        QScrollBar#proxTopBar::sub-line:horizontal,
-        QScrollBar#mainTopBar::sub-line:horizontal,
-        QScrollBar#tableTopBar::sub-line:horizontal {{
-            width:{btn_wh}px; height:{btn_wh}px;
-            subcontrol-origin: margin;
-            subcontrol-position: left;
+        /* round arrow buttons */
+        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+            width: {btn_wh}px;
             border: none;
-            border-radius:{btn_wh//2}px;
-            background:#e9e9e9;
-            image: url("{left}");
+            margin: 0;
+            border-radius: {handle_radius}px;
+            background: qradialgradient(cx:0.5, cy:0.5, radius:0.7,
+                        fx:0.5, fy:0.5,
+                        stop:0 rgba(255,255,255,0.95),
+                        stop:1 rgba(0,0,0,0.15));
         }}
-        QScrollBar#proxTopBar::add-line:horizontal,
-        QScrollBar#mainTopBar::add-line:horizontal,
-        QScrollBar#tableTopBar::add-line:horizontal {{
-            width:{btn_wh}px; height:{btn_wh}px;
-            subcontrol-origin: margin;
-            subcontrol-position: right;
-            border: none;
-            border-radius:{btn_wh//2}px;
-            background:#e9e9e9;
-            image: url("{right}");
+        QScrollBar::add-line:horizontal:hover,
+        QScrollBar::sub-line:horizontal:hover {{
+            background: qradialgradient(cx:0.5, cy:0.5, radius:0.7,
+                        fx:0.5, fy:0.5,
+                        stop:0 rgba(255,255,255,1.0),
+                        stop:1 rgba(0,0,0,0.25));
         }}
-
-        /* hover states */
-        QScrollBar#proxTopBar::sub-line:horizontal:hover,
-        QScrollBar#mainTopBar::sub-line:horizontal:hover,
-        QScrollBar#tableTopBar::sub-line:horizontal:hover,
-        QScrollBar#proxTopBar::add-line:horizontal:hover,
-        QScrollBar#mainTopBar::add-line:horizontal:hover,
-        QScrollBar#tableTopBar::add-line:horizontal:hover {{
-            background:#d6d6d6;
+        QScrollBar::add-line:horizontal:pressed,
+        QScrollBar::sub-line:horizontal:pressed {{
+            background: qradialgradient(cx:0.5, cy:0.5, radius:0.7,
+                        fx:0.5, fy:0.5,
+                        stop:0 rgba(245,245,245,1.0),
+                        stop:1 rgba(0,0,0,0.35));
         }}
-        QScrollBar#proxTopBar::sub-line:horizontal:pressed,
-        QScrollBar#mainTopBar::sub-line:horizontal:pressed,
-        QScrollBar#tableTopBar::sub-line:horizontal:pressed,
-        QScrollBar#proxTopBar::add-line:horizontal:pressed,
-        QScrollBar#mainTopBar::add-line:horizontal:pressed,
-        QScrollBar#tableTopBar::add-line:horizontal:pressed {{
-            background:#c2c2c2;
-        }}
-
-        /* pages transparent */
-        QScrollBar#proxTopBar::add-page:horizontal,
-        QScrollBar#proxTopBar::sub-page:horizontal,
-        QScrollBar#mainTopBar::add-page:horizontal,
-        QScrollBar#mainTopBar::sub-page:horizontal,
-        QScrollBar#tableTopBar::add-page:horizontal,
-        QScrollBar#tableTopBar::sub-page:horizontal {{
-            background: transparent;
-        }}
+        QScrollBar::add-line:horizontal {{ subcontrol-position: right;  subcontrol-origin: margin; }}
+        QScrollBar::sub-line:horizontal {{ subcontrol-position: left;   subcontrol-origin: margin;  }}
+        QScrollBar::left-arrow:horizontal, QScrollBar::right-arrow:horizontal {{ width: 10px; height: 10px; }}
+        QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{ background: transparent; }}
         """
 
-        # ---- VERTICAL: style the scrollareas' vertical bars (optional) ----
         v_style = f"""
         QScrollBar:vertical {{
-            width:{bar_w}px;
-            margin:{btn_wh + 8}px 0;
+            width: {bar_w}px;
             background: transparent;
+            margin: {btn_wh + 4}px 0;   /* space for round arrows */
         }}
         QScrollBar::handle:vertical {{
-            min-height:40px;
-            border-radius:{handle_radius}px;
-            border:1px solid rgba(0,0,0,0.18);
-            background:#d9d9d9;
+            min-height: 40px;
+            border-radius: {handle_radius}px;
+            border: 1px solid rgba(0,0,0,0.25);
+            background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+                    stop:0 rgba(255,255,255,0.9),
+                    stop:1 {accent});
         }}
-        QScrollBar::handle:vertical:hover  {{ background:#bfbfbf; border-color:rgba(0,0,0,0.28); }}
-        QScrollBar::handle:vertical:pressed{{ background:#9a9a9a; border-color:rgba(0,0,0,0.38); }}
-
-        QScrollBar::sub-line:vertical {{
-            height:{btn_wh}px; width:{btn_wh}px;
-            subcontrol-origin: margin;
-            subcontrol-position: top;
-            border:none; border-radius:{btn_wh//2}px;
-            background:#e9e9e9;
-            image: url("{up}");
+        QScrollBar::handle:vertical:hover {{
+            border: 1px solid rgba(0,0,0,0.45);
+            background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+                    stop:0 rgba(255,255,255,1.0),
+                    stop:1 {accent});
         }}
-        QScrollBar::add-line:vertical {{
-            height:{btn_wh}px; width:{btn_wh}px;
-            subcontrol-origin: margin;
-            subcontrol-position: bottom;
-            border:none; border-radius:{btn_wh//2}px;
-            background:#e9e9e9;
-            image: url("{down}");
+        QScrollBar::handle:vertical:pressed {{
+            background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+                    stop:0 rgba(235,235,235,1.0),
+                    stop:1 #4C86FF);
         }}
-        QScrollBar::sub-line:vertical:hover,
-        QScrollBar::add-line:vertical:hover {{ background:#d6d6d6; }}
-        QScrollBar::sub-line:vertical:pressed,
-        QScrollBar::add-line:vertical:pressed {{ background:#c2c2c2; }}
-
-        QScrollBar::add-page:vertical,
-        QScrollBar::sub-page:vertical {{ background: transparent; }}
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+            height: {btn_wh}px;
+            border: none;
+            margin: 0;
+            border-radius: {handle_radius}px;
+            background: qradialgradient(cx:0.5, cy:0.5, radius:0.7,
+                        fx:0.5, fy:0.5,
+                        stop:0 rgba(255,255,255,0.95),
+                        stop:1 rgba(0,0,0,0.15));
+        }}
+        QScrollBar::add-line:vertical {{ subcontrol-position: bottom; subcontrol-origin: margin; }}
+        QScrollBar::sub-line:vertical {{ subcontrol-position: top;    subcontrol-origin: margin;  }}
+        QScrollBar::up-arrow:vertical, QScrollBar::down-arrow:vertical {{ width: 10px; height: 10px; }}
+        QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background: transparent; }}
         """
 
-        # apply
+        # Apply to all scrollbars including the new ones
         self.top_scrollbar.setStyleSheet(h_style)
         self.main_top_scrollbar.setStyleSheet(h_style)
-        self.table_scrollbar.setStyleSheet(h_style)
+        self.defect_table_scrollbar.setStyleSheet(h_style)
+        self.data_table_scrollbar.setStyleSheet(h_style)
+        
         self.web_scroll_area.verticalScrollBar().setStyleSheet(v_style)
         self.main_web_scroll_area.verticalScrollBar().setStyleSheet(v_style)
+        self.defect_table_scroll_area.verticalScrollBar().setStyleSheet(v_style)
+        self.data_table_scroll_area.verticalScrollBar().setStyleSheet(v_style)
 
     def gen_data(self):
         try:
@@ -1650,167 +1025,129 @@ class MyMainWindow(QMainWindow):
         try:
             if idx < 0 or idx >= len(self.pkl_files):
                 return
-
             pkl_path = self.pkl_files[idx]
+            df = pd.read_pickle(pkl_path)
+            self.curr_data = df
+            self.header_list = list(df.columns)
+
+            self.model.clear()
+            self.model.setHorizontalHeaderLabels([str(c) for c in df.columns])
+            for _, row in df.iterrows():
+                items = [QStandardItem(str(v)) for v in row.values]
+                self.model.appendRow(items)
+            self.ui.tableView.setModel(self.model)
+            self.ui.tableView.setSortingEnabled(True)
+
             name = os.path.splitext(os.path.basename(pkl_path))[0]
             pipe_idx = self._extract_index(name)
-
-            # Show loading dialog
-            self.loading_dialog = ModernLoadingDialog(self)
-            self.loading_dialog.show()
-
-            # Create and start worker thread
-            self.loader_worker = PipeLoaderWorker(pkl_path, self.project_root, pipe_idx)
-
-            # Connect signals
-            self.loader_worker.progress_updated.connect(self.loading_dialog.update_progress)
-            self.loader_worker.time_estimate.connect(self.loading_dialog.update_time_estimate)
-            self.loader_worker.data_loaded.connect(self.on_data_loaded)
-            self.loader_worker.assets_loaded.connect(self.on_assets_loaded)
-            self.loader_worker.table_data_ready.connect(self.on_table_data_ready)
-            self.loader_worker.error_occurred.connect(self.on_loading_error)
-            self.loader_worker.finished.connect(self.on_loading_finished)
-
-            # Start the worker
-            self.loader_worker.start()
-
+            self.load_assets_for_index(pipe_idx)
         except Exception as e:
             self.open_Error(f"load_selected_by_index error: {e}")
-
-    def load_selected_pipe(self):
-        if not self.project_is_open:
-            QMessageBox.warning(self, "No Project", "Please open a project first.")
-            return
-
-        idx = self.ui.comboBoxPipe.currentIndex()
-        if idx <= 0 or idx >= len(self.pkl_files):
-            QMessageBox.warning(self, "Invalid Selection", "Please select a valid pipe.")
-            return
-
-        # 👇 Disable Load button while loading
-        self.btnLoadPipe.setEnabled(False)
-
-        self.load_selected_by_index(idx)
-
-        #self.btnLoadPipe.clicked.connect(self.load_selected_pipe)
-
-    def update_load_button_state(self, idx: int):
-        if self.project_is_open and idx > 0:
-            self.btnLoadPipe.setEnabled(True)
-        else:
-            self.btnLoadPipe.setEnabled(False)
-
-    # def on_data_loaded(self, df):
-    #     """Handle loaded DataFrame - runs on main thread"""
-    #     self.curr_data = df
-    #     self.header_list = list(df.columns)
-
-    #     # Update table model
-    #     self.model.clear()
-    #     self.model.setHorizontalHeaderLabels([str(c) for c in df.columns])
-    #     for _, row in df.iterrows():
-    #         row_items = []
-    #         for v in row.values:
-    #             item = QStandardItem("" if pd.isna(v) else str(v))
-    #             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-    #             row_items.append(item)
-    #         self.model.appendRow(row_items)
-
-    #     self.ui.tableView.setModel(self.model)
-    #     self.ui.tableView.setSortingEnabled(True)
-    def on_data_loaded(self, df):
-        """Handle loaded DataFrame - runs on main thread"""
-        self.curr_data = df
-        self.header_list = list(df.columns)
-
-        # Use lightweight model instead of building QStandardItem rows
-        self.df_model = PandasModel(df)
-        self.proxy_model.setSourceModel(self.df_model)
-        self.ui.tableView.setModel(self.proxy_model)
-        self.ui.tableView.setSortingEnabled(True)
-
-    def on_assets_loaded(self, assets):
-        """Handle loaded assets"""
-        self.hmap = assets.get('hmap')
-        self.hmap_r = assets.get('hmap_r')
-        self.heatmap_box = assets.get('heatmap_box')
-        self.lplot = assets.get('lplot')
-        self.lplot_r = assets.get('lplot_r')
-        self.pipe3d = assets.get('pipe3d')
-        self.prox_linechart = assets.get('prox_linechart')
-
-    def on_table_data_ready(self, df):
-        """Handle processed table data"""
-        if df is not None:
-            # Check if this is a PipeTally format or defects.csv format
-            if "Feature Type" in df.columns:
-                self._populate_defect_table_from_tally(df)
-            else:
-                self._populate_defect_table_from_csv(df)
-        else:
-            self._show_no_defects_message()
-
-    def on_loading_error(self, error_msg):
-        """Handle loading errors"""
-        if self.loading_dialog:
-            self.loading_dialog.close()
-        self.open_Error(f"Loading error: {error_msg}")
-
-    def on_loading_finished(self):
-        """Clean up when loading is complete"""
-        # If the batched table fill is still running, delay closing the dialog
-        if getattr(self, "_is_filling_table", False):
-            self._pending_close_loader = True
-        else:
-            if self.loading_dialog:
-                try:
-                    self.loading_dialog.close()
-                except Exception:
-                    pass
-                self.loading_dialog = None
-
-        if self.loader_worker:
-            self.loader_worker.deleteLater()
-            self.loader_worker = None
-
-        # Refresh the current view and topbars
-        self._refresh_current_view()
-        QTimer.singleShot(0, self._arm_topbar)
-        QTimer.singleShot(0, self._arm_main_topbar)
-        self.update_digsheet_button_state()
-        # 👇 keep Load button disabled after file load
-        self.btnLoadPipe.setEnabled(False)
 
     @staticmethod
     def _extract_index(text: str) -> str:
         m = re.search(r'\d+', text)
         return m.group(0) if m else text
 
-    # ✅ Updated _populate_defect_table_from_tally with "No Defects Found" logic
+    def load_assets_for_index(self, pipe_idx: str):
+        try:
+            if not (self.project_root and self.project_is_open):
+                return
+
+            candidates = [
+                os.path.join(self.project_root, f"pipe_{pipe_idx}"),
+                os.path.join(self.project_root, f"pipe-{pipe_idx}"),
+                os.path.join(self.project_root, f"Pipe_{pipe_idx}"),
+            ]
+            pipe_dir = next((d for d in candidates if os.path.isdir(d)), None)
+            if not pipe_dir:
+                return self.open_Error(f"Folder not found for pipe index {pipe_idx} (looked for pipe_{pipe_idx}).")
+
+            def pick_one(patterns, exclude=None):
+                exclude = exclude or []
+                hits = []
+                for pat in patterns:
+                    hits.extend(glob(os.path.join(pipe_dir, pat)))
+                hits = [h for h in hits if not any(ex in os.path.basename(h).lower() for ex in (exclude or []))]
+                exact = [h for h in hits if re.search(rf'{re.escape(str(pipe_idx))}\b', os.path.basename(h))]
+                return exact[0] if exact else (hits[0] if hits else None)
+
+            self.hmap       = pick_one(["*heatmap*.html"], exclude=["raw", "box"])
+            self.hmap_r     = pick_one(["*heatmap*raw*.html", "*raw*heatmap*.html"])
+            self.heatmap_box= pick_one(["*heatmap*box*.html", "*box*heatmap*.html"])
+            self.lplot      = pick_one(["*lineplot*.html", "*line*.html"], exclude=["raw"])
+            self.lplot_r    = pick_one(["*lineplot*raw*.html", "*line*raw*.html"])
+            self.pipe3d     = pick_one(["*pipe3d*.html", "pipe3d*.html"])
+            self.prox_linechart = pick_one(["proximity_linechart*.html", "*proximity_linechart*.html"])
+
+            # --- Prefer PipeTally csv over defects.csv ---
+            pipe_tally_csv = pick_one([f"*PipeTally{pipe_idx}.csv", f"*PipeTally{pipe_idx}.xlsx"])
+            if pipe_tally_csv:
+                try:
+                    if pipe_tally_csv.lower().endswith(".csv"):
+                        df = pd.read_csv(pipe_tally_csv)
+                    else:
+                        df = pd.read_excel(pipe_tally_csv)
+                    self._populate_defect_table_from_tally(df)
+                except Exception as e:
+                    print(f"⚠️ Failed to load PipeTally file for pipe {pipe_idx}:", e)
+            else:
+                # fallback: old defects.csv if no PipeTally found
+                ds_csv = pick_one(["*defectS*.csv", "*defects*.csv"])
+                if ds_csv:
+                    try:
+                        ds = pd.read_csv(ds_csv)
+                        self._populate_defect_table_from_csv(ds)
+                    except Exception as e:
+                        print("⚠️ Failed to load defect CSV:", e)
+            self._refresh_current_view()
+            QTimer.singleShot(0, self._arm_topbar)
+            QTimer.singleShot(0, self._arm_main_topbar)
+        except Exception as e:
+            self.open_Error(f"load_assets_for_index error: {e}")
+
     def _populate_defect_table_from_tally(self, df: pd.DataFrame):
         """
         Show PipeTally CSV in the bottom defect table.
-        - Keeps only Feature Type = Metal Loss
-        - Normalizes columns
-        - Fills table incrementally to avoid UI freeze
+        - Renames s_no → Defect_id
+        - Filters only rows with Feature Type = Metal Loss
+        - Shows fixed column order
         """
         if df is None or df.empty:
-            self._show_no_defects_message()
             return
 
-        original_count = len(df)
+        # filter rows with Feature Type = Metal Loss
         if "Feature Type" in df.columns:
             df = df[df["Feature Type"].astype(str).str.strip().str.lower() == "metal loss"]
 
-        if df.empty:
-            print(f"⚠️ No Metal Loss defects found (filtered from {original_count} rows)")
-            self._show_no_defects_message()
-            return
+        # fixed column order
+        desired_cols = [
+            "Defect_id",  # renamed from s_no
+            "Abs. Distance (m)",
+            "Distance to U/S GW(m)",
+            "Pipe Number",
+            "Pipe Length (mm)",
+            "Feature Identification",
+            "Latitude",
+            "Longitude",
+            "Dimensions Classification",
+            "Orientation o' clock",
+            "Length (mm)",
+            "Width (mm)",
+            "WT (mm)",
+            "Depth %",
+            "Depth (mm)",
+            "Type",
+            "ERF (ASME B31G)",
+            "Psafe (ASME B31G) Barg",
+            "Feature Type",
+            # "Comment",
+        ]
 
-        # normalize column variants
+        # normalize variant column names
         variants = {
             "s_no": "Defect_id",
-            "Dimensions  Classification": "Dimensions Classification",
+            "Dimensions  Classification": "Dimensions Classification",  # double → single space
             "Depth % ": "Depth %",
             "Psafe (ASME B31G) bar": "Psafe (ASME B31G) Barg",
             "Pipe Length": "Pipe Length (mm)",
@@ -1822,217 +1159,32 @@ class MyMainWindow(QMainWindow):
             if src in df.columns and dst not in df.columns:
                 df[dst] = df[src]
 
-        # ensure Defect_id exists
+        # make Defect_id sequential if missing
         if "Defect_id" not in df.columns:
             df = df.reset_index(drop=True)
             df["Defect_id"] = np.arange(1, len(df) + 1)
 
-        desired_cols = [
-            "Defect_id","Abs. Distance (m)","Distance to U/S GW(m)","Pipe Number","Pipe Length (mm)",
-            "Feature Identification","Dimensions Classification","Orientation o' clock","Length (mm)",
-            "Width (mm)","WT (mm)","Depth %","Depth (mm)","Type","ERF (ASME B31G)","Psafe (ASME B31G) Barg",
-            "Latitude","Longitude","Comment",
-        ]
+        # ensure all desired cols exist
         for col in desired_cols:
             if col not in df.columns:
                 df[col] = ""
 
+        # final view
         view = df[desired_cols].copy()
 
+        # write into tableWidgetDefect
         tw = self.ui.tableWidgetDefect
         tw.clear()
         tw.setRowCount(len(view))
         tw.setColumnCount(len(view.columns))
         tw.setHorizontalHeaderLabels([str(c) for c in view.columns])
-        tw.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Set column widths
-        column_widths = {
-            'Defect_id': 150,
-            'Abs. Distance (m)': 150,
-            'Distance to U/S GW(m)': 150,
-            'Pipe Number': 150,
-            'Pipe Length (mm)': 150,
-            'Feature Identification': 150,
-            'Dimensions Classification': 150,
-            'Orientation o\' clock': 150,
-            'Length (mm)': 150,
-            'Width (mm)': 150,
-            'WT (mm)': 150,
-            'Depth %': 150,
-            'Depth (mm)': 150,
-            'Type': 150,
-            'ERF (ASME B31G)': 150,
-            'Psafe (ASME B31G) Barg': 150,
-            'Latitude': 150,
-            'Longitude': 150,
-            'Comment': 570
-        }
+        for r in range(len(view)):
+            for c, col in enumerate(view.columns):
+                val = view.iloc[r, c]
+                tw.setItem(r, c, QTableWidgetItem("" if pd.isna(val) else str(val)))
 
-        for c, col_name in enumerate(view.columns):
-            if col_name in column_widths:
-                tw.setColumnWidth(c, column_widths[col_name])
-            else:
-                tw.setColumnWidth(c, 100)
-
-        self._show_defects_table()
-        self._start_fill_qtablewidget_batched(view, chunk_size=300)
-
-
-    def _start_fill_qtablewidget_batched(self, df: pd.DataFrame, *, chunk_size: int = 200):
-        """Fill self.ui.tableWidgetDefect incrementally to keep UI responsive."""
-        tw = self.ui.tableWidgetDefect
-        columns = list(df.columns)
-
-        tw.clear()
-        tw.setColumnCount(len(columns))
-        tw.setHorizontalHeaderLabels([str(c) for c in columns])
-        tw.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
-        tw.setRowCount(len(df))            # preallocate
-        tw.setUpdatesEnabled(False)        # defer UI updates
-
-        # batching state
-        self._table_fill_row = 0
-        self._table_fill_df  = df
-        self._table_fill_chunk = max(50, int(chunk_size))
-        self._is_filling_table = True
-        self._pending_close_loader = False
-
-        # Start first batch
-        QTimer.singleShot(0, self._fill_tablewidget_chunk)
-
-
-    def _fill_tablewidget_chunk(self):
-        """Append a batch of rows to QTableWidget without freezing UI."""
-        tw = self.ui.tableWidgetDefect
-        df = self._table_fill_df
-        start = self._table_fill_row
-        end   = min(start + self._table_fill_chunk, len(df))
-
-        # Fill rows for this batch
-        for r in range(start, end):
-            row_vals = df.iloc[r].to_list()
-            for c, v in enumerate(row_vals):
-                if isinstance(v, float):
-                    text = f"{v:.6g}"
-                elif pd.isna(v):
-                    text = ""
-                else:
-                    text = str(v)
-                item = QTableWidgetItem(text)
-                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-
-                # Make items non-editable
-                item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-
-                tw.setItem(r, c, item)
-
-        self._table_fill_row = end
-
-        # update loader/progress
-        if self.loading_dialog:
-            done = end
-            total = len(df)
-            pct = int(100 * done / max(1, total))
-            self.loading_dialog.update_progress(pct, f"Preparing table ({done}/{total})...")
-            QtWidgets.QApplication.processEvents(QEventLoop.ProcessEventsFlag.AllEvents, 50)
-
-        if end >= len(df):
-            # finished
-            tw.setUpdatesEnabled(True)
-            tw.viewport().update()
-            header = tw.horizontalHeader()
-            header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-            header.setStretchLastSection(False)
-            self._is_filling_table = False
-
-            # Apply styling after table is filled
-            self._setup_table_styling()
-
-            if self.loading_dialog and self._pending_close_loader:
-                try:
-                    self.loading_dialog.close()
-                except Exception:
-                    pass
-                self.loading_dialog = None
-
-            self.update_digsheet_button_state()
-            QTimer.singleShot(0, self._refresh_table_scrollbars)
-        else:
-            # schedule next chunk (async → UI stays alive)
-            QTimer.singleShot(0, self._fill_tablewidget_chunk)
-
-
-
-
-    # ✅ Updated _populate_defect_table_from_csv with "No Defects Found" logic
-    def _populate_defect_table_from_csv(self, df: pd.DataFrame):
-        if df is None or df.empty:
-            self._show_no_defects_message()
-            return
-
-        # Show table since we have data
-        self._show_defects_table()
-
-        header_indices = {
-            'Defect_id': 0,
-            'Absolute_Distance': 1,
-            'Upstream_Distance': 2,
-            'Feature_Type': 3,
-            'Dimension_Class': 4,
-            'Orientation': 5,
-            'WT': 6,
-            'Length': 7,
-            'Width': 8,
-            'Depth_Peak': 9
-        }
-        colmap_candidates = {
-            'Box Number': 'Defect_id',
-            'Defect_id': 'Defect_id',
-            'Absolute Distance': 'Absolute_Distance',
-            'Abs. Distance (m)': 'Absolute_Distance',
-            'Upstream': 'Upstream_Distance',
-            'Distance to U/S GW(m)': 'Upstream_Distance',
-            'Type': 'Feature_Type',
-            'Dimensions  Classification': 'Dimension_Class',
-            "Orientation o' clock": 'Orientation',
-            'Ori Val': 'Orientation',
-            'WT (mm)': 'WT',
-            'WT': 'WT',
-            'Width': 'Width',
-            'Breadth': 'Width',
-            'Peak Value': 'Depth_Peak',
-            'Depth % ': 'Depth_Peak',
-            'Depth %': 'Depth_Peak',
-            'Length': 'Length'
-        }
-        column_mapping = {}
-        for src, dst in colmap_candidates.items():
-            if src in df.columns: column_mapping[src] = dst
-
-        tw = self.ui.tableWidgetDefect
-        num_rows = len(df); num_cols = len(header_indices)
-        tw.setRowCount(num_rows); tw.setColumnCount(num_cols)
-        tw.setHorizontalHeaderLabels(list(header_indices.keys()))
-
-        for r, (_, row) in enumerate(df.iterrows()):
-            for src, dst in column_mapping.items():
-                if dst in header_indices:
-                    c = header_indices[dst]
-                    v = row[src]
-                    if isinstance(v, float): v = f"{v:.2f}"
-                    item = QTableWidgetItem(str(v))
-                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-
-                    # Make items non-editable
-                    item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-
-                    tw.setItem(r, c, item)
-
-        # Apply styling
-        self._setup_table_styling()
         self.update_digsheet_button_state()
-
 
     # Guarded tab change handler (prevents switching when no project and shows popup)
     def _on_middle_tab_changed(self, index: int):
@@ -2118,8 +1270,7 @@ class MyMainWindow(QMainWindow):
         if not html_path or not os.path.exists(html_path):
             view.setUrl(QUrl())
             return
-        effective_min_w = max(0, min_w - self._right_margin_px)
-
+        
         safe = html_path.replace('\\', '/')
         wrapper = f"""<!doctype html>
     <html>
@@ -2167,9 +1318,9 @@ class MyMainWindow(QMainWindow):
     }}
     iframe {{ 
         border: 0; 
-        width: {effective_min_w}px !important; 
+        width: {min_w}px !important; 
         height: {min_h}px !important;
-        min-width: {effective_min_w}px !important;
+        min-width: {min_w}px !important;
         min-height: {min_h}px !important;
         display: block;
     }}
@@ -2183,7 +1334,7 @@ class MyMainWindow(QMainWindow):
     // Force scrollbars to be visible
     document.addEventListener('DOMContentLoaded', function() {{
     const container = document.getElementById('scrollContainer');
-
+    
     // Force a reflow to ensure scrollbars appear
     container.style.overflow = 'hidden';
     setTimeout(() => {{
@@ -2191,7 +1342,7 @@ class MyMainWindow(QMainWindow):
         container.style.overflowX = 'scroll';
         container.style.overflowY = 'scroll';
     }}, 10);
-
+    
     // Trigger scroll to force scrollbar appearance
     container.scrollLeft = 1;
     container.scrollTop = 1;
@@ -2289,7 +1440,7 @@ class MyMainWindow(QMainWindow):
             self._central_graphs = None
         except Exception as e:
             print("⚠️ _close_graphs_view:", e)
-
+    
     def _setup_web_view_scrollbars(self, web_view):
         """Force scrollbars to be visible on QWebEngineView"""
         try:
@@ -2297,7 +1448,7 @@ class MyMainWindow(QMainWindow):
             web_view.page().settings().setAttribute(
                 web_view.page().settings().WebAttribute.ShowScrollBars, True
             )
-
+            
             # Inject CSS to force scrollbar visibility
             css = """
             ::-webkit-scrollbar { 
@@ -2316,7 +1467,7 @@ class MyMainWindow(QMainWindow):
                 overflow: scroll !important; 
             }
             """
-
+            
             web_view.page().runJavaScript(f"""
             var style = document.createElement('style');
             style.textContent = `{css}`;
@@ -2350,17 +1501,6 @@ class MyMainWindow(QMainWindow):
                 else:
                     df = pd.read_csv(path)
                 df.columns = [str(c).strip() for c in df.columns]
-
-                # ✅ Round numeric columns to 3 decimal places
-                numeric_columns = [
-                    'Depth %', 'Depth (mm)', 'ERF (ASME B31G)', 'Psafe (ASME B31G) Barg',
-                    'Abs. Distance (m)', 'Distance to U/S GW(m)', 'Length (mm)',
-                    'Width (mm)', 'WT (mm)', 'Pipe Length (mm)'
-                ]
-                for col in numeric_columns:
-                    if col in df.columns:
-                        df[col] = pd.to_numeric(df[col], errors='coerce').round(3)
-
                 missing = [c for c in self.REQUIRED_TALLY_COLS if c not in df.columns]
                 if missing:
                     print(f"[pipe_tally] Loaded {os.path.basename(path)} (missing cols: {missing})")
@@ -2372,7 +1512,7 @@ class MyMainWindow(QMainWindow):
                 print(f"[pipe_tally] Failed to load {path}: {e}")
         self.pipe_tally = None
         return False
-
+    
     def open_XYZ(self):
         try:
             if sys.platform == "win32":
@@ -2388,7 +1528,7 @@ class MyMainWindow(QMainWindow):
 
     def open_Cluster(self):
         Cluster_Dialog().exec()
-
+        
     def open_Ptal(self):
         try:
             file_path, _ = QFileDialog.getOpenFileName(
@@ -2509,7 +1649,7 @@ class MyMainWindow(QMainWindow):
             w.valueChanged.connect(update_result)
         update_result()
         self.erf.show()
-
+       
     def open_Final_Report(self):
         p = resource_path(os.path.join("final_report", "Final_Report.pdf"))
         if os.path.exists(p): os.startfile(p)
@@ -2519,6 +1659,121 @@ class MyMainWindow(QMainWindow):
         p = resource_path(os.path.join("preliminary_report", "Preliminary_Report.pdf"))
         if os.path.exists(p): os.startfile(p)
         else: self.open_Error("Prelimary report is not found.")
+
+    def open_pipe_tally(self):
+        p = resource_path(os.path.join("pipetally", "pipe_tally.xlsx"))
+        if os.path.exists(p): os.startfile(p)
+        else: self.open_Error("Pipetally not found.")
+
+    def open_manual(self):
+        p = resource_path(os.path.join("manual", "user_manual.pdf"))
+        if os.path.exists(p): os.startfile(p)
+        else: self.open_Error("User manual is not found.")
+
+    def add_plot_custom(self):
+        try:
+            self.cplot_widget = customPlot(self.header_list)
+            self.ui.graphLayout.addWidget(self.cplot_widget)
+            self.cplot_widget.closeCustom.clicked.connect(self.cplot_widget.close_window)
+            self.cplot_widget.comboBox.currentIndexChanged.connect(self.plot_c)
+        except Exception as e:
+            self.open_Error(e)
+
+    def plot_c(self):
+        try:
+            y_label = self.cplot_widget.comboBox.currentText()
+            x_label = self.cplot_widget.comboBox_2.currentText()
+            if x_label not in self.curr_data or y_label not in self.curr_data:
+                raise ValueError("Selected labels are not in the current data.")
+            x_data = self.curr_data[x_label]; y_data = self.curr_data[y_label]
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=x_data, y=y_data, mode='lines', name=y_label))
+            fig.update_layout(title=f'{y_label} vs {x_label}', xaxis_title=x_label, yaxis_title=y_label, height=450)
+            fp = resource_path('backend/files/customplot.html'); fig.write_html(fp)
+            self.cplot_widget.webviewCustom.setUrl(QUrl.fromLocalFile(fp))
+            self.web_view.setUrl(QUrl.fromLocalFile(fp))
+        except Exception as e:
+            self.open_Error(e)
+    
+    def open_Report(self):
+        cols = [r"Abs. Distance (m)", r"Depth %", r"Type", r"ERF (ASME B31G)", r"Orientation o' clock"]
+        if not isinstance(self.pipe_tally, pd.DataFrame):
+            QMessageBox.critical(self, "Error", "Pipe tally data is missing or not loaded."); return
+        for c in cols:
+            if c not in self.pipe_tally.columns:
+                QMessageBox.critical(self, "Error", f"Missing column: {c}"); return
+        fil = self.pipe_tally[cols].copy()
+        fil = fil.dropna(subset=["Abs. Distance (m)"])
+        fil["Abs. Distance (m)"] = fil["Abs. Distance (m)"].astype(int)
+        fil["Depth %"] = pd.to_numeric(fil["Depth %"], errors='coerce')
+        fil["Type"] = fil["Type"].astype(str)
+        fil["ERF (ASME B31G)"] = pd.to_numeric(fil["ERF (ASME B31G)"], errors='coerce')
+        fil[r"Orientation o' clock"] = fil[r"Orientation o' clock"].astype(str)
+        fil["Surface Location"] = fil["Type"].apply(
+            lambda x: "Internal" if "Internal" in x else ("External" if "External" in x else "Unknown")
+        )
+        self.fr = Report(fil); self.fr.show()
+
+    def open_ERF(self):
+        self.erf = ERF()
+        def update_result():
+            OD = self.erf.doubleSpinBox.value()
+            WT = self.erf.doubleSpinBox_3.value()
+            SMYS = self.erf.doubleSpinBox_2.value()
+            MAOP = self.erf.doubleSpinBox_4.value()
+            SF = self.erf.doubleSpinBox_5.value()
+            Axial_L = self.erf.doubleSpinBox_8.value()
+            Depth_P = self.erf.doubleSpinBox_9.value()
+            if OD == 0 or WT == 0 or SF == 0:
+                self.erf.lineEdit_2.setText("-"); self.erf.lineEdit_3.setText("-"); return
+            flow_stress = 1.1 * SMYS
+            z_factor = (Axial_L ** 2) / (OD * WT)
+            M = (1 + 0.8 * z_factor) ** 0.5
+            y = 1 - 2/3 * Depth_P / WT
+            z = 1 - 2/3 * Depth_P / WT / M
+            k = y / z
+            S = (flow_stress * k) if z_factor <= 20 else (flow_stress * (1 - Depth_P / WT))
+            EFP = (2 * S * WT) / OD
+            PSafe = EFP / SF if SF else 0
+            if PSafe == 0:
+                self.erf.lineEdit_2.setText("-"); self.erf.lineEdit_3.setText("-"); return
+            ERFv = MAOP / PSafe
+            self.erf.lineEdit_2.setText(f"{ERFv:.2f}")
+            self.erf.lineEdit_3.setText(f"{PSafe:.2f}")
+            import numpy as np
+            def calc_B(d_over_t):
+                if d_over_t >= 0.175:
+                    B = np.sqrt(((d_over_t / (1.1 * d_over_t - 0.15)) ** 2) - 1)
+                    return B if B <= 4 else 4
+                return 4
+            xs = np.linspace(0, 1, 100)
+            ys = [calc_B(x) for x in xs]
+            Xc = Axial_L / 300; Yc = Depth_P / 20
+            color = 'green' if Yc < calc_B(Xc) else 'red'
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=xs, y=ys, mode='lines', name='ASME B31G'))
+            fig.add_trace(go.Scatter(x=[Xc], y=[Yc], mode='markers',
+                                     marker=dict(color=color, size=10),
+                                     name='Defect'))
+            fig.update_layout(xaxis_title='Axial Length (mm)', yaxis_title='Peak Depth', height=450, width=1000)
+            fp = resource_path('backend/files/ASME.html'); fig.write_html(fp)
+            self.erf.web_viewERF.setUrl(QUrl.fromLocalFile(fp))
+        for w in (self.erf.doubleSpinBox, self.erf.doubleSpinBox_3, self.erf.doubleSpinBox_2,
+                  self.erf.doubleSpinBox_4, self.erf.doubleSpinBox_5,
+                  self.erf.doubleSpinBox_8, self.erf.doubleSpinBox_9):
+            w.valueChanged.connect(update_result)
+        update_result()
+        self.erf.show()
+       
+    def open_Final_Report(self):
+        p = resource_path(os.path.join("final_report", "Final_Report.pdf"))
+        if os.path.exists(p): os.startfile(p)
+        else: self.open_Error("Final report PDF not found.")
+
+    def open_Preliminary_Report(self):
+        p = resource_path(os.path.join("preliminary_report", "Preliminary_Report.pdf"))
+        if os.path.exists(p): os.startfile(p)
+        else: self.open_Error("Preliminary report is not found.")
 
     def open_pipe_tally(self):
         p = resource_path(os.path.join("pipetally", "pipe_tally.xlsx"))
@@ -2620,7 +1875,7 @@ class MyMainWindow(QMainWindow):
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=tele.index, y=tele[param], mode='lines', name=param))
             fig.update_layout(title=f'Telemetry Plot for {param}', xaxis_title='Counter', yaxis_title=param, height=450)
-            fp = resource_path("telemetryplot.html"); fig.write_html(fp)
+            fp = resource_path("backend/files/telemetryplot.html"); fig.write_html(fp)
             self.tplot_widget.webviewTele.setUrl(QUrl.fromLocalFile(fp))
             self.web_view.setUrl(QUrl.fromLocalFile(fp))
         except Exception as e:
@@ -2633,6 +1888,57 @@ class MyMainWindow(QMainWindow):
             self.adplot_widget.closeAnamoly.clicked.connect(self.adplot_widget.close_window)
         except Exception as e:
             self.open_Error(e)
+
+    def _populate_defect_table_from_csv(self, df: pd.DataFrame):
+        header_indices = {
+            'Defect_id': 0,
+            'Absolute_Distance': 1,
+            'Upstream_Distance': 2,
+            'Feature_Type': 3,
+            'Dimension_Class': 4,
+            'Orientation': 5,
+            'WT': 6,
+            'Length': 7,
+            'Width': 8,
+            'Depth_Peak': 9
+        }
+        colmap_candidates = {
+            'Box Number': 'Defect_id',
+            'Defect_id': 'Defect_id',
+            'Absolute Distance': 'Absolute_Distance',
+            'Abs. Distance (m)': 'Absolute_Distance',
+            'Upstream': 'Upstream_Distance',
+            'Distance to U/S GW(m)': 'Upstream_Distance',
+            'Type': 'Feature_Type',
+            'Dimensions  Classification': 'Dimension_Class',
+            "Orientation o' clock": 'Orientation',
+            'Ori Val': 'Orientation',
+            'WT (mm)': 'WT',
+            'WT': 'WT',
+            'Width': 'Length',
+            'Breadth': 'Width',
+            'Peak Value': 'Depth_Peak',
+            'Depth % ': 'Depth_Peak',
+            'Depth %': 'Depth_Peak',
+            'Length': 'Length'
+        }
+        column_mapping = {}
+        for src, dst in colmap_candidates.items():
+            if src in df.columns: column_mapping[src] = dst
+
+        tw = self.ui.tableWidgetDefect
+        num_rows = len(df); num_cols = len(header_indices)
+        tw.setRowCount(num_rows); tw.setColumnCount(num_cols)
+        tw.setHorizontalHeaderLabels(list(header_indices.keys()))
+        for r, (_, row) in enumerate(df.iterrows()):
+            for src, dst in column_mapping.items():
+                if dst in header_indices:
+                    c = header_indices[dst]
+                    v = row[src]
+                    if isinstance(v, float): v = f"{v:.2f}"
+                    tw.setItem(r, c, QTableWidgetItem(str(v)))
+
+        self.update_digsheet_button_state()
 
     def on_row_selection_changed(self, *_):
         idxs = self.ui.tableWidgetDefect.selectionModel().selectedRows()
@@ -2739,6 +2045,7 @@ class MyMainWindow(QMainWindow):
         except Exception:
             pass
         return super().eventFilter(obj, ev)
+    # ---------------------------
 
     # ---------------------------
     # Digsheet enable logic + cursor/tooltip polish
@@ -2787,10 +2094,10 @@ class MyMainWindow(QMainWindow):
 
     def update_digsheet_button_state(self):
         can_show = (
-                self.project_is_open
-                and isinstance(self.pipe_tally, pd.DataFrame)
-                and self._is_graph_tab_ok()
-                and self._has_valid_abs_selection()
+            self.project_is_open
+            and isinstance(self.pipe_tally, pd.DataFrame)
+            and self._is_graph_tab_ok()
+            and self._has_valid_abs_selection()
         )
         self.btnDigsheetAbs.setEnabled(bool(can_show))
 
@@ -2800,23 +2107,36 @@ class MyMainWindow(QMainWindow):
         else:
             self.btnDigsheetAbs.setCursor(Qt.CursorShape.ForbiddenCursor)
             self.btnDigsheetAbs.setToolTip("Select an Absolute Distance cell in the table below to enable.")
+    # ---------------------------
 
     def open_digsheet_by_abs_from_selection(self):
         try:
-            if not self.project_is_open or not isinstance(self.pipe_tally, pd.DataFrame):
-                QMessageBox.warning(self, "No Pipe Tally", "Load a project/tally first."); return
-            abs_text = self._get_selected_abs_distance_from_defect_table()
-            if not abs_text: return
+            if not self.project_is_open:
+                QMessageBox.information(self, "Open a project", "Please open a project first.")
+                return
+            if not isinstance(self.pipe_tally, pd.DataFrame):
+                QMessageBox.warning(self, "No Pipe Tally",
+                                    "Pipe tally data is missing. Load a pipe tally and try again.")
+                return
 
-            tally_pkl = _dump_tally_to_temp(self.pipe_tally)
+            abs_text = self._get_selected_abs_distance_from_defect_table()
+            if not abs_text:
+                return
+
+            import pickle
+            base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(__file__)
+            pipe_tally_file = os.path.join(base_dir, "pipe_tally.pkl")
+            with open(pipe_tally_file, "wb") as f:
+                pickle.dump(self.pipe_tally, f)
+
             dig_py_abs = resource_path(os.path.join("dig", "digsheet_abs.py"))
             if not os.path.exists(dig_py_abs):
-                QMessageBox.critical(self, "Script not found", f"Missing: {dig_py_abs}"); return
+                QMessageBox.critical(self, "Script not found",
+                                     f"ABS-distance digsheet script not found:\n{dig_py_abs}\n\n"
+                                     f"Save your ABS-distance Tk script there, or update the path in code.")
+                return
 
-            if getattr(sys, "frozen", False):
-                subprocess.Popen([sys.executable, "--run-digsheet-abs", tally_pkl, str(abs_text)])
-            else:
-                subprocess.Popen([sys.executable, dig_py_abs, tally_pkl, str(abs_text)])
+            subprocess.Popen([sys.executable, dig_py_abs, pipe_tally_file, str(abs_text)])
         except Exception as e:
             self.open_Error(f"Error opening ABS-distance digsheet:\n{e}")
 
@@ -2843,11 +2163,6 @@ class MyMainWindow(QMainWindow):
             self.model.clear()
             self.ui.tableWidgetDefect.clear()
 
-            # ✅ Hide the "No Defects Found" message when closing project
-            if hasattr(self, '_no_defects_container') and self._no_defects_container:
-                self._no_defects_container.hide()
-
-            self._show_create_project_message()
             self.web_view.setUrl(QUrl())
             self.web_view2.setUrl(QUrl())
             self.bottom_stack.setCurrentIndex(0)
@@ -2940,20 +2255,16 @@ class MyMainWindow(QMainWindow):
 
     def open_digs(self):
         try:
-            if not isinstance(self.pipe_tally, pd.DataFrame):
-                QMessageBox.warning(self, "No Pipe Tally", "Load a pipe tally first."); return
-            tally_pkl = _dump_tally_to_temp(self.pipe_tally)
+            import pickle
+            base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(__file__)
             dig_py = resource_path(os.path.join("dig", "dig_sheet.py"))
-            if not os.path.exists(dig_py):
-                QMessageBox.critical(self, "Script not found", f"Missing: {dig_py}"); return
-
-            if getattr(sys, "frozen", False):
-                subprocess.Popen([sys.executable, "--run-digsheet", tally_pkl])
-            else:
-                subprocess.Popen([sys.executable, dig_py, tally_pkl])
+            pipe_tally_file = os.path.join(base_dir, "pipe_tally.pkl")
+            with open(pipe_tally_file, "wb") as f:
+                pickle.dump(self.pipe_tally, f)
+            subprocess.Popen([sys.executable, dig_py, pipe_tally_file])
         except Exception as e:
             self.open_Error(f"An error occurred: {e}")
-
+    
     def _arm_topbar(self, virtual_max: int = 2000):
         """Re-sync the top scrollbar with the inner QScrollArea hbar and enable mapping."""
         try:
@@ -2972,62 +2283,6 @@ class MyMainWindow(QMainWindow):
         except Exception:
             # don't crash UI if something is missing during early init
             self._hscroll_ready = True
-
-    def _setup_create_project_label(self):
-        """Setup 'Create the Project in File' message box (shown at startup)."""
-        self._create_proj_container = QWidget()
-        self._create_proj_container.setMaximumSize(500, 200)
-        self._create_proj_container.setMinimumSize(400, 150)
-        self._create_proj_container.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-
-        layout = QVBoxLayout(self._create_proj_container)
-        layout.setContentsMargins(0, 0, 0, 0)
-
-        self._create_proj_label = QLabel("Create the Project in File Menu")
-        self._create_proj_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._create_proj_label.setStyleSheet("""
-            QLabel {
-                font-size: 16pt;
-                color: #666666;
-                font-weight: bold;
-                background-color: #f8f8f8;
-                border: 2px dashed #cccccc;
-                border-radius: 10px;
-                padding: 20px;
-                margin: 10px;
-            }
-        """)
-        layout.addWidget(self._create_proj_label)
-
-        self._create_proj_container.hide()
-
-        table_parent = self.ui.tableWidgetDefect.parentWidget()
-        if table_parent:
-            self._create_proj_container.setParent(table_parent)
-            self._create_proj_container.move(500, 50)  # adjust as needed
-
-    def _show_create_project_message(self):
-        """Show 'Create the Project in File' message, hide table + scrollbars."""
-        try:
-            if hasattr(self, '_create_proj_container') and self._create_proj_container:
-                self._create_proj_container.show()
-
-            if hasattr(self.ui, 'tableWidgetDefect'):
-                self.ui.tableWidgetDefect.hide()
-
-            if hasattr(self, '_no_defects_container') and self._no_defects_container:
-                self._no_defects_container.hide()
-
-            if hasattr(self, 'table_scrollbar') and self.table_scrollbar:
-                self.table_scrollbar.hide()   # 👈 also hide table top bar
-
-            print("📋 Displaying 'Create the Project in File' message")
-        except Exception as e:
-            print(f"Error showing create project message: {e}")
-
-    def _hide_create_project_message(self):
-        if hasattr(self, '_create_proj_container'):
-            self._create_proj_container.hide()
 
     def _arm_main_topbar(self, virtual_max: int = 2000):
         """Re-sync the main top scrollbar with the inner QScrollArea hbar and enable mapping."""
@@ -3065,23 +2320,7 @@ class MyMainWindow(QMainWindow):
 
 
 if __name__ == "__main__":
-    # Handle special modes in the frozen EXE so it doesn't relaunch the main UI
-    if "--run-digsheet-abs" in sys.argv:
-        i = sys.argv.index("--run-digsheet-abs")
-        tally_pkl = sys.argv[i+1]; abs_val = sys.argv[i+2]
-        dig_py_abs = resource_path(os.path.join("dig", "digsheet_abs.py"))
-        sys.argv = [dig_py_abs, tally_pkl, abs_val]
-        runpy.run_path(dig_py_abs, run_name="__main__")
-        sys.exit(0)
-
-    if "--run-digsheet" in sys.argv:
-        i = sys.argv.index("--run-digsheet")
-        tally_pkl = sys.argv[i+1]
-        dig_py = resource_path(os.path.join("dig", "dig_sheet.py"))
-        sys.argv = [dig_py, tally_pkl]
-        runpy.run_path(dig_py, run_name="__main__")
-        sys.exit(0)
-
     app = MainApp(sys.argv)
     app.start()
     sys.exit(app.exec())
+

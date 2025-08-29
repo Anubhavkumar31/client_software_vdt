@@ -11,6 +11,10 @@ from mpl_toolkits.mplot3d import Axes3D
 import tempfile
 
 def plot_erf(df, view="Both", return_fig=False):
+    if "Surface Location" not in df.columns and "Type" in df.columns:
+        df["Surface Location"] = df["Type"]
+
+    df = df[df['Surface Location'].isin(['Internal', 'External'])].copy()
     df = df[df['Surface Location'].isin(['Internal', 'External'])].copy()
     df['Abs. Distance (m)'] = df['Abs. Distance (m)'].round(1)
     df = df.groupby(['Abs. Distance (m)', 'Surface Location'], as_index=False).agg({'ERF (ASME B31G)': 'max'})
@@ -76,6 +80,10 @@ def plot_erf(df, view="Both", return_fig=False):
 
 # Plot Psafe function
 def plot_psafe(df, view="Both", return_fig=False):
+    if "Surface Location" not in df.columns and "Type" in df.columns:
+        df["Surface Location"] = df["Type"]
+
+    df = df[df['Surface Location'].isin(['Internal', 'External'])].copy()
     df.columns = df.columns.str.strip()
     df.rename(columns={col: "Psafe (ASME B31G)" for col in df.columns if "Psafe" in col}, inplace=True)
     df = df[df['Surface Location'].isin(['Internal', 'External'])].copy()
@@ -125,40 +133,132 @@ def plot_psafe(df, view="Both", return_fig=False):
     fig.write_html(html_path)
     return fig, html_path
 
-def plot_depth(df, view="Both", return_fig=False):
+# def plot_depth(df, return_fig=False):
+#     df.columns = df.columns.str.strip()
+#
+#     # Rename depth column
+#     df.rename(columns={col: "Depth % WT" for col in df.columns if "Depth" in col}, inplace=True)
+#
+#     # Filter for Internal, External, or Both
+#     # if view in ['Internal', 'External']:
+#     #     df = df[df['Surface Location'] == view]
+#     # elif view == 'Both':
+#     #     df = df[df['Surface Location'].isin(['Internal', 'External'])]
+#
+#     # Round and prepare distance
+#     df['Abs. Distance (m)'] = df['Abs. Distance (m)'].round(1)
+#
+#     # Keep max depth per location-distance pair
+#     df = df.groupby(['Abs. Distance (m)', 'Surface Location'], as_index=False).agg({'Depth % WT': 'max'})
+#     df.sort_values(by='Abs. Distance (m)', inplace=True)
+#
+#     # Binning
+#     distance_edges = np.arange(0, df['Abs. Distance (m)'].max() + 1000, 1000)
+#     distance_bins = pd.cut(df['Abs. Distance (m)'], bins=distance_edges)
+#
+#     # Only include 0–20, 20–40, 40–60, 60–80 depth ranges
+#     depth_edges = [0, 20, 40, 60, 80]
+#     depth_labels = ['0–20%', '20–40%', '40–60%', '60–80%']
+#     depth_bins = pd.cut(df['Depth % WT'], bins=depth_edges, labels=depth_labels)
+#
+#     # Group and count
+#     grouped = df.groupby([distance_bins, depth_bins]).size().unstack(fill_value=0)
+#
+#     # X and Y labels
+#     x_labels = grouped.index.categories
+#     y_labels = grouped.columns
+#
+#     # Meshgrid for bar positions
+#     xpos, ypos = np.meshgrid(np.arange(len(x_labels)), np.arange(len(y_labels)), indexing="ij")
+#     xpos = xpos.ravel()
+#     ypos = ypos.ravel()
+#     zpos = np.zeros_like(xpos)
+#     dz = grouped.values.ravel()
+#
+#     # Mask out zero bars
+#     mask = dz > 0
+#     xpos, ypos, zpos, dz = xpos[mask], ypos[mask], zpos[mask], dz[mask]
+#
+#     dx = dy = 0.4
+#
+#     # Color map for depth bins
+#     depth_colors = {
+#         '0–20%': 'steelblue',
+#         '20–40%': 'darkorange',
+#         '40–60%': 'seagreen',
+#         '60–80%': 'yellow'
+#     }
+#     colors = [depth_colors[y_labels[y]] for y in ypos]
+#
+#     # --- Plotting ---
+#     fig = plt.figure(figsize=(16, 10))
+#     ax = fig.add_subplot(111, projection='3d')
+#     ax.bar3d(xpos, ypos, zpos, dx, dy, dz, shade=True, color=colors)
+#
+#     ax.set_xlabel('\nLauncher Distance (m)', labelpad=20)
+#     ax.set_ylabel('\nDepth % Bins', labelpad=20)
+#     ax.set_zlabel('\nCount', labelpad=10)
+#
+#     ax.set_xticks(np.arange(len(x_labels)))
+#     ax.set_xticklabels([f"{int(i.left)}" for i in x_labels], rotation=30, ha='right', fontsize=10)
+#
+#     ax.set_yticks(np.arange(len(y_labels)))
+#     ax.set_yticklabels(y_labels, fontsize=10)
+#
+#     # Hide grid lines
+#     ax.xaxis._axinfo["grid"].update({"linewidth": 0})
+#     ax.yaxis._axinfo["grid"].update({"linewidth": 0})
+#     ax.zaxis._axinfo["grid"].update({"linewidth": 0})
+#
+#     ax.view_init(elev=25, azim=-75)
+#     plt.title("3D Distribution of Depth % Across Launcher Distance", pad=30, fontsize=14)
+#     plt.tight_layout()
+#
+#     if return_fig:
+#         # Save to temp PNG file
+#         temp_dir = tempfile.gettempdir()
+#         output_path = os.path.join(temp_dir, "depth_plot.png")
+#         fig.savefig(output_path, dpi=300)
+#         plt.close(fig)  # Close to free memory
+#         return fig, output_path
+#     else:
+#         plt.show()
+
+
+def plot_depth(df, return_fig=False):
     df.columns = df.columns.str.strip()
 
-    # Rename depth column
-    df.rename(columns={col: "Depth % WT" for col in df.columns if "Depth" in col}, inplace=True)
+    # ✅ Fix: map "Type" → "Surface Location"
+    if "Surface Location" not in df.columns and "Type" in df.columns:
+        df["Surface Location"] = df["Type"]
 
-    # Filter for Internal, External, or Both
-    if view in ['Internal', 'External']:
-        df = df[df['Surface Location'] == view]
-    elif view == 'Both':
-        df = df[df['Surface Location'].isin(['Internal', 'External'])]
+    # ✅ Normalize depth column
+    if "Depth %" in df.columns:
+        df.rename(columns={"Depth %": "Depth % WT"}, inplace=True)
+    elif "Depth (mm)" in df.columns:
+        df.rename(columns={"Depth (mm)": "Depth % WT"}, inplace=True)
 
-    # Round and prepare distance
     df['Abs. Distance (m)'] = df['Abs. Distance (m)'].round(1)
 
-    # Keep max depth per location-distance pair
+    # Group by distance + location
     df = df.groupby(['Abs. Distance (m)', 'Surface Location'], as_index=False).agg({'Depth % WT': 'max'})
     df.sort_values(by='Abs. Distance (m)', inplace=True)
 
     # Binning
     distance_edges = np.arange(0, df['Abs. Distance (m)'].max() + 1000, 1000)
-    distance_bins = pd.cut(df['Abs. Distance (m)'], bins=distance_edges)
+    df['Distance Bin'] = pd.cut(df['Abs. Distance (m)'], bins=distance_edges)
 
-    # Only include 0–20, 20–40, 40–60, 60–80 depth ranges
     depth_edges = [0, 20, 40, 60, 80]
     depth_labels = ['0–20%', '20–40%', '40–60%', '60–80%']
-    depth_bins = pd.cut(df['Depth % WT'], bins=depth_edges, labels=depth_labels)
+    df['Depth Bin'] = pd.cut(df['Depth % WT'], bins=depth_edges, labels=depth_labels)
 
     # Group and count
-    grouped = df.groupby([distance_bins, depth_bins]).size().unstack(fill_value=0)
+    grouped = df.groupby(['Distance Bin', 'Depth Bin']).size().unstack(fill_value=0)
 
-    # X and Y labels
-    x_labels = grouped.index.categories
-    y_labels = grouped.columns
+    # ✅ Safe handling of labels
+    # Safe handling of labels
+    x_labels = [f"{int(interval.left)}" for interval in grouped.index]
+    y_labels = grouped.columns.tolist()
 
     # Meshgrid for bar positions
     xpos, ypos = np.meshgrid(np.arange(len(x_labels)), np.arange(len(y_labels)), indexing="ij")
@@ -173,13 +273,8 @@ def plot_depth(df, view="Both", return_fig=False):
 
     dx = dy = 0.4
 
-    # Color map for depth bins
-    depth_colors = {
-        '0–20%': 'steelblue',
-        '20–40%': 'darkorange',
-        '40–60%': 'seagreen',
-        '60–80%': 'yellow'
-    }
+    # Color map
+    depth_colors = {'0–20%': 'steelblue', '20–40%': 'darkorange', '40–60%': 'seagreen', '60–80%': 'yellow'}
     colors = [depth_colors[y_labels[y]] for y in ypos]
 
     # --- Plotting ---
@@ -192,26 +287,19 @@ def plot_depth(df, view="Both", return_fig=False):
     ax.set_zlabel('\nCount', labelpad=10)
 
     ax.set_xticks(np.arange(len(x_labels)))
-    ax.set_xticklabels([f"{int(i.left)}" for i in x_labels], rotation=30, ha='right', fontsize=10)
+    ax.set_xticklabels(x_labels, rotation=30, ha='right', fontsize=10)
 
     ax.set_yticks(np.arange(len(y_labels)))
     ax.set_yticklabels(y_labels, fontsize=10)
-
-    # Hide grid lines
-    ax.xaxis._axinfo["grid"].update({"linewidth": 0})
-    ax.yaxis._axinfo["grid"].update({"linewidth": 0})
-    ax.zaxis._axinfo["grid"].update({"linewidth": 0})
 
     ax.view_init(elev=25, azim=-75)
     plt.title("3D Distribution of Depth % Across Launcher Distance", pad=30, fontsize=14)
     plt.tight_layout()
 
     if return_fig:
-        # Save to temp PNG file
-        temp_dir = tempfile.gettempdir()
-        output_path = os.path.join(temp_dir, "depth_plot.png")
+        output_path = os.path.abspath("depth_plot.png")
         fig.savefig(output_path, dpi=300)
-        plt.close(fig)  # Close to free memory
+        plt.close(fig)
         return fig, output_path
     else:
         plt.show()
@@ -234,10 +322,26 @@ def degrees_to_clock(deg):
     s = int(total_seconds % 60)
     return f"{h:02}:{m:02}:{s:02}"
 
-def plot_orientation(df, view="Both",return_fig=False):
+def plot_orientation(df, view="Both", return_fig=False):
     df.columns = df.columns.str.strip()
-    df['Angle (deg)'] = df['Orientation O\'clock'].apply(clock_to_degrees)
-    df.dropna(subset=['Angle (deg)', 'Abs. Distance (m)', 'Surface Location'], inplace=True)
+
+    # ✅ Normalize: find the orientation column (case insensitive)
+    orientation_col = None
+    for col in df.columns:
+        if "orientation" in col.lower():
+            orientation_col = col
+            break
+
+    if not orientation_col:
+        raise KeyError("No Orientation column found in DataFrame")
+
+    # Also fix missing Surface Location column
+    if "Surface Location" not in df.columns and "Type" in df.columns:
+        df["Surface Location"] = df["Type"]
+
+        # Convert to degrees
+        df['Angle (deg)'] = df[orientation_col].apply(clock_to_degrees)
+        df.dropna(subset=['Angle (deg)', 'Abs. Distance (m)', 'Surface Location'], inplace=True)
 
     min_dist = df['Abs. Distance (m)'].min()
     max_dist = df['Abs. Distance (m)'].max()

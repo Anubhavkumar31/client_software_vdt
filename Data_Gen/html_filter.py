@@ -482,7 +482,7 @@ def save_pipe3d(data, data_cp,folder_path,pipe_number):
     theta, z = np.meshgrid(theta, z)
 
     radius = 109.5   # OD = 219mm, R =OD/2
-    odometer = num_rows                                # ODDO1
+    odometer = num_rows                               # ODDO1
 
     # Cartesian Coords
     x = odometer * z

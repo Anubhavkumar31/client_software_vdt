@@ -695,6 +695,8 @@ class MyMainWindow(QMainWindow):
 
         # ✅ Setup "No Defects Found" label after table is configured
         self._setup_no_defects_label()
+        self._setup_select_pipe_label()
+
         self._setup_create_project_label()
         self._show_create_project_message()
 
@@ -833,6 +835,101 @@ class MyMainWindow(QMainWindow):
                 }
             """)
 
+    # def _setup_select_pipe_label(self):
+    #     """Create full overlay asking user to select a pipe"""
+    #     # Overlay only inside central widget, not the whole window
+    #     central = self.centralWidget()
+    #     self._select_pipe_container = QWidget(central)
+    #     self._select_pipe_container.setStyleSheet(
+    #         "background-color: rgba(255, 255, 255, 230);"  # semi-transparent white
+    #     )
+    #     self._select_pipe_container.setGeometry(central.rect())
+    #
+    #     layout = QVBoxLayout(self._select_pipe_container)
+    #     layout.setContentsMargins(0, 0, 0, 0)
+    #     layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    #
+    #     self._select_pipe_label = QLabel("Please select a pipe number")
+    #     self._select_pipe_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    #     self._select_pipe_label.setStyleSheet("""
+    #         font-size: 24pt;
+    #         font-weight: bold;
+    #         color: #333;
+    #         background-color: #f8f8f8;
+    #         border: 3px dashed #666;
+    #         border-radius: 15px;
+    #         padding: 40px;
+    #     """)
+    #
+    #     layout.addWidget(self._select_pipe_label)
+    #
+    #     self._select_pipe_container.hide()
+
+    def _setup_select_pipe_label(self):
+        """Create a polished overlay asking user to select a pipe"""
+        central = self.centralWidget()
+        self._select_pipe_container = QWidget(central)
+        self._select_pipe_container.setGeometry(central.rect())
+        self._select_pipe_container.setStyleSheet("""
+            background-color: rgba(255, 255, 255, 180);  /* frosted background */
+        """)
+
+        layout = QVBoxLayout(self._select_pipe_container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # --- Inner card widget ---
+        card = QFrame()
+        card.setFixedWidth(500)
+        card.setStyleSheet("""
+            QFrame {
+                background-color: #ffffff;
+                border-radius: 16px;
+                border: 1px solid #d0d0d0;
+                padding: 30px;
+            }
+        """)
+        card_layout = QVBoxLayout(card)
+        card_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Icon
+        icon_label = QLabel("📂")
+        icon_label.setStyleSheet("font-size: 42px;")
+        card_layout.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        # Title
+        title = QLabel("No Pipe Selected")
+        title.setStyleSheet("""
+            font-size: 22pt;
+            font-weight: 600;
+            color: #2c3e50;
+        """)
+        card_layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        # Subtitle
+        subtitle = QLabel("Please choose a pipe number from the list above to continue.")
+        subtitle.setWordWrap(True)
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        subtitle.setStyleSheet("""
+            font-size: 12pt;
+            color: #555;
+            margin-top: 10px;
+        """)
+        card_layout.addWidget(subtitle)
+
+        # Hint / efficiency tip
+        hint = QLabel("💡 You can also type a pipe number directly in the box.")
+        hint.setWordWrap(True)
+        hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hint.setStyleSheet("""
+            font-size: 10pt;
+            color: #888;
+            margin-top: 15px;
+        """)
+        card_layout.addWidget(hint)
+
+        layout.addWidget(card)
+        self._select_pipe_container.hide()
 
     # ✅ Helper methods for showing/hiding message vs table
     def _show_no_defects_message(self):
@@ -861,6 +958,31 @@ class MyMainWindow(QMainWindow):
             print("📊 Displaying defects table")
         except Exception as e:
             print(f"Error showing defects table: {e}")
+
+    def _show_select_pipe_message(self):
+        if hasattr(self, "_select_pipe_container"):
+            central = self.centralWidget().rect()
+
+            # Leave space for the pipe selection row (comboBox + Load button)
+            header_height = self.ui.comboBoxPipe.height() + 20
+
+            self._select_pipe_container.setGeometry(
+                0,
+                header_height,
+                central.width(),
+                central.height() - header_height
+            )
+            self._select_pipe_container.show()
+
+        # Hide other views
+        if hasattr(self.ui, "tableWidgetDefect"):
+            self.ui.tableWidgetDefect.hide()
+        if hasattr(self.ui, "tableView"):
+            self.ui.tableView.hide()
+
+        self.btnLoadPipe.setEnabled(False)
+
+    # Load disabled until valid selection
 
     # ---------- action enable/disable toggler ----------
     # def _update_project_actions(self):
@@ -1396,16 +1518,115 @@ class MyMainWindow(QMainWindow):
         a.action_Telemetry.triggered.connect(self.add_plot_tele)
         a.actionAnomalies_Distribution.triggered.connect(self.add_plot_ad)
         a.action_DefectDetect.triggered.connect(self.draw_boxes_v2)
-        if hasattr(a, "pushButtonNext"): a.pushButtonNext.clicked.connect(lambda: None)
-        if hasattr(a, "pushButtonPrev"): a.pushButtonPrev.clicked.connect(lambda: None)
+        if hasattr(a, "pushButtonNext"): a.pushButtonNext.clicked.connect(self.load_next_pipe)
+        if hasattr(a, "pushButtonPrev"): a.pushButtonPrev.clicked.connect(self.load_prev_pipe)
         a.Final_Report.triggered.connect(self.open_Final_Report)
         a.action_Preliminary_Report.triggered.connect(self.open_Preliminary_Report)
         a.action__pipetally.triggered.connect(self.open_pipe_tally)
         a.action_Manual.triggered.connect(self.open_manual)
         a.actionStandard.triggered.connect(self.open_digs)  # original (by defect no.)
 
+    def load_next_pipe(self):
+        """Go to next pipe and load automatically"""
+        cb = self.ui.comboBoxPipe
+        idx = cb.currentIndex()
+        if idx < cb.count() - 1:  # not last
+            cb.setCurrentIndex(idx + 1)
+            self.load_selected_pipe()  # 👈 directly load
+
+    def load_prev_pipe(self):
+        """Go to previous pipe and load automatically"""
+        cb = self.ui.comboBoxPipe
+        idx = cb.currentIndex()
+        if idx > 0:  # not first
+            cb.setCurrentIndex(idx - 1)
+            self.load_selected_pipe()  # 👈 directly load
+
+    # def open_project(self):
+    #     try:
+    #         dlg = QFileDialog(self)
+    #         dlg.setFileMode(QFileDialog.FileMode.Directory)
+    #         dlg.setOption(QFileDialog.Option.ShowDirsOnly)
+    #         dlg.setWindowTitle("Select Project Folder (PKLs + pipe_* folders)")
+    #         if dlg.exec() != QFileDialog.DialogCode.Accepted:
+    #             self.project_is_open = False
+    #             self._toggle_plot_ui(False)
+    #             self._show_watermark()
+    #             self._update_project_actions()
+    #             return
+    #
+    #         root = dlg.selectedFiles()[0]
+    #         self.project_root = root
+    #
+    #         self.pipe_tally = None
+    #         loaded_tally = self._auto_load_pipe_tally(root)
+    #         if not loaded_tally:
+    #             print("[pipe_tally] No tally file found in this project; graphs/reports will warn if needed.")
+    #
+    #         self.pkl_files = [
+    #             os.path.join(root, f)
+    #             for f in os.listdir(root)
+    #             if f.lower().endswith(".pkl")
+    #         ]
+    #
+    #         def nkey(path):
+    #             filename = os.path.basename(path)
+    #             return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", filename)]
+    #         self.pkl_files.sort(key=nkey)
+    #
+    #         cb = self.ui.comboBoxPipe
+    #         cb.blockSignals(True)
+    #         cb.clear()
+    #         names = [os.path.splitext(os.path.basename(f))[0] for f in self.pkl_files]
+    #         if names:
+    #             cb.addItems(names)
+    #             cb.setCurrentIndex(-1)
+    #         else:
+    #             cb.addItem("-Pipe-")
+    #             # 👈 nothing selected
+    #
+    #
+    #         cb.lineEdit().setPlaceholderText("Type pipe number...")
+    #         cb.completer().setCompletionMode(QtWidgets.QCompleter.CompletionMode.PopupCompletion)
+    #         cb.setInsertPolicy(QtWidgets.QComboBox.InsertPolicy.NoInsert)
+    #         cb.blockSignals(False)
+    #
+    #         try:
+    #             cb.lineEdit().returnPressed.disconnect()
+    #         except Exception:
+    #             pass
+    #         cb.lineEdit().returnPressed.connect(self.jump_to_number)
+    #
+    #         if self.pkl_files:
+    #             self.project_is_open = True
+    #             self._hide_create_project_message()
+    #             self._toggle_plot_ui(True)
+    #
+    #             # Show overlay instead of auto-loading
+    #             self._show_select_pipe_message()
+    #
+    #             # 👇 Force check so Load button activates if default pipe is already selected
+    #             self.update_load_button_state(self.ui.comboBoxPipe.currentIndex())
+    #         else:
+    #             self.project_is_open = False
+    #             self._toggle_plot_ui(False)
+    #             self._show_watermark()
+    #             QMessageBox.warning(self, "No PKLs", "No .pkl files found in the selected folder.")
+    #
+    #         self._update_project_actions()
+    #     except Exception as e:
+    #         self.project_is_open = False
+    #         self._toggle_plot_ui(False)
+    #         self._show_watermark()
+    #         self._update_project_actions()
+    #         self.open_Error(e)
+
     def open_project(self):
         try:
+            # hide overlay immediately when trying to open
+            if hasattr(self, "_create_proj_container") and self._create_proj_container:
+                self._create_proj_container.hide()
+
             dlg = QFileDialog(self)
             dlg.setFileMode(QFileDialog.FileMode.Directory)
             dlg.setOption(QFileDialog.Option.ShowDirsOnly)
@@ -1415,6 +1636,10 @@ class MyMainWindow(QMainWindow):
                 self._toggle_plot_ui(False)
                 self._show_watermark()
                 self._update_project_actions()
+
+                # show overlay back if user cancelled
+                if hasattr(self, "_create_proj_container") and self._create_proj_container:
+                    self._create_proj_container.show()
                 return
 
             root = dlg.selectedFiles()[0]
@@ -1434,6 +1659,7 @@ class MyMainWindow(QMainWindow):
             def nkey(path):
                 filename = os.path.basename(path)
                 return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", filename)]
+
             self.pkl_files.sort(key=nkey)
 
             cb = self.ui.comboBoxPipe
@@ -1442,7 +1668,10 @@ class MyMainWindow(QMainWindow):
             names = [os.path.splitext(os.path.basename(f))[0] for f in self.pkl_files]
             if names:
                 cb.addItems(names)
-                cb.setCurrentIndex(0)
+                cb.setCurrentIndex(-1)
+            else:
+                cb.addItem("-Pipe-")  # 👈 nothing selected
+
             cb.lineEdit().setPlaceholderText("Type pipe number...")
             cb.completer().setCompletionMode(QtWidgets.QCompleter.CompletionMode.PopupCompletion)
             cb.setInsertPolicy(QtWidgets.QComboBox.InsertPolicy.NoInsert)
@@ -1458,12 +1687,21 @@ class MyMainWindow(QMainWindow):
                 self.project_is_open = True
                 self._hide_create_project_message()
                 self._toggle_plot_ui(True)
-                self.load_selected_by_index(0)
+
+                # Show overlay instead of auto-loading
+                self._show_select_pipe_message()
+
+                # 👇 Force check so Load button activates if default pipe is already selected
+                self.update_load_button_state(self.ui.comboBoxPipe.currentIndex())
             else:
                 self.project_is_open = False
                 self._toggle_plot_ui(False)
                 self._show_watermark()
                 QMessageBox.warning(self, "No PKLs", "No .pkl files found in the selected folder.")
+
+                # show overlay back if no valid files
+                if hasattr(self, "_create_proj_container") and self._create_proj_container:
+                    self._create_proj_container.show()
 
             self._update_project_actions()
         except Exception as e:
@@ -1471,6 +1709,11 @@ class MyMainWindow(QMainWindow):
             self._toggle_plot_ui(False)
             self._show_watermark()
             self._update_project_actions()
+
+            # show overlay back on error
+            if hasattr(self, "_create_proj_container") and self._create_proj_container:
+                self._create_proj_container.show()
+
             self.open_Error(e)
 
     def _apply_scrollbar_theme(self, _accent_ignored="#b8b8b8"):
@@ -1646,6 +1889,23 @@ class MyMainWindow(QMainWindow):
             return
         self.load_selected_by_index(combo_idx)
 
+
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "_select_pipe_container") and self._select_pipe_container.isVisible():
+            central = self.centralWidget().rect()
+            header_height = self.ui.comboBoxPipe.height() + 20
+            self._select_pipe_container.setGeometry(
+                0,
+                header_height,
+                central.width(),
+                central.height() - header_height
+            )
+        if hasattr(self, "_create_proj_container") and self._create_proj_container.isVisible():
+            central = self.centralWidget().rect()
+            self._create_proj_container.setGeometry(central)
+
     def load_selected_by_index(self, idx: int):
         try:
             if idx < 0 or idx >= len(self.pkl_files):
@@ -1677,26 +1937,47 @@ class MyMainWindow(QMainWindow):
         except Exception as e:
             self.open_Error(f"load_selected_by_index error: {e}")
 
+
+
     def load_selected_pipe(self):
         if not self.project_is_open:
             QMessageBox.warning(self, "No Project", "Please open a project first.")
             return
 
         idx = self.ui.comboBoxPipe.currentIndex()
-        if idx <= 0 or idx >= len(self.pkl_files):
+        text = self.ui.comboBoxPipe.currentText().strip()
+
+        # ✅ If typed text matches an item, resolve index
+        if idx < 0 and text:
+            try:
+                idx = [self.ui.comboBoxPipe.itemText(i) for i in range(self.ui.comboBoxPipe.count())].index(text)
+            except ValueError:
+                QMessageBox.warning(self, "Invalid Selection", f"No pipe named '{text}' found.")
+                return
+
+        if idx < 0 or idx >= len(self.pkl_files):
             QMessageBox.warning(self, "Invalid Selection", "Please select a valid pipe.")
             return
 
-        # 👇 Disable Load button while loading
-        self.btnLoadPipe.setEnabled(False)
+        if hasattr(self, "_select_pipe_container"):
+            self._select_pipe_container.hide()
 
+        self.btnLoadPipe.setEnabled(False)
         self.load_selected_by_index(idx)
 
         #self.btnLoadPipe.clicked.connect(self.load_selected_pipe)
 
     def update_load_button_state(self, idx: int):
-        if self.project_is_open and idx > 0:
+        if not hasattr(self, "btnLoadPipe"):
+            return
+
+        text = self.ui.comboBoxPipe.currentText().strip()
+        items = [self.ui.comboBoxPipe.itemText(i) for i in range(self.ui.comboBoxPipe.count())]
+
+        # ✅ Enable Load if: a valid index OR a valid typed text
+        if self.project_is_open and (idx >= 0 or text in items):
             self.btnLoadPipe.setEnabled(True)
+            # ❌ Do NOT hide overlay here anymore
         else:
             self.btnLoadPipe.setEnabled(False)
 
@@ -2847,6 +3128,7 @@ class MyMainWindow(QMainWindow):
             if hasattr(self, '_no_defects_container') and self._no_defects_container:
                 self._no_defects_container.hide()
 
+
             self._show_create_project_message()
             self.web_view.setUrl(QUrl())
             self.web_view2.setUrl(QUrl())
@@ -2863,14 +3145,19 @@ class MyMainWindow(QMainWindow):
 
             self.btnDigsheetAbs.setEnabled(False)
             self._update_project_actions()
+            if hasattr(self, "_select_pipe_container") and self._select_pipe_container:
+                self._select_pipe_container.hide()
 
             QMessageBox.information(self, "Project Closed", "The project has been successfully closed.")
+            if hasattr(self, "_create_proj_container") and self._create_proj_container:
+                self._create_proj_container.show()
         except Exception as e:
             self.open_Error(e)
         finally:
             # Re-enable signals
             if tw is not None:
                 tw.blockSignals(False)
+
 
     def open_CMLD(self):
         selected_columns = [r"Abs. Distance (m)", r"Type", r"Orientation o' clock"]
@@ -2973,38 +3260,113 @@ class MyMainWindow(QMainWindow):
             # don't crash UI if something is missing during early init
             self._hscroll_ready = True
 
+    # def _setup_create_project_label(self):
+    #     """Setup 'Create the Project in File' message box (shown at startup)."""
+    #     self._create_proj_container = QWidget()
+    #     self._create_proj_container.setMaximumSize(500, 200)
+    #     self._create_proj_container.setMinimumSize(400, 150)
+    #     self._create_proj_container.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+    #
+    #     layout = QVBoxLayout(self._create_proj_container)
+    #     layout.setContentsMargins(0, 0, 0, 0)
+    #
+    #     self._create_proj_label = QLabel("Create the Project in File Menu")
+    #     self._create_proj_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    #     self._create_proj_label.setStyleSheet("""
+    #         QLabel {
+    #             font-size: 16pt;
+    #             color: #666666;
+    #             font-weight: bold;
+    #             background-color: #f8f8f8;
+    #             border: 2px dashed #cccccc;
+    #             border-radius: 10px;
+    #             padding: 20px;
+    #             margin: 10px;
+    #         }
+    #     """)
+    #     layout.addWidget(self._create_proj_label)
+    #
+    #     self._create_proj_container.hide()
+    #
+    #     table_parent = self.ui.tableWidgetDefect.parentWidget()
+    #     if table_parent:
+    #         self._create_proj_container.setParent(table_parent)
+    #         self._create_proj_container.move(500, 50)  # adjust as needed
+
+    from PyQt6.QtGui import QPixmap
+
     def _setup_create_project_label(self):
-        """Setup 'Create the Project in File' message box (shown at startup)."""
-        self._create_proj_container = QWidget()
-        self._create_proj_container.setMaximumSize(500, 200)
-        self._create_proj_container.setMinimumSize(400, 150)
-        self._create_proj_container.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        """Create a centered overlay for 'Create Project' message"""
+        central = self.centralWidget()
+        self._create_proj_container = QWidget(central)
+        self._create_proj_container.setGeometry(central.rect())
+        self._create_proj_container.setStyleSheet("""
+            background-color: rgba(245, 247, 250, 200);
+        """)
 
         layout = QVBoxLayout(self._create_proj_container)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self._create_proj_label = QLabel("Create the Project in File Menu")
-        self._create_proj_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._create_proj_label.setStyleSheet("""
-            QLabel {
-                font-size: 16pt;
-                color: #666666;
-                font-weight: bold;
-                background-color: #f8f8f8;
-                border: 2px dashed #cccccc;
-                border-radius: 10px;
-                padding: 20px;
-                margin: 10px;
+        # Main card
+        card = QFrame()
+        card.setFixedWidth(420)
+        card.setStyleSheet("""
+            QFrame {
+                background-color: #ffffff;
+                border-radius: 14px;
+                border: 1px solid #e0e0e0;
+                padding: 30px 20px;
+                box-shadow: 0px 4px 12px rgba(0,0,0,0.08);
             }
         """)
-        layout.addWidget(self._create_proj_label)
+        card_layout = QVBoxLayout(card)
+        card_layout.setSpacing(20)
+        card_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        # Proper icon (no cropping)
+        icon_label = QLabel()
+        pixmap = QPixmap("icons/folder.png")  # ✅ use your own folder.png here
+        if not pixmap.isNull():
+            pixmap = pixmap.scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio,
+                                   Qt.TransformationMode.SmoothTransformation)
+            icon_label.setPixmap(pixmap)
+        else:
+            icon_label.setText("📁")  # fallback emoji
+            icon_label.setStyleSheet("font-size: 48px;")
+
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(icon_label)
+
+        # Title
+        title = QLabel("Create the Project")
+        title.setStyleSheet("""
+            font-size: 20pt;
+            font-weight: 600;
+            color: #2c3e50;
+        """)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(title)
+
+        # Divider
+        divider = QFrame()
+        divider.setFrameShape(QFrame.Shape.HLine)
+        divider.setStyleSheet("color: #e0e0e0; margin: 8px 0;")
+        card_layout.addWidget(divider)
+
+        # Subtitle (fixed clipping issue)
+        subtitle = QLabel("Go to <b>File → Create Project</b> in the menu bar")
+        subtitle.setWordWrap(True)
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        subtitle.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        subtitle.setStyleSheet("""
+            font-size: 12pt;
+            color: #555;
+        """)
+        card_layout.addWidget(subtitle)
+
+        layout.addWidget(card)
         self._create_proj_container.hide()
-
-        table_parent = self.ui.tableWidgetDefect.parentWidget()
-        if table_parent:
-            self._create_proj_container.setParent(table_parent)
-            self._create_proj_container.move(500, 50)  # adjust as needed
 
     def _show_create_project_message(self):
         """Show 'Create the Project in File' message, hide table + scrollbars."""
