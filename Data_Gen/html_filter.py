@@ -1490,7 +1490,6 @@ def pre_process_for_interactive_heatmap(df_in: pd.DataFrame, datafile: pd.DataFr
 
     df_sens = pd.DataFrame(datafile, columns=sens_cols).copy()
     df_sens_raw = df_sens.copy(deep=True)  # Keep raw copy for CSV export
-    print(f" sens raw : list(df_sens_raw.columns)")
     df_mean_cols = df_sens_raw
     print(list(df_mean_cols.columns))
     Mean1 = df_mean_cols.mean()
