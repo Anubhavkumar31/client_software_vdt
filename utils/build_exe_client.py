@@ -70,6 +70,6 @@ PyInstaller.__main__.run([
     "--add-data", "pipetally;pipetally/",
     "--add-data", "final_report;final_report/",
     "--add-data", "preliminary_report;preliminary_report/",
-    "--name", "test_client",  
-    "test5.py"
+    "--name", "main_client_software",  
+    "main.py"
 ])

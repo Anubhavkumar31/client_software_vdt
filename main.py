@@ -835,35 +835,6 @@ class MyMainWindow(QMainWindow):
                 }
             """)
 
-    # def _setup_select_pipe_label(self):
-    #     """Create full overlay asking user to select a pipe"""
-    #     # Overlay only inside central widget, not the whole window
-    #     central = self.centralWidget()
-    #     self._select_pipe_container = QWidget(central)
-    #     self._select_pipe_container.setStyleSheet(
-    #         "background-color: rgba(255, 255, 255, 230);"  # semi-transparent white
-    #     )
-    #     self._select_pipe_container.setGeometry(central.rect())
-    #
-    #     layout = QVBoxLayout(self._select_pipe_container)
-    #     layout.setContentsMargins(0, 0, 0, 0)
-    #     layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    #
-    #     self._select_pipe_label = QLabel("Please select a pipe number")
-    #     self._select_pipe_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    #     self._select_pipe_label.setStyleSheet("""
-    #         font-size: 24pt;
-    #         font-weight: bold;
-    #         color: #333;
-    #         background-color: #f8f8f8;
-    #         border: 3px dashed #666;
-    #         border-radius: 15px;
-    #         padding: 40px;
-    #     """)
-    #
-    #     layout.addWidget(self._select_pipe_label)
-    #
-    #     self._select_pipe_container.hide()
 
     def _setup_select_pipe_label(self):
         """Create a polished overlay asking user to select a pipe"""
@@ -982,17 +953,6 @@ class MyMainWindow(QMainWindow):
 
         self.btnLoadPipe.setEnabled(False)
 
-    # Load disabled until valid selection
-
-    # ---------- action enable/disable toggler ----------
-    # def _update_project_actions(self):
-    #     a = self.ui
-    #     act_create = getattr(a, "action_Create_Proj", None)
-    #     act_close  = getattr(a, "action_Close_Proj", None)
-    #     if isinstance(act_create, QAction):
-    #         act_create.setEnabled(not self.project_is_open)
-    #     if isinstance(act_close, QAction):
-    #         act_close.setEnabled(self.project_is_open)
 
     def _update_project_actions(self):
         a = self.ui
@@ -3259,39 +3219,6 @@ class MyMainWindow(QMainWindow):
         except Exception:
             # don't crash UI if something is missing during early init
             self._hscroll_ready = True
-
-    # def _setup_create_project_label(self):
-    #     """Setup 'Create the Project in File' message box (shown at startup)."""
-    #     self._create_proj_container = QWidget()
-    #     self._create_proj_container.setMaximumSize(500, 200)
-    #     self._create_proj_container.setMinimumSize(400, 150)
-    #     self._create_proj_container.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-    #
-    #     layout = QVBoxLayout(self._create_proj_container)
-    #     layout.setContentsMargins(0, 0, 0, 0)
-    #
-    #     self._create_proj_label = QLabel("Create the Project in File Menu")
-    #     self._create_proj_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    #     self._create_proj_label.setStyleSheet("""
-    #         QLabel {
-    #             font-size: 16pt;
-    #             color: #666666;
-    #             font-weight: bold;
-    #             background-color: #f8f8f8;
-    #             border: 2px dashed #cccccc;
-    #             border-radius: 10px;
-    #             padding: 20px;
-    #             margin: 10px;
-    #         }
-    #     """)
-    #     layout.addWidget(self._create_proj_label)
-    #
-    #     self._create_proj_container.hide()
-    #
-    #     table_parent = self.ui.tableWidgetDefect.parentWidget()
-    #     if table_parent:
-    #         self._create_proj_container.setParent(table_parent)
-    #         self._create_proj_container.move(500, 50)  # adjust as needed
 
     from PyQt6.QtGui import QPixmap
 
