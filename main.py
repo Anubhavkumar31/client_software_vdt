@@ -568,6 +568,34 @@ class MyMainWindow(QMainWindow):
         super().__init__()
         self.ui = Form()
         self.ui.setupUi(self)
+        # Style the menu bar (black background, white text)
+        self.menuBar().setStyleSheet("""
+            QWidget {
+                background-color: #e0e0e0;   
+            }
+            QMenuBar {
+                background-color: #000000;   
+                color: white;                
+            }
+            QMenuBar::item {
+                background: transparent;
+                padding: 4px 12px;
+            }
+            QMenuBar::item:selected {
+                background: #333333;         
+                color: white;
+            }
+
+            QMenu {
+                background-color: #000000;   
+                color: white;
+                border: 1px solid #444444;
+            }
+            QMenu::item:selected {
+                background-color: #333333;
+            }
+        """)
+
         self.child_windows = {}
 
         self._central_original = self.centralWidget()
@@ -609,6 +637,35 @@ class MyMainWindow(QMainWindow):
         self.loading_dialog = None
 
         self.ui.comboBoxPipe.setEditable(True)
+        import os
+
+        arrow_path = os.path.join(os.path.dirname(__file__), "ui", "icons", "arrow_down.svg").replace("\\", "/")
+
+        self.ui.comboBoxPipe.setStyleSheet(f"""
+            QComboBox {{
+                padding: 4px 8px;
+                border: 2px solid #000000;
+                border-radius: 6px;
+                background: white;
+            }}
+            QComboBox::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
+                border-left: 2px solid #000000;
+            }}
+            QComboBox::down-arrow {{
+                image: url({arrow_path});
+                width: 12px;
+                height: 12px;
+            }}
+            QComboBox QAbstractItemView {{
+                border: 2px solid #000000; 
+                selection-background-color: #3498db;
+                selection-color: white;
+            }}
+        """)
+
         self.ui.comboBoxPipe.clear()
         self.ui.comboBoxPipe.addItem("-Pipe-")
         self.ui.comboBoxPipe.setMaxVisibleItems(12)
@@ -630,6 +687,28 @@ class MyMainWindow(QMainWindow):
         self.btnDigsheetAbs = QPushButton("Digsheet")
         self.btnDigsheetAbs.setToolTip("Select an Absolute Distance cell in the defect table (on Heatmap/3D) to enable.")
         self.btnDigsheetAbs.setEnabled(False)
+        self.btnDigsheetAbs.setStyleSheet("""
+            QPushButton {
+                background: white;
+                border: 1px solid #3498db;
+                color: #3498db;
+                border-radius: 6px;
+                padding: 4px 12px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background: #ecf6fd;
+            }
+            QPushButton:pressed {
+                background: #d0e9fa;
+            }
+            QPushButton:disabled {
+                color: #a0a0a0;
+                background: #f5f5f5;
+                border: 2px solid #6e6e6e;
+            }
+        """)
+
         try:
             _parent = self.ui.comboBoxPipe.parentWidget()
             _lay = _parent.layout()
@@ -648,6 +727,28 @@ class MyMainWindow(QMainWindow):
         # Add Load button next to comboBoxPipe
         self.btnLoadPipe = QPushButton("Load")
         self.btnLoadPipe.setEnabled(False)
+        self.btnLoadPipe.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: 1px solid #2980b9;
+                border-radius: 6px;
+                padding: 4px 12px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+            QPushButton:pressed {
+                background-color: #1f5f8a;
+            }
+            QPushButton:disabled {
+            background-color: #a6a6a6;   
+            color: #f0f0f0;              
+            border: 2px solid #6e6e6e;   
+        }
+        """)
+
         _parent = self.ui.comboBoxPipe.parentWidget()
         _lay = _parent.layout()
         if _lay is not None:
@@ -805,7 +906,7 @@ class MyMainWindow(QMainWindow):
                     text-align: center;
                 }
             """)
-            self.ui.tableView.verticalHeader().setStyleSheet("""
+            self.ui.tableView.verticalHeader().setet("""
                 QHeaderView::section {
                     font-weight: bold;
                     background-color: #f0f0f0;
