@@ -12,6 +12,9 @@ import re
 from glob import glob
 from pathlib import Path
 from typing import Optional
+from PyQt6.QtWidgets import QPushButton
+from PyQt6.QtCore import Qt
+
 
 import numpy as np
 import pandas as pd
@@ -908,6 +911,7 @@ class MyMainWindow(QMainWindow):
             if hasattr(self, '_no_defects_container'):
                 self._no_defects_container.show()
             if hasattr(self.ui, 'tableWidgetDefect'):
+                self.ui.tableWidgetDefect.clearSelection()
                 self.ui.tableWidgetDefect.hide()
             if hasattr(self, 'table_scrollbar'):
                 self.table_scrollbar.hide()
@@ -959,13 +963,18 @@ class MyMainWindow(QMainWindow):
         act_create = getattr(a, "action_Create_Proj", None)
         act_close = getattr(a, "action_Close_Proj", None)
         act_graphs = getattr(a, "action_graphs", None)
-
+        act_xyz = getattr(a, "action_XYZ", None)
+        act_pipehigh = getattr(a, "action_Pipe_High", None)
         if isinstance(act_create, QAction):
             act_create.setEnabled(not self.project_is_open)
         if isinstance(act_close, QAction):
             act_close.setEnabled(self.project_is_open)
         if isinstance(act_graphs, QAction):
             act_graphs.setEnabled(self.project_is_open)
+        if isinstance(act_xyz, QAction):  # ← Add this block
+            act_xyz.setEnabled(self.project_is_open)
+        if isinstance(act_pipehigh, QAction):  # ← ADD THIS BLOCK
+            act_pipehigh.setEnabled(self.project_is_open)
 
     # ---------------------------------------------------
 
@@ -1870,7 +1879,11 @@ class MyMainWindow(QMainWindow):
         try:
             if idx < 0 or idx >= len(self.pkl_files):
                 return
-
+            if hasattr(self, 'btnDigsheetAbs'):
+                self.btnDigsheetAbs.setEnabled(False)
+            if hasattr(self.ui, 'tableWidgetDefect'):
+                self.ui.tableWidgetDefect.clearSelection()
+            
             pkl_path = self.pkl_files[idx]
             name = os.path.splitext(os.path.basename(pkl_path))[0]
             pipe_idx = self._extract_index(name)
@@ -2019,6 +2032,7 @@ class MyMainWindow(QMainWindow):
         QTimer.singleShot(0, self._arm_topbar)
         QTimer.singleShot(0, self._arm_main_topbar)
         self.update_digsheet_button_state()
+        QTimer.singleShot(100, self.update_digsheet_button_state)
         # 👇 keep Load button disabled after file load
         self.btnLoadPipe.setEnabled(False)
 
@@ -2035,6 +2049,9 @@ class MyMainWindow(QMainWindow):
         - Normalizes columns
         - Fills table incrementally to avoid UI freeze
         """
+        tw = self.ui.tableWidgetDefect
+        tw.clearSelection()
+
         if df is None or df.empty:
             self._show_no_defects_message()
             return
@@ -2208,6 +2225,10 @@ class MyMainWindow(QMainWindow):
 
     # ✅ Updated _populate_defect_table_from_csv with "No Defects Found" logic
     def _populate_defect_table_from_csv(self, df: pd.DataFrame):
+        
+        tw = self.ui.tableWidgetDefect
+        tw.clearSelection()
+
         if df is None or df.empty:
             self._show_no_defects_message()
             return
@@ -2614,18 +2635,194 @@ class MyMainWindow(QMainWindow):
         self.pipe_tally = None
         return False
 
+    # def open_XYZ(self):
+    #     try:
+    #         if sys.platform == "win32":
+    #             path = r"C:\Program Files\Google\Google Earth Pro\client\googleearth.exe"
+    #         elif sys.platform == "darwin":
+    #             path = "/Applications/Google Earth Pro.app/Contents/MacOS/Google Earth Pro"
+    #         else:
+    #             path = "/usr/bin/google-earth-pro"
+    #         if os.path.exists(path):
+    #             subprocess.Popen([path])
+    #     except Exception:
+    #         pass
+
+    # def open_XYZ(self):
+    #     try:
+    #         # Define KML path for testing purposes
+    #         kml_path = r"C:\Users\anubh\Downloads\sample_locations2.kml"  # Replace with your actual KML file path
+            
+    #         # Determine Google Earth Pro path based on platform
+    #         if sys.platform == "win32":
+    #             earth_path = r"C:\Program Files\Google\Google Earth Pro\client\googleearth.exe"
+    #         elif sys.platform == "darwin":
+    #             earth_path = "/Applications/Google Earth Pro.app/Contents/MacOS/Google Earth Pro"
+    #         else:
+    #             earth_path = "/usr/bin/google-earth-pro"
+            
+    #         # Check if Google Earth Pro is installed
+    #         if not os.path.exists(earth_path):
+    #             # Show installation message
+    #             reply = QMessageBox.question(
+    #                 self, 
+    #                 "Google Earth Pro Not Found",
+    #                 "Google Earth Pro is not installed on your system.\n\n"
+    #                 "Would you like to download and install it?\n\n"
+    #                 "Click 'Yes' to open the download page, or 'No' to cancel.",
+    #                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+    #                 QMessageBox.StandardButton.Yes
+    #             )
+                
+    #             if reply == QMessageBox.StandardButton.Yes:
+    #                 # Open download page in default browser
+    #                 import webbrowser
+    #                 webbrowser.open("https://www.google.com/earth/versions/#earth-pro")
+    #             return
+            
+    #         # Check if KML file exists
+    #         if not os.path.exists(kml_path):
+    #             QMessageBox.warning(
+    #                 self,
+    #                 "KML File Not Found", 
+    #                 f"The KML file could not be found at:\n{kml_path}\n\n"
+    #                 "Please check the file path and try again."
+    #             )
+    #             return
+            
+    #         # Launch Google Earth Pro with the KML file
+    #         try:
+    #             subprocess.Popen([earth_path, kml_path])
+    #             # QMessageBox.information(
+    #             #     self,
+    #             #     "Success",
+    #             #     "Google Earth Pro has been launched with the KML file."
+    #             # )
+    #         except Exception as launch_error:
+    #             QMessageBox.critical(
+    #                 self,
+    #                 "Launch Error",
+    #                 f"Failed to launch Google Earth Pro:\n{str(launch_error)}"
+    #             )
+                
+    #     except Exception as e:
+    #         QMessageBox.critical(
+    #             self,
+    #             "Error",
+    #             f"An unexpected error occurred:\n{str(e)}"
+    #         )
+
     def open_XYZ(self):
+        if not self.project_is_open:
+            if self._ui_ready:
+                self._project_required_popup()
+            return
         try:
-            if sys.platform == "win32":
-                path = r"C:\Program Files\Google\Google Earth Pro\client\googleearth.exe"
-            elif sys.platform == "darwin":
-                path = "/Applications/Google Earth Pro.app/Contents/MacOS/Google Earth Pro"
+            # First check if a project is open
+            if not self.project_is_open or not self.project_root:
+                QMessageBox.warning(
+                    self,
+                    "No Project Open",
+                    "Please open a project first to load KML files from the project folder."
+                )
+                return
+            
+            # Search for KML files in the project folder
+            kml_files = []
+            project_path = Path(self.project_root)
+            
+            # Search for KML files in project root and subdirectories
+            kml_patterns = ["*.kml", "*.KML"]
+            for pattern in kml_patterns:
+                kml_files.extend(project_path.glob(pattern))
+                kml_files.extend(project_path.glob(f"**/{pattern}"))  # Search subdirectories too
+            
+            # Remove duplicates and convert to strings
+            kml_files = list(set(str(f) for f in kml_files))
+            
+            if not kml_files:
+                QMessageBox.information(
+                    self,
+                    "No KML Files Found",
+                    f"No KML files were found in the project folder:\n{self.project_root}\n\n"
+                    "Please ensure your KML files are placed in the project directory."
+                )
+                return
+            
+            # If multiple KML files found, let user choose
+            kml_path = None
+            if len(kml_files) == 1:
+                kml_path = kml_files[0]
             else:
-                path = "/usr/bin/google-earth-pro"
-            if os.path.exists(path):
-                subprocess.Popen([path])
-        except Exception:
-            pass
+                # Show selection dialog for multiple KML files
+                file_names = [os.path.basename(f) for f in kml_files]
+                selected_file, ok = QInputDialog.getItem(
+                    self,
+                    "Select KML File",
+                    f"Found {len(kml_files)} KML files. Please select one to open:",
+                    file_names,
+                    0,
+                    False
+                )
+                if ok and selected_file:
+                    # Find the full path for the selected file
+                    kml_path = next((f for f in kml_files if os.path.basename(f) == selected_file), None)
+            
+            if not kml_path:
+                return
+            
+            # Determine Google Earth Pro path based on platform
+            if sys.platform == "win32":
+                earth_path = r"C:\Program Files\Google\Google Earth Pro\client\googleearth.exe"
+            elif sys.platform == "darwin":
+                earth_path = "/Applications/Google Earth Pro.app/Contents/MacOS/Google Earth Pro"
+            else:
+                earth_path = "/usr/bin/google-earth-pro"
+            
+            # Check if Google Earth Pro is installed
+            if not os.path.exists(earth_path):
+                # Show installation message
+                reply = QMessageBox.question(
+                    self, 
+                    "Google Earth Pro Not Found",
+                    "Google Earth Pro is not installed on your system.\n\n"
+                    "Would you like to download and install it?\n\n"
+                    "Click 'Yes' to open the download page, or 'No' to cancel.",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.Yes
+                )
+                
+                if reply == QMessageBox.StandardButton.Yes:
+                    # Open download page in default browser
+                    import webbrowser
+                    webbrowser.open("https://www.google.com/earth/versions/#earth-pro")
+                return
+            
+            # Launch Google Earth Pro with the selected KML file
+            try:
+                subprocess.Popen([earth_path, kml_path])
+                # QMessageBox.information(
+                #     self,
+                #     "Success",
+                #     f"Google Earth Pro has been launched with:\n{os.path.basename(kml_path)}"
+                # )
+            except Exception as launch_error:
+                QMessageBox.critical(
+                    self,
+                    "Launch Error",
+                    f"Failed to launch Google Earth Pro with the KML file:\n{str(launch_error)}"
+                )
+                
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"An unexpected error occurred while searching for KML files:\n{str(e)}"
+            )
+
+
+
+
 
     def open_Cluster(self):
         Cluster_Dialog().exec()
@@ -2667,12 +2864,145 @@ class MyMainWindow(QMainWindow):
     def open_Assessment(self):
         Assess_Dialog().exec()
 
+    # def open_PipeHigh(self):
+    #     try:
+    #         # ✅ Check if pipe_tally is loaded and pass it to PipeHighlightApp
+    #         if hasattr(self, 'pipe_tally') and isinstance(self.pipe_tally, pd.DataFrame) and not self.pipe_tally.empty:
+    #             print(f"🔍 Opening Pipe Highlights with {len(self.pipe_tally)} rows of data")
+    #             print(f"📊 Available columns: {list(self.pipe_tally.columns)}")
+                
+    #             from pages.Pipe_Highlights import run_app
+                
+    #             # ✅ Pass the loaded pipe_tally DataFrame to the app
+    #             run_app(pipe_tally_df=self.pipe_tally)
+                
+    #         else:
+    #             # If no pipe tally loaded, show informative error
+    #             QMessageBox.warning(
+    #                 self, 
+    #                 "No Pipe Tally Data", 
+    #                 "Please load a project with pipe tally data first.\n\n"
+    #                 "Steps to load data:\n"
+    #                 "1. Go to File → Create Project\n"
+    #                 "2. Select a folder containing pipe tally files\n"
+    #                 "3. Wait for the data to load\n"
+    #                 "4. Try opening Pipe Highlights again"
+    #             )
+                
+    #     except ImportError as e:
+    #         self.open_Error(f"Could not import Pipe Highlights module:\n{e}\n\nPlease check if the Pipe_Highlights.py file exists in the pages folder.")
+    #     except Exception as e:
+    #         self.open_Error(f"Error running Pipe Highlight:\n{e}")
+
+
     def open_PipeHigh(self):
+        """Open Pipeline Highlights embedded in the main window"""
         try:
-            from pages.Pipe_Highlights import run_app
-            run_app()
+            # Check if pipe_tally is loaded
+            if not hasattr(self, 'pipe_tally') or not isinstance(self.pipe_tally, pd.DataFrame) or self.pipe_tally.empty:
+                QMessageBox.warning(
+                    self, 
+                    "No Pipe Tally Data", 
+                    "Please load a project with pipe tally data first.\n\n"
+                    "Steps to load data:\n"
+                    "1. Go to File → Create Project\n"
+                    "2. Select a folder containing pipe tally files\n"
+                    "3. Wait for the data to load\n"
+                    "4. Try opening Pipe Highlights again"
+                )
+                return
+
+            # Check if Pipeline Highlights is already open
+            if hasattr(self, '_central_pipeline') and self.centralWidget() is self._central_pipeline:
+                return  # Already showing Pipeline Highlights
+                
+            # Save the original central widget
+            if not hasattr(self, '_central_original') or self._central_original is None:
+                self._central_original = self.centralWidget()
+
+            print(f"🔍 Opening Pipeline Highlights with {len(self.pipe_tally)} rows of data")
+            print(f"📊 Available columns: {list(self.pipe_tally.columns)}")
+            
+            # Import the embedded version
+            from pages.Pipe_Highlights_Embedded import PipeHighlightEmbedded
+            
+            # Create container widget
+            container = QWidget()
+            layout = QVBoxLayout(container)
+            layout.setContentsMargins(12, 12, 12, 12)
+            layout.setSpacing(10)
+
+            # Header with back button
+            header_layout = QHBoxLayout()
+            back_btn = QPushButton("◀ Back")
+            back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            back_btn.clicked.connect(self._close_pipeline_view)
+            
+            title_label = QLabel("")
+            title_label.setStyleSheet("font-weight: 600; font-size: 16pt; color: #2c3e50;")
+            
+            header_layout.addWidget(back_btn)
+            header_layout.addSpacing(20)
+            header_layout.addWidget(title_label)
+            header_layout.addStretch(1)
+            
+            layout.addLayout(header_layout)
+
+            # Create and add the Pipeline Highlights widget
+            self._pipeline_widget = PipeHighlightEmbedded(parent=container, pipe_tally_df=self.pipe_tally)
+            layout.addWidget(self._pipeline_widget, stretch=1)
+
+            # Store reference and switch central widget
+            self._central_pipeline = container
+            
+            # Switch to Pipeline Highlights view
+            if self._central_original is not None and self._central_original.parent() is self:
+                self.takeCentralWidget()
+            self.setCentralWidget(container)
+            
+            print("✅ Pipeline Highlights opened successfully in embedded mode")
+            
+        except ImportError as e:
+            self.open_Error(f"Could not import Pipeline Highlights module:\n{e}\n\nPlease check if the Pipe_Highlights_Embedded.py file exists in the pages folder.")
         except Exception as e:
-            self.open_Error(f"Error running Pipe Highlight:\n{e}")
+            self.open_Error(f"Error running Pipeline Highlights:\n{e}")
+            # Restore original view on error
+            try:
+                if hasattr(self, '_central_original') and self._central_original is not None:
+                    if self.centralWidget() is not self._central_original:
+                        self.setCentralWidget(self._central_original)
+            except Exception:
+                pass
+
+    def _close_pipeline_view(self):
+        """Close Pipeline Highlights and return to main view"""
+        try:
+            if self.centralWidget() is getattr(self, '_central_original', None):
+                return  # Already showing original view
+
+            # Take current widget and delete it
+            pipeline_central = self.takeCentralWidget()
+            if pipeline_central is not None:
+                pipeline_central.deleteLater()
+
+            # Restore original central widget
+            if hasattr(self, '_central_original') and self._central_original is not None:
+                if self._central_original.parent() is not self:
+                    self._central_original.setParent(self)
+                self.setCentralWidget(self._central_original)
+
+            # Clean up references
+            if hasattr(self, '_pipeline_widget'):
+                self._pipeline_widget = None
+            if hasattr(self, '_central_pipeline'):
+                self._central_pipeline = None
+                
+            print("✅ Returned to main view from Pipeline Highlights")
+            
+        except Exception as e:
+            print(f"⚠️ Error closing Pipeline Highlights view: {e}")
+
+
 
     def open_PipeScheme(self):
         try:
@@ -2935,7 +3265,7 @@ class MyMainWindow(QMainWindow):
     def _project_gate_targets(self):
         names = [
             "btnHeatmap", "btnLinechart", "btn3D",
-            "toolButtonHeatmap", "toolButtonLine", "toolButton3D",
+            "toolButtonHeatmap", "toolButtonLine", "toolButton3D", "toolButtonXYZ",
         ]
         widgets = [self.btnDigsheetAbs]
         for n in names:
@@ -3000,9 +3330,15 @@ class MyMainWindow(QMainWindow):
 
     def _has_valid_abs_selection(self) -> bool:
         tw = self.ui.tableWidgetDefect
-        if tw.rowCount() == 0 or tw.columnCount() == 0:
+        # if tw.rowCount() == 0 or tw.columnCount() == 0:
+        #     return False
+        if not tw.isVisible() or tw.rowCount() == 0 or tw.columnCount() == 0:
             return False
 
+        # ✅ Check if "no defects" message is showing
+        if hasattr(self, '_no_defects_container') and self._no_defects_container and self._no_defects_container.isVisible():
+            return False
+        
         abs_col = self._abs_col_index_silent()
         if abs_col is None:
             return False

@@ -195,6 +195,93 @@ def save_as_image():
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save merged image:\n{e}")
 
+import img2pdf
+import os
+from tkinter import filedialog, messagebox
+from PIL import ImageGrab
+
+def save_as_pdf_high_quality():
+    """Save digsheet as high-quality PDF using img2pdf"""
+    filepath = filedialog.asksaveasfilename(
+        defaultextension=".pdf",
+        filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")]
+    )
+    if not filepath:
+        return
+
+    if not scrollable_active:
+        # Non-scrollable case
+        root.update_idletasks()
+        x0 = root.winfo_rootx()
+        y0 = root.winfo_rooty()
+        x1 = x0 + root.winfo_width()
+        y1 = y0 + root.winfo_height()
+        
+        # Capture screenshot
+        img = ImageGrab.grab(bbox=(x0, y0, x1 - 660, y1 + 220))
+        temp_png = filepath + "_temp.png"
+        img.save(temp_png)
+        
+        try:
+            with open(filepath, "wb") as f:
+                f.write(img2pdf.convert(temp_png))
+            messagebox.showinfo("Saved!", f"High-quality PDF saved:\n{filepath}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save PDF:\n{e}")
+        finally:
+            if os.path.exists(temp_png):
+                os.remove(temp_png)
+    else:
+        # Scrollable case - same merging logic as before
+        try:
+            root.update_idletasks()
+            x2 = feature_desc_frame.winfo_rootx()
+            y0 = root.winfo_rooty()
+            y2 = feature_desc_frame.winfo_rooty()
+            y2_end = y2 + feature_desc_frame.winfo_height()
+            x3 = third_frame.winfo_rootx()
+            y3 = third_frame.winfo_rooty()
+            x4 = x3 + third_frame.winfo_width()
+            y4 = y3 + third_frame.winfo_height()
+            
+            x_left = min(x2, x3) - 5
+            x_right = max(x2 + feature_desc_frame.winfo_width(), x4 + 10)
+
+            # Capture top section
+            canvas.yview_moveto(0.0)
+            root.update(); time.sleep(0.3)
+            img_top = ImageGrab.grab(bbox=(x_left, y0, x_right, y2_end + 5))
+
+            # Capture bottom section
+            canvas.yview_moveto(1.0)
+            root.update(); time.sleep(0.6)
+            img_bot = ImageGrab.grab(bbox=(x_left, y3 - 95, x_right, y4 - 85))
+
+            # Resize and merge
+            if img_top.width != img_bot.width:
+                img_bot = img_bot.resize((img_top.width, img_bot.height))
+
+            total_height = img_top.height + img_bot.height
+            merged = Image.new("RGB", (img_top.width, total_height), "white")
+            merged.paste(img_top, (0, 0))
+            merged.paste(img_bot, (0, img_top.height))
+            
+            # Save merged image temporarily
+            temp_png = filepath + "_temp.png"
+            merged.save(temp_png)
+            
+            # Convert to PDF using img2pdf
+            with open(filepath, "wb") as f:
+                f.write(img2pdf.convert(temp_png))
+            messagebox.showinfo("Saved!", f"High-quality PDF saved:\n{filepath}")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save merged PDF:\n{e}")
+        finally:
+            if os.path.exists(temp_png):
+                os.remove(temp_png)
+
+
 
 def hms_to_angle(hms):
     if isinstance(hms, str):
@@ -866,8 +953,8 @@ defect_entry = tk.Entry(input_frame, width=10)
 defect_entry.grid(row=1, column=1, pady=5)
 tk.Button(input_frame, text="Load", command=on_load_click)\
     .grid(row=2, column=0, columnspan=2, pady=5)
-tk.Button(input_frame, text="Save as Image", command=save_as_image)\
-    .grid(row=3, column=0, columnspan=2, pady=5)
+tk.Button(input_frame, text="Save as Image", command=save_as_image).grid(row=3, column=0, columnspan=2, pady=5)
+tk.Button(input_frame, text="Save as PDF (HQ)", command=save_as_pdf_high_quality).grid(row=4, column=0, columnspan=2, pady=5)
 
 
 # Upstream weld info
