@@ -568,6 +568,7 @@ class MyMainWindow(QMainWindow):
         super().__init__()
         self.ui = Form()
         self.ui.setupUi(self)
+        
         self.child_windows = {}
 
         self._central_original = self.centralWidget()
@@ -975,6 +976,7 @@ class MyMainWindow(QMainWindow):
             act_xyz.setEnabled(self.project_is_open)
         if isinstance(act_pipehigh, QAction):  # ← ADD THIS BLOCK
             act_pipehigh.setEnabled(self.project_is_open)
+        self._update_generate_actions()
 
     # ---------------------------------------------------
 
@@ -3092,9 +3094,88 @@ class MyMainWindow(QMainWindow):
         else: self.open_Error("Prelimary report is not found.")
 
     def open_pipe_tally(self):
-        p = resource_path(os.path.join("pipetally", "pipe_tally.xlsx"))
-        if os.path.exists(p): os.startfile(p)
-        else: self.open_Error("Pipetally not found.")
+        # Check if a project is open
+        if not self.project_is_open or not self.project_root:
+            QMessageBox.warning(
+                self,
+                "No Project Open",
+                "Please create/open a project first to access the pipe tally file.\n\n"
+                "Steps:\n"
+                "1. Go to File → Create Project\n"
+                "2. Select a project folder\n"
+                "3. Then try accessing Pipe Tally again"
+            )
+            return
+            
+        if not hasattr(self, 'pipe_tally') or self.pipe_tally is None:
+            QMessageBox.warning(
+                self,
+                "No Pipe Tally Loaded",
+                "No pipe tally data is currently loaded from this project."
+            )
+            return
+        
+        # Search for pipe tally files ONLY in the project root directory (not subdirectories)
+        pipe_tally_files = []
+        project_path = Path(self.project_root)
+        
+        # Define pattern to match pipe tally related files (case-insensitive)
+        # Matches: pipetally, pipe_tally, tally_pipe, pipe-tally, etc.
+        import re
+        tally_pattern = re.compile(r'.*(pipe.*tally|tally.*pipe|pipetally|pipe_tally|pipe-tally).*\.(xlsx?|csv)$', re.IGNORECASE)
+        
+        # Search ONLY in project root (not subdirectories)
+        try:
+            for file_path in project_path.iterdir():  # Only direct children of root
+                if file_path.is_file() and tally_pattern.match(file_path.name):
+                    pipe_tally_files.append(str(file_path))
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error searching for pipe tally files:\n{e}"
+            )
+            return
+        
+        if not pipe_tally_files:
+            QMessageBox.warning(
+                self,
+                "Pipe Tally File Not Found",
+                f"Could not find any pipe tally files in the project root directory:\n{self.project_root}\n\n"
+                "Looking for files containing: 'pipetally', 'pipe_tally', 'tally_pipe', etc.\n"
+                "Note: Only searching in the root folder, not inside pipe subdirectories.\n\n"
+                "The pipe tally data is loaded in memory, but the source file could not be located."
+            )
+            return
+        
+        # If multiple files found, let user choose
+        pipe_tally_file = None
+        if len(pipe_tally_files) == 1:
+            pipe_tally_file = pipe_tally_files[0]
+        else:
+            # Show selection dialog for multiple pipe tally files
+            file_names = [os.path.basename(f) for f in pipe_tally_files]
+            selected_file, ok = QInputDialog.getItem(
+                self,
+                "Select Pipe Tally File",
+                f"Found {len(pipe_tally_files)} pipe tally files in the root directory. Please select one to open:",
+                file_names,
+                0,
+                False
+            )
+            if ok and selected_file:
+                # Find the full path for the selected file
+                pipe_tally_file = next((f for f in pipe_tally_files if os.path.basename(f) == selected_file), None)
+        
+        # Open the selected file
+        if pipe_tally_file:
+            try:
+                os.startfile(pipe_tally_file)
+            except Exception as e:
+                self.open_Error(f"Failed to open pipe tally file:\n{e}")
+        else:
+            QMessageBox.information(self, "No Selection", "No file was selected.")
+
 
     def open_manual(self):
         p = resource_path(os.path.join("manual", "user_manual.pdf"))
@@ -3363,6 +3444,11 @@ class MyMainWindow(QMainWindow):
         return tab in ("Heatmap", "3D Graph", "3D")
 
     def update_digsheet_button_state(self):
+        if not self.project_is_open:
+            self.btnDigsheetAbs.setEnabled(False)
+            self.btnDigsheetAbs.setCursor(Qt.CursorShape.ForbiddenCursor)
+            self.btnDigsheetAbs.setToolTip("Create a project first to enable Digsheet generation.")
+            return
         can_show = (
                 self.project_is_open
                 and isinstance(self.pipe_tally, pd.DataFrame)
@@ -3396,6 +3482,24 @@ class MyMainWindow(QMainWindow):
                 subprocess.Popen([sys.executable, dig_py_abs, tally_pkl, str(abs_text)])
         except Exception as e:
             self.open_Error(f"Error opening ABS-distance digsheet:\n{e}")
+    
+    def _update_generate_actions(self):
+        """Update Generate menu buttons based on project and data status"""
+        # Check if pipe tally data is available
+        has_pipe_tally = isinstance(self.pipe_tally, pd.DataFrame) and not self.pipe_tally.empty
+        
+        # Update Pipe Tally button/action
+        if hasattr(self.ui, 'action__pipetally'):
+            self.ui.action__pipetally.setEnabled(self.project_is_open and has_pipe_tally)
+        
+        # Update Digsheet actions (both standard and ABS-based)
+        if hasattr(self.ui, 'actionStandard'):  # Standard digsheet
+            self.ui.actionStandard.setEnabled(self.project_is_open and has_pipe_tally)
+        
+        # The btnDigsheetAbs already has its own logic in update_digsheet_button_state()
+        # but we can ensure it also respects project state
+
+
 
     def close_project(self):
         try:
@@ -3410,6 +3514,8 @@ class MyMainWindow(QMainWindow):
             self.project_is_open = False
             self.project_root = None
             self.pkl_files = []
+            if hasattr(self, 'btnDigsheetAbs'):
+                self.btnDigsheetAbs.setEnabled(False)
             self.hmap = self.hmap_r = self.lplot = self.lplot_r = self.pipe3d = self.heatmap_box = None
             self.curr_data = None
             self.header_list = []
@@ -3523,6 +3629,13 @@ class MyMainWindow(QMainWindow):
 
     def open_digs(self):
         try:
+            if not self.project_is_open:
+                QMessageBox.warning(
+                    self, 
+                    "No Project Open", 
+                    "Please create/open a project first to generate digsheets."
+                )
+                return
             if not isinstance(self.pipe_tally, pd.DataFrame):
                 QMessageBox.warning(self, "No Pipe Tally", "Load a pipe tally first."); return
             tally_pkl = _dump_tally_to_temp(self.pipe_tally)

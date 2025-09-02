@@ -32,7 +32,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 PLOTLY_JS_MODE   = "directory"   # "directory" (offline, small HTML) or "cdn" (requires internet)
 PLOTLY_COMPRESS  = True          # compress embedded data
 HTML_DEFAULT_W   = "100%"        # let the container control size
-HTML_DEFAULT_H   = 700           # or "100%" if you want full-height wrappers
+HTML_DEFAULT_H   = 500           # or "100%" if you want full-height wrappers
 
 PLOTLY_CONFIG = {
     "displaylogo": False,

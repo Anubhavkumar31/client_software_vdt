@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 from scipy.signal import savgol_filter
 from datetime import datetime
 
-from Data_Gen.defectSheet_util import boxing
+from defectSheet_util import boxing
 
 INITIAL_READ = 0.0                    # At 400mm, F1H1 detects defect at 11:00 with roll 39.93
 

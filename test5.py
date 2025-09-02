@@ -12,6 +12,9 @@ import re
 from glob import glob
 from pathlib import Path
 from typing import Optional
+from PyQt6.QtWidgets import QPushButton
+from PyQt6.QtCore import Qt
+
 
 import numpy as np
 import pandas as pd
@@ -82,7 +85,7 @@ class PandasModel(QAbstractTableModel):
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return QVariant()
-        
+
         if role == Qt.ItemDataRole.DisplayRole:
             val = self._df.iat[index.row(), index.column()]
             if pd.isna(val):
@@ -91,7 +94,7 @@ class PandasModel(QAbstractTableModel):
             if isinstance(val, float):
                 return f"{val:.6g}"
             return str(val)
-        
+
         return QVariant()
 
     def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
@@ -107,9 +110,9 @@ class PandasModel(QAbstractTableModel):
             return font
         elif role == Qt.ItemDataRole.TextAlignmentRole:
             return Qt.AlignmentFlag.AlignCenter
-        
+
         return QVariant()
-    
+
     def flags(self, index):
         """Make all items non-editable"""
         if not index.isValid():
@@ -203,42 +206,42 @@ class PipeLoaderWorker(QThread):
     table_data_ready = pyqtSignal(object)  # processed table data
     error_occurred = pyqtSignal(str)  # error message
     time_estimate = pyqtSignal(float)  # estimated time remaining
-    
+
     def __init__(self, pkl_path, project_root, pipe_idx):
         super().__init__()
         self.pkl_path = pkl_path
         self.project_root = project_root
         self.pipe_idx = pipe_idx
         self.start_time = None
-        
+
     def run(self):
         try:
             self.start_time = time.time()
             total_steps = 6
-            
+
             # Step 1: Load pickle data
             self.progress_updated.emit(10, "Loading pipe data...")
             df = pd.read_pickle(self.pkl_path)
             self.data_loaded.emit(df)
             self._update_time_estimate(1, total_steps)
             print(f"Loaded pickle with {len(df)} rows")
-            
+
             # Step 2: Find pipe directory
             self.progress_updated.emit(25, "Locating asset files...")
             pipe_dir = self._find_pipe_directory()
             self._update_time_estimate(2, total_steps)
-            
+
             # Step 3: Load HTML assets
             self.progress_updated.emit(40, "Loading chart assets...")
             assets = self._load_html_assets(pipe_dir)
             self.assets_loaded.emit(assets)
             self._update_time_estimate(3, total_steps)
-            
+
             # Step 4: Load pipe tally data
             self.progress_updated.emit(60, "Processing pipe tally...")
             table_data = self._load_pipe_tally_data(pipe_dir)
             self._update_time_estimate(4, total_steps)
-            
+
             # Step 5: Process table data
             self.progress_updated.emit(80, "Preparing table data...")
             if table_data is not None:
@@ -247,14 +250,14 @@ class PipeLoaderWorker(QThread):
             else:
                 self.table_data_ready.emit(None)
             self._update_time_estimate(5, total_steps)
-            
+
             # Step 6: Complete
             self.progress_updated.emit(100, "Loading complete!")
             self._update_time_estimate(6, total_steps)
-            
+
         except Exception as e:
             self.error_occurred.emit(str(e))
-    
+
     def _update_time_estimate(self, current_step, total_steps):
         elapsed = time.time() - self.start_time
         if current_step > 0:
@@ -262,7 +265,7 @@ class PipeLoaderWorker(QThread):
             remaining_steps = total_steps - current_step
             estimated_remaining = avg_time_per_step * remaining_steps
             self.time_estimate.emit(estimated_remaining)
-    
+
     def _find_pipe_directory(self):
         candidates = [
             os.path.join(self.project_root, f"pipe_{self.pipe_idx}"),
@@ -270,11 +273,11 @@ class PipeLoaderWorker(QThread):
             os.path.join(self.project_root, f"Pipe_{self.pipe_idx}"),
         ]
         return next((d for d in candidates if os.path.isdir(d)), None)
-    
+
     def _load_html_assets(self, pipe_dir):
         if not pipe_dir:
             return {}
-        
+
         def pick_one(patterns, exclude=None):
             exclude = exclude or []
             hits = []
@@ -283,7 +286,7 @@ class PipeLoaderWorker(QThread):
             hits = [h for h in hits if not any(ex in os.path.basename(h).lower() for ex in (exclude or []))]
             exact = [h for h in hits if re.search(rf'{re.escape(str(self.pipe_idx))}\b', os.path.basename(h))]
             return exact[0] if exact else (hits[0] if hits else None)
-        
+
         return {
             'hmap': pick_one(["*heatmap*.html"], exclude=["raw", "box"]),
             'hmap_r': pick_one(["*heatmap*raw*.html", "*raw*heatmap*.html"]),
@@ -293,11 +296,11 @@ class PipeLoaderWorker(QThread):
             'pipe3d': pick_one(["*pipe3d*.html", "pipe3d*.html"]),
             'prox_linechart': pick_one(["proximity_linechart*.html", "*proximity_linechart*.html"])
         }
-    
+
     def _load_pipe_tally_data(self, pipe_dir):
         if not pipe_dir:
             return None
-        
+
         def pick_one(patterns, exclude=None):
             exclude = exclude or []
             hits = []
@@ -306,7 +309,7 @@ class PipeLoaderWorker(QThread):
             hits = [h for h in hits if not any(ex in os.path.basename(h).lower() for ex in (exclude or []))]
             exact = [h for h in hits if re.search(rf'{re.escape(str(self.pipe_idx))}\b', os.path.basename(h))]
             return exact[0] if exact else (hits[0] if hits else None)
-        
+
         pipe_tally_csv = pick_one([f"*PipeTally{self.pipe_idx}.csv", f"*PipeTally{self.pipe_idx}.xlsx"])
         if pipe_tally_csv:
             try:
@@ -317,7 +320,7 @@ class PipeLoaderWorker(QThread):
                 return df
             except Exception:
                 pass
-        
+
         # Fallback to defects.csv
         ds_csv = pick_one(["*defectS*.csv", "*defects*.csv"])
         if ds_csv:
@@ -325,32 +328,32 @@ class PipeLoaderWorker(QThread):
                 return pd.read_csv(ds_csv)
             except Exception:
                 pass
-        
+
         return None
-    
+
     def _process_table_data(self, df):
         if df is None or df.empty:
             return None
-        
+
         # Check if this is a PipeTally file (has Feature Type column) or defects.csv
         if "Feature Type" in df.columns:
             # Filter Metal Loss defects
             original_count = len(df)
             df = df[df["Feature Type"].astype(str).str.strip().str.lower() == "metal loss"]
-            
+
             if df.empty:
                 return None
-            
+
             # Round numeric columns
             numeric_columns = [
                 'Depth %', 'Depth (mm)', 'ERF (ASME B31G)', 'Psafe (ASME B31G) Barg',
-                'Abs. Distance (m)', 'Distance to U/S GW(m)', 'Length (mm)', 
+                'Abs. Distance (m)', 'Distance to U/S GW(m)', 'Length (mm)',
                 'Width (mm)', 'WT (mm)', 'Pipe Length (mm)'
             ]
             for col in numeric_columns:
                 if col in df.columns:
                     df[col] = pd.to_numeric(df[col], errors='coerce').round(3)
-        
+
         return df
 
 
@@ -361,7 +364,7 @@ class ModernLoadingDialog(QDialog):
         self.setModal(True)
         self.setFixedSize(400, 200)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-        
+
         # Styling
         self.setStyleSheet("""
             QDialog {
@@ -388,62 +391,62 @@ class ModernLoadingDialog(QDialog):
                 border-radius: 6px;
             }
         """)
-        
+
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
         layout.setContentsMargins(20, 20, 20, 20)
-        
+
         # Title
         title = QLabel("🔄 Loading Pipe Data")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px;")
         layout.addWidget(title)
-        
+
         # Progress bar
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setTextVisible(True)
         layout.addWidget(self.progress_bar)
-        
+
         # Status label
         self.status_label = QLabel("Initializing...")
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_label.setStyleSheet("font-size: 12px; color: #7f8c8d;")
         layout.addWidget(self.status_label)
-        
+
         # Time info layout
         time_layout = QHBoxLayout()
         self.elapsed_label = QLabel("Elapsed: 0s")
         self.remaining_label = QLabel("Remaining: --")
         self.elapsed_label.setStyleSheet("font-size: 10px; color: #95a5a6;")
         self.remaining_label.setStyleSheet("font-size: 10px; color: #95a5a6;")
-        
+
         time_layout.addWidget(self.elapsed_label)
         time_layout.addStretch()
         time_layout.addWidget(self.remaining_label)
         layout.addLayout(time_layout)
-        
+
         # Timer for elapsed time
         self.start_time = time.time()
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_elapsed_time)
         self.timer.start(100)  # Update every 100ms
-        
+
     def update_progress(self, value, message):
         self.progress_bar.setValue(value)
         self.status_label.setText(message)
-        
+
     def update_time_estimate(self, remaining_seconds):
         if remaining_seconds and remaining_seconds > 0:
             self.remaining_label.setText(f"Remaining: {remaining_seconds:.1f}s")
         else:
             self.remaining_label.setText("Estimating…")
 
-    
+
     def update_elapsed_time(self):
         elapsed = time.time() - self.start_time
         self.elapsed_label.setText(f"Elapsed: {elapsed:.1f}s")
-    
+
     def closeEvent(self, event):
         self.timer.stop()
         super().closeEvent(event)
@@ -564,7 +567,34 @@ class MyMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.ui = Form()
+        self.menuBar().setStyleSheet("""
+            QMenuBar {
+                background-color: #000000;   /* top bar black */
+                color: white;               /* text white */
+            }
+            QMenuBar::item {
+                background: transparent;
+                padding: 4px 12px;
+            }
+            QMenuBar::item:selected {
+                background: #333333;        /* hover effect on top bar */
+                color: white;
+            }
+
+            /* Dropdown menus stay white */
+            QMenu {
+                background-color: #ffffff;  /* dropdown background white */
+                color: black;               /* text black */
+                border: 1px solid #cccccc;
+            }
+            QMenuBar::item:selected {
+                background: #333333;
+                color: white;
+            }
+        """)
+        
         self.ui.setupUi(self)
+        
         self.child_windows = {}
 
         self._central_original = self.centralWidget()
@@ -642,6 +672,25 @@ class MyMainWindow(QMainWindow):
             self.statusBar().addPermanentWidget(self.btnDigsheetAbs)
         self.btnDigsheetAbs.clicked.connect(self.open_digsheet_by_abs_from_selection)
 
+        # Add Load button next to comboBoxPipe
+        self.btnLoadPipe = QPushButton("Load")
+        self.btnLoadPipe.setEnabled(False)
+        _parent = self.ui.comboBoxPipe.parentWidget()
+        _lay = _parent.layout()
+        if _lay is not None:
+            pos = _lay.indexOf(self.ui.comboBoxPipe)
+            if pos != -1:
+                _lay.insertWidget(pos + 1, self.btnLoadPipe)
+            else:
+                _lay.addWidget(self.btnLoadPipe)
+        else:
+            self.btnLoadPipe.setParent(_parent)
+
+        # connect the load button
+        self.btnLoadPipe.clicked.connect(self.load_selected_pipe)
+
+        self.ui.comboBoxPipe.currentIndexChanged.connect(self.update_load_button_state)
+
         # Global event filter for disabled-button popups + tabbar clicks
         QtWidgets.QApplication.instance().installEventFilter(self)
 
@@ -676,6 +725,8 @@ class MyMainWindow(QMainWindow):
 
         # ✅ Setup "No Defects Found" label after table is configured
         self._setup_no_defects_label()
+        self._setup_select_pipe_label()
+
         self._setup_create_project_label()
         self._show_create_project_message()
 
@@ -696,7 +747,8 @@ class MyMainWindow(QMainWindow):
         self.setup_actions()
         self._connect_guarded_graph_controls()
 
-        self.ui.comboBoxPipe.currentIndexChanged.connect(self.on_combo_index_changed)
+        #self.ui.comboBoxPipe.currentIndexChanged.connect(self.on_combo_index_changed)
+
         # replace direct tab switcher with guarded handler
         try:
             self.ui.tabWidgetM.currentChanged.disconnect()
@@ -729,17 +781,17 @@ class MyMainWindow(QMainWindow):
         self._no_defects_container = QWidget()
         self._no_defects_container.setMaximumSize(500, 200)
         self._no_defects_container.setMinimumSize(400, 150)
-        
+
         # Set size policy to prevent expansion
         self._no_defects_container.setSizePolicy(
             QSizePolicy.Policy.Fixed,
             QSizePolicy.Policy.Fixed
         )
-        
+
         # Create the layout for the container
         container_layout = QVBoxLayout(self._no_defects_container)
         container_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # Create the actual label
         self._no_defects_label = QLabel("No Defects Found in this Pipe")
         self._no_defects_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -755,10 +807,10 @@ class MyMainWindow(QMainWindow):
                 margin: 10px;
             }
         """)
-        
+
         container_layout.addWidget(self._no_defects_label)
         self._no_defects_container.hide()
-        
+
         # Add to parent WITHOUT layout management
         table_parent = self.ui.tableWidgetDefect.parentWidget()
         if table_parent:
@@ -790,7 +842,7 @@ class MyMainWindow(QMainWindow):
                     min-width: 40px;
                 }
             """)
-        
+
         # Style for tableWidgetDefect
         if hasattr(self.ui, 'tableWidgetDefect'):
             self.ui.tableWidgetDefect.horizontalHeader().setStyleSheet("""
@@ -814,15 +866,82 @@ class MyMainWindow(QMainWindow):
             """)
 
 
+    def _setup_select_pipe_label(self):
+        """Create a polished overlay asking user to select a pipe"""
+        central = self.centralWidget()
+        self._select_pipe_container = QWidget(central)
+        self._select_pipe_container.setGeometry(central.rect())
+        self._select_pipe_container.setStyleSheet("""
+            background-color: rgba(255, 255, 255, 180);  /* frosted background */
+        """)
+
+        layout = QVBoxLayout(self._select_pipe_container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # --- Inner card widget ---
+        card = QFrame()
+        card.setFixedWidth(500)
+        card.setStyleSheet("""
+            QFrame {
+                background-color: #ffffff;
+                border-radius: 16px;
+                border: 1px solid #d0d0d0;
+                padding: 30px;
+            }
+        """)
+        card_layout = QVBoxLayout(card)
+        card_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Icon
+        icon_label = QLabel("📂")
+        icon_label.setStyleSheet("font-size: 42px;")
+        card_layout.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        # Title
+        title = QLabel("No Pipe Selected")
+        title.setStyleSheet("""
+            font-size: 22pt;
+            font-weight: 600;
+            color: #2c3e50;
+        """)
+        card_layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        # Subtitle
+        subtitle = QLabel("Please choose a pipe number from the list above to continue.")
+        subtitle.setWordWrap(True)
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        subtitle.setStyleSheet("""
+            font-size: 12pt;
+            color: #555;
+            margin-top: 10px;
+        """)
+        card_layout.addWidget(subtitle)
+
+        # Hint / efficiency tip
+        hint = QLabel("💡 You can also type a pipe number directly in the box.")
+        hint.setWordWrap(True)
+        hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        hint.setStyleSheet("""
+            font-size: 10pt;
+            color: #888;
+            margin-top: 15px;
+        """)
+        card_layout.addWidget(hint)
+
+        layout.addWidget(card)
+        self._select_pipe_container.hide()
+
     # ✅ Helper methods for showing/hiding message vs table
     def _show_no_defects_message(self):
         try:
             if hasattr(self, '_no_defects_container'):
                 self._no_defects_container.show()
             if hasattr(self.ui, 'tableWidgetDefect'):
+                self.ui.tableWidgetDefect.clearSelection()
                 self.ui.tableWidgetDefect.hide()
             if hasattr(self, 'table_scrollbar'):
-                self.table_scrollbar.hide()   
+                self.table_scrollbar.hide()
         except Exception as e:
             print(f"Error showing no defects message: {e}")
 
@@ -836,34 +955,54 @@ class MyMainWindow(QMainWindow):
             if hasattr(self.ui, 'tableWidgetDefect'):
                 self.ui.tableWidgetDefect.show()
             if hasattr(self, 'table_scrollbar'):
-                self.table_scrollbar.show()   
+                self.table_scrollbar.show()
 
             print("📊 Displaying defects table")
         except Exception as e:
             print(f"Error showing defects table: {e}")
 
-    # ---------- action enable/disable toggler ----------
-    # def _update_project_actions(self):
-    #     a = self.ui
-    #     act_create = getattr(a, "action_Create_Proj", None)
-    #     act_close  = getattr(a, "action_Close_Proj", None)
-    #     if isinstance(act_create, QAction):
-    #         act_create.setEnabled(not self.project_is_open)
-    #     if isinstance(act_close, QAction):
-    #         act_close.setEnabled(self.project_is_open)
+    def _show_select_pipe_message(self):
+        if hasattr(self, "_select_pipe_container"):
+            central = self.centralWidget().rect()
+
+            # Leave space for the pipe selection row (comboBox + Load button)
+            header_height = self.ui.comboBoxPipe.height() + 20
+
+            self._select_pipe_container.setGeometry(
+                0,
+                header_height,
+                central.width(),
+                central.height() - header_height
+            )
+            self._select_pipe_container.show()
+
+        # Hide other views
+        if hasattr(self.ui, "tableWidgetDefect"):
+            self.ui.tableWidgetDefect.hide()
+        if hasattr(self.ui, "tableView"):
+            self.ui.tableView.hide()
+
+        self.btnLoadPipe.setEnabled(False)
+
 
     def _update_project_actions(self):
         a = self.ui
         act_create = getattr(a, "action_Create_Proj", None)
         act_close = getattr(a, "action_Close_Proj", None)
         act_graphs = getattr(a, "action_graphs", None)
-
+        act_xyz = getattr(a, "action_XYZ", None)
+        act_pipehigh = getattr(a, "action_Pipe_High", None)
         if isinstance(act_create, QAction):
             act_create.setEnabled(not self.project_is_open)
         if isinstance(act_close, QAction):
             act_close.setEnabled(self.project_is_open)
         if isinstance(act_graphs, QAction):
             act_graphs.setEnabled(self.project_is_open)
+        if isinstance(act_xyz, QAction):  # ← Add this block
+            act_xyz.setEnabled(self.project_is_open)
+        if isinstance(act_pipehigh, QAction):  # ← ADD THIS BLOCK
+            act_pipehigh.setEnabled(self.project_is_open)
+        self._update_generate_actions()
 
     # ---------------------------------------------------
 
@@ -919,15 +1058,15 @@ class MyMainWindow(QMainWindow):
         QMessageBox.information(self, "Tab not found", f"Could not locate tab: {tab_name}")
 
     def _make_topbar_row(
-        self,
-        object_name: str,
-        parent_vbox: QVBoxLayout,
-        bar_h: int = 14,
-        *,
-        left_px: int | None = None,     # ← fixed left spacer (px). None = expanding
-        right_px: int | None = None,    # ← fixed right spacer (px). None = expanding
-        pad_left: int = 8,              # tiny inner padding (optional)
-        pad_right: int = 8
+            self,
+            object_name: str,
+            parent_vbox: QVBoxLayout,
+            bar_h: int = 14,
+            *,
+            left_px: int | None = None,     # ← fixed left spacer (px). None = expanding
+            right_px: int | None = None,    # ← fixed right spacer (px). None = expanding
+            pad_left: int = 8,              # tiny inner padding (optional)
+            pad_right: int = 8
     ) -> QScrollBar:
         row_frame = QFrame()
         row_frame.setObjectName(object_name + "_container")
@@ -1286,15 +1425,15 @@ class MyMainWindow(QMainWindow):
                 # Force scroll mode and policy
                 tw.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
                 tw.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
-                
+
                 # Set scroll speed
                 tw.verticalScrollBar().setSingleStep(2)
-                
+
                 # Force geometry updates
                 tw.viewport().update()
                 tw.updateGeometry()
                 tw.resizeRowsToContents()
-                
+
                 # Force scrollbar range recalculation
                 vsb = tw.verticalScrollBar()
                 vsb.update()
@@ -1308,19 +1447,19 @@ class MyMainWindow(QMainWindow):
                 tv = self.ui.tableView
                 tv.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
                 tv.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
-                
+
                 # Set scroll speed
                 tv.verticalScrollBar().setSingleStep(2)
-                
+
                 tv.viewport().update()
                 tv.updateGeometry()
-                
+
                 vsb = tv.verticalScrollBar()
                 vsb.update()
                 current_val = vsb.value()
                 vsb.setValue(min(current_val + 1, vsb.maximum()))
                 vsb.setValue(current_val)
-                
+
         except Exception as e:
             print(f"Error refreshing table scrollbars: {e}")
 
@@ -1376,16 +1515,115 @@ class MyMainWindow(QMainWindow):
         a.action_Telemetry.triggered.connect(self.add_plot_tele)
         a.actionAnomalies_Distribution.triggered.connect(self.add_plot_ad)
         a.action_DefectDetect.triggered.connect(self.draw_boxes_v2)
-        if hasattr(a, "pushButtonNext"): a.pushButtonNext.clicked.connect(lambda: None)
-        if hasattr(a, "pushButtonPrev"): a.pushButtonPrev.clicked.connect(lambda: None)
+        if hasattr(a, "pushButtonNext"): a.pushButtonNext.clicked.connect(self.load_next_pipe)
+        if hasattr(a, "pushButtonPrev"): a.pushButtonPrev.clicked.connect(self.load_prev_pipe)
         a.Final_Report.triggered.connect(self.open_Final_Report)
         a.action_Preliminary_Report.triggered.connect(self.open_Preliminary_Report)
         a.action__pipetally.triggered.connect(self.open_pipe_tally)
         a.action_Manual.triggered.connect(self.open_manual)
         a.actionStandard.triggered.connect(self.open_digs)  # original (by defect no.)
 
+    def load_next_pipe(self):
+        """Go to next pipe and load automatically"""
+        cb = self.ui.comboBoxPipe
+        idx = cb.currentIndex()
+        if idx < cb.count() - 1:  # not last
+            cb.setCurrentIndex(idx + 1)
+            self.load_selected_pipe()  # 👈 directly load
+
+    def load_prev_pipe(self):
+        """Go to previous pipe and load automatically"""
+        cb = self.ui.comboBoxPipe
+        idx = cb.currentIndex()
+        if idx > 0:  # not first
+            cb.setCurrentIndex(idx - 1)
+            self.load_selected_pipe()  # 👈 directly load
+
+    # def open_project(self):
+    #     try:
+    #         dlg = QFileDialog(self)
+    #         dlg.setFileMode(QFileDialog.FileMode.Directory)
+    #         dlg.setOption(QFileDialog.Option.ShowDirsOnly)
+    #         dlg.setWindowTitle("Select Project Folder (PKLs + pipe_* folders)")
+    #         if dlg.exec() != QFileDialog.DialogCode.Accepted:
+    #             self.project_is_open = False
+    #             self._toggle_plot_ui(False)
+    #             self._show_watermark()
+    #             self._update_project_actions()
+    #             return
+    #
+    #         root = dlg.selectedFiles()[0]
+    #         self.project_root = root
+    #
+    #         self.pipe_tally = None
+    #         loaded_tally = self._auto_load_pipe_tally(root)
+    #         if not loaded_tally:
+    #             print("[pipe_tally] No tally file found in this project; graphs/reports will warn if needed.")
+    #
+    #         self.pkl_files = [
+    #             os.path.join(root, f)
+    #             for f in os.listdir(root)
+    #             if f.lower().endswith(".pkl")
+    #         ]
+    #
+    #         def nkey(path):
+    #             filename = os.path.basename(path)
+    #             return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", filename)]
+    #         self.pkl_files.sort(key=nkey)
+    #
+    #         cb = self.ui.comboBoxPipe
+    #         cb.blockSignals(True)
+    #         cb.clear()
+    #         names = [os.path.splitext(os.path.basename(f))[0] for f in self.pkl_files]
+    #         if names:
+    #             cb.addItems(names)
+    #             cb.setCurrentIndex(-1)
+    #         else:
+    #             cb.addItem("-Pipe-")
+    #             # 👈 nothing selected
+    #
+    #
+    #         cb.lineEdit().setPlaceholderText("Type pipe number...")
+    #         cb.completer().setCompletionMode(QtWidgets.QCompleter.CompletionMode.PopupCompletion)
+    #         cb.setInsertPolicy(QtWidgets.QComboBox.InsertPolicy.NoInsert)
+    #         cb.blockSignals(False)
+    #
+    #         try:
+    #             cb.lineEdit().returnPressed.disconnect()
+    #         except Exception:
+    #             pass
+    #         cb.lineEdit().returnPressed.connect(self.jump_to_number)
+    #
+    #         if self.pkl_files:
+    #             self.project_is_open = True
+    #             self._hide_create_project_message()
+    #             self._toggle_plot_ui(True)
+    #
+    #             # Show overlay instead of auto-loading
+    #             self._show_select_pipe_message()
+    #
+    #             # 👇 Force check so Load button activates if default pipe is already selected
+    #             self.update_load_button_state(self.ui.comboBoxPipe.currentIndex())
+    #         else:
+    #             self.project_is_open = False
+    #             self._toggle_plot_ui(False)
+    #             self._show_watermark()
+    #             QMessageBox.warning(self, "No PKLs", "No .pkl files found in the selected folder.")
+    #
+    #         self._update_project_actions()
+    #     except Exception as e:
+    #         self.project_is_open = False
+    #         self._toggle_plot_ui(False)
+    #         self._show_watermark()
+    #         self._update_project_actions()
+    #         self.open_Error(e)
+
     def open_project(self):
         try:
+            # hide overlay immediately when trying to open
+            if hasattr(self, "_create_proj_container") and self._create_proj_container:
+                self._create_proj_container.hide()
+
             dlg = QFileDialog(self)
             dlg.setFileMode(QFileDialog.FileMode.Directory)
             dlg.setOption(QFileDialog.Option.ShowDirsOnly)
@@ -1395,6 +1633,10 @@ class MyMainWindow(QMainWindow):
                 self._toggle_plot_ui(False)
                 self._show_watermark()
                 self._update_project_actions()
+
+                # show overlay back if user cancelled
+                if hasattr(self, "_create_proj_container") and self._create_proj_container:
+                    self._create_proj_container.show()
                 return
 
             root = dlg.selectedFiles()[0]
@@ -1414,6 +1656,7 @@ class MyMainWindow(QMainWindow):
             def nkey(path):
                 filename = os.path.basename(path)
                 return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", filename)]
+
             self.pkl_files.sort(key=nkey)
 
             cb = self.ui.comboBoxPipe
@@ -1422,7 +1665,10 @@ class MyMainWindow(QMainWindow):
             names = [os.path.splitext(os.path.basename(f))[0] for f in self.pkl_files]
             if names:
                 cb.addItems(names)
-                cb.setCurrentIndex(0)
+                cb.setCurrentIndex(-1)
+            else:
+                cb.addItem("-Pipe-")  # 👈 nothing selected
+
             cb.lineEdit().setPlaceholderText("Type pipe number...")
             cb.completer().setCompletionMode(QtWidgets.QCompleter.CompletionMode.PopupCompletion)
             cb.setInsertPolicy(QtWidgets.QComboBox.InsertPolicy.NoInsert)
@@ -1438,12 +1684,21 @@ class MyMainWindow(QMainWindow):
                 self.project_is_open = True
                 self._hide_create_project_message()
                 self._toggle_plot_ui(True)
-                self.load_selected_by_index(0)
+
+                # Show overlay instead of auto-loading
+                self._show_select_pipe_message()
+
+                # 👇 Force check so Load button activates if default pipe is already selected
+                self.update_load_button_state(self.ui.comboBoxPipe.currentIndex())
             else:
                 self.project_is_open = False
                 self._toggle_plot_ui(False)
                 self._show_watermark()
                 QMessageBox.warning(self, "No PKLs", "No .pkl files found in the selected folder.")
+
+                # show overlay back if no valid files
+                if hasattr(self, "_create_proj_container") and self._create_proj_container:
+                    self._create_proj_container.show()
 
             self._update_project_actions()
         except Exception as e:
@@ -1451,6 +1706,11 @@ class MyMainWindow(QMainWindow):
             self._toggle_plot_ui(False)
             self._show_watermark()
             self._update_project_actions()
+
+            # show overlay back on error
+            if hasattr(self, "_create_proj_container") and self._create_proj_container:
+                self._create_proj_container.show()
+
             self.open_Error(e)
 
     def _apply_scrollbar_theme(self, _accent_ignored="#b8b8b8"):
@@ -1626,22 +1886,43 @@ class MyMainWindow(QMainWindow):
             return
         self.load_selected_by_index(combo_idx)
 
+
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "_select_pipe_container") and self._select_pipe_container.isVisible():
+            central = self.centralWidget().rect()
+            header_height = self.ui.comboBoxPipe.height() + 20
+            self._select_pipe_container.setGeometry(
+                0,
+                header_height,
+                central.width(),
+                central.height() - header_height
+            )
+        if hasattr(self, "_create_proj_container") and self._create_proj_container.isVisible():
+            central = self.centralWidget().rect()
+            self._create_proj_container.setGeometry(central)
+
     def load_selected_by_index(self, idx: int):
         try:
             if idx < 0 or idx >= len(self.pkl_files):
                 return
+            if hasattr(self, 'btnDigsheetAbs'):
+                self.btnDigsheetAbs.setEnabled(False)
+            if hasattr(self.ui, 'tableWidgetDefect'):
+                self.ui.tableWidgetDefect.clearSelection()
             
             pkl_path = self.pkl_files[idx]
             name = os.path.splitext(os.path.basename(pkl_path))[0]
             pipe_idx = self._extract_index(name)
-            
+
             # Show loading dialog
             self.loading_dialog = ModernLoadingDialog(self)
             self.loading_dialog.show()
-            
+
             # Create and start worker thread
             self.loader_worker = PipeLoaderWorker(pkl_path, self.project_root, pipe_idx)
-            
+
             # Connect signals
             self.loader_worker.progress_updated.connect(self.loading_dialog.update_progress)
             self.loader_worker.time_estimate.connect(self.loading_dialog.update_time_estimate)
@@ -1650,18 +1931,62 @@ class MyMainWindow(QMainWindow):
             self.loader_worker.table_data_ready.connect(self.on_table_data_ready)
             self.loader_worker.error_occurred.connect(self.on_loading_error)
             self.loader_worker.finished.connect(self.on_loading_finished)
-            
+
             # Start the worker
             self.loader_worker.start()
-            
+
         except Exception as e:
             self.open_Error(f"load_selected_by_index error: {e}")
+
+
+
+    def load_selected_pipe(self):
+        if not self.project_is_open:
+            QMessageBox.warning(self, "No Project", "Please open a project first.")
+            return
+
+        idx = self.ui.comboBoxPipe.currentIndex()
+        text = self.ui.comboBoxPipe.currentText().strip()
+
+        # ✅ If typed text matches an item, resolve index
+        if idx < 0 and text:
+            try:
+                idx = [self.ui.comboBoxPipe.itemText(i) for i in range(self.ui.comboBoxPipe.count())].index(text)
+            except ValueError:
+                QMessageBox.warning(self, "Invalid Selection", f"No pipe named '{text}' found.")
+                return
+
+        if idx < 0 or idx >= len(self.pkl_files):
+            QMessageBox.warning(self, "Invalid Selection", "Please select a valid pipe.")
+            return
+
+        if hasattr(self, "_select_pipe_container"):
+            self._select_pipe_container.hide()
+
+        self.btnLoadPipe.setEnabled(False)
+        self.load_selected_by_index(idx)
+
+        #self.btnLoadPipe.clicked.connect(self.load_selected_pipe)
+
+    def update_load_button_state(self, idx: int):
+        if not hasattr(self, "btnLoadPipe"):
+            return
+
+        text = self.ui.comboBoxPipe.currentText().strip()
+        items = [self.ui.comboBoxPipe.itemText(i) for i in range(self.ui.comboBoxPipe.count())]
+
+        # ✅ Enable Load if: a valid index OR a valid typed text
+        if self.project_is_open and (idx >= 0 or text in items):
+            self.btnLoadPipe.setEnabled(True)
+            # ❌ Do NOT hide overlay here anymore
+        else:
+            self.btnLoadPipe.setEnabled(False)
 
     # def on_data_loaded(self, df):
     #     """Handle loaded DataFrame - runs on main thread"""
     #     self.curr_data = df
     #     self.header_list = list(df.columns)
-        
+
     #     # Update table model
     #     self.model.clear()
     #     self.model.setHorizontalHeaderLabels([str(c) for c in df.columns])
@@ -1672,7 +1997,7 @@ class MyMainWindow(QMainWindow):
     #             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
     #             row_items.append(item)
     #         self.model.appendRow(row_items)
-        
+
     #     self.ui.tableView.setModel(self.model)
     #     self.ui.tableView.setSortingEnabled(True)
     def on_data_loaded(self, df):
@@ -1735,7 +2060,9 @@ class MyMainWindow(QMainWindow):
         QTimer.singleShot(0, self._arm_topbar)
         QTimer.singleShot(0, self._arm_main_topbar)
         self.update_digsheet_button_state()
-
+        QTimer.singleShot(100, self.update_digsheet_button_state)
+        # 👇 keep Load button disabled after file load
+        self.btnLoadPipe.setEnabled(False)
 
     @staticmethod
     def _extract_index(text: str) -> str:
@@ -1750,6 +2077,9 @@ class MyMainWindow(QMainWindow):
         - Normalizes columns
         - Fills table incrementally to avoid UI freeze
         """
+        tw = self.ui.tableWidgetDefect
+        tw.clearSelection()
+
         if df is None or df.empty:
             self._show_no_defects_message()
             return
@@ -1824,7 +2154,7 @@ class MyMainWindow(QMainWindow):
             'Longitude': 150,
             'Comment': 570
         }
-        
+
         for c, col_name in enumerate(view.columns):
             if col_name in column_widths:
                 tw.setColumnWidth(c, column_widths[col_name])
@@ -1834,7 +2164,7 @@ class MyMainWindow(QMainWindow):
         self._show_defects_table()
         self._start_fill_qtablewidget_batched(view, chunk_size=300)
 
-    
+
     def _start_fill_qtablewidget_batched(self, df: pd.DataFrame, *, chunk_size: int = 200):
         """Fill self.ui.tableWidgetDefect incrementally to keep UI responsive."""
         tw = self.ui.tableWidgetDefect
@@ -1857,7 +2187,7 @@ class MyMainWindow(QMainWindow):
         # Start first batch
         QTimer.singleShot(0, self._fill_tablewidget_chunk)
 
-    
+
     def _fill_tablewidget_chunk(self):
         """Append a batch of rows to QTableWidget without freezing UI."""
         tw = self.ui.tableWidgetDefect
@@ -1877,10 +2207,10 @@ class MyMainWindow(QMainWindow):
                     text = str(v)
                 item = QTableWidgetItem(text)
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                
+
                 # Make items non-editable
                 item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-                
+
                 tw.setItem(r, c, item)
 
         self._table_fill_row = end
@@ -1923,13 +2253,17 @@ class MyMainWindow(QMainWindow):
 
     # ✅ Updated _populate_defect_table_from_csv with "No Defects Found" logic
     def _populate_defect_table_from_csv(self, df: pd.DataFrame):
+        
+        tw = self.ui.tableWidgetDefect
+        tw.clearSelection()
+
         if df is None or df.empty:
             self._show_no_defects_message()
             return
-        
+
         # Show table since we have data
         self._show_defects_table()
-        
+
         header_indices = {
             'Defect_id': 0,
             'Absolute_Distance': 1,
@@ -1970,7 +2304,7 @@ class MyMainWindow(QMainWindow):
         num_rows = len(df); num_cols = len(header_indices)
         tw.setRowCount(num_rows); tw.setColumnCount(num_cols)
         tw.setHorizontalHeaderLabels(list(header_indices.keys()))
-        
+
         for r, (_, row) in enumerate(df.iterrows()):
             for src, dst in column_mapping.items():
                 if dst in header_indices:
@@ -1979,10 +2313,10 @@ class MyMainWindow(QMainWindow):
                     if isinstance(v, float): v = f"{v:.2f}"
                     item = QTableWidgetItem(str(v))
                     item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                    
+
                     # Make items non-editable
                     item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-                    
+
                     tw.setItem(r, c, item)
 
         # Apply styling
@@ -2075,7 +2409,7 @@ class MyMainWindow(QMainWindow):
             view.setUrl(QUrl())
             return
         effective_min_w = max(0, min_w - self._right_margin_px)
-        
+
         safe = html_path.replace('\\', '/')
         wrapper = f"""<!doctype html>
     <html>
@@ -2139,7 +2473,7 @@ class MyMainWindow(QMainWindow):
     // Force scrollbars to be visible
     document.addEventListener('DOMContentLoaded', function() {{
     const container = document.getElementById('scrollContainer');
-    
+
     // Force a reflow to ensure scrollbars appear
     container.style.overflow = 'hidden';
     setTimeout(() => {{
@@ -2147,7 +2481,7 @@ class MyMainWindow(QMainWindow):
         container.style.overflowX = 'scroll';
         container.style.overflowY = 'scroll';
     }}, 10);
-    
+
     // Trigger scroll to force scrollbar appearance
     container.scrollLeft = 1;
     container.scrollTop = 1;
@@ -2245,7 +2579,7 @@ class MyMainWindow(QMainWindow):
             self._central_graphs = None
         except Exception as e:
             print("⚠️ _close_graphs_view:", e)
-    
+
     def _setup_web_view_scrollbars(self, web_view):
         """Force scrollbars to be visible on QWebEngineView"""
         try:
@@ -2253,7 +2587,7 @@ class MyMainWindow(QMainWindow):
             web_view.page().settings().setAttribute(
                 web_view.page().settings().WebAttribute.ShowScrollBars, True
             )
-            
+
             # Inject CSS to force scrollbar visibility
             css = """
             ::-webkit-scrollbar { 
@@ -2272,7 +2606,7 @@ class MyMainWindow(QMainWindow):
                 overflow: scroll !important; 
             }
             """
-            
+
             web_view.page().runJavaScript(f"""
             var style = document.createElement('style');
             style.textContent = `{css}`;
@@ -2310,7 +2644,7 @@ class MyMainWindow(QMainWindow):
                 # ✅ Round numeric columns to 3 decimal places
                 numeric_columns = [
                     'Depth %', 'Depth (mm)', 'ERF (ASME B31G)', 'Psafe (ASME B31G) Barg',
-                    'Abs. Distance (m)', 'Distance to U/S GW(m)', 'Length (mm)', 
+                    'Abs. Distance (m)', 'Distance to U/S GW(m)', 'Length (mm)',
                     'Width (mm)', 'WT (mm)', 'Pipe Length (mm)'
                 ]
                 for col in numeric_columns:
@@ -2328,23 +2662,199 @@ class MyMainWindow(QMainWindow):
                 print(f"[pipe_tally] Failed to load {path}: {e}")
         self.pipe_tally = None
         return False
-    
+
+    # def open_XYZ(self):
+    #     try:
+    #         if sys.platform == "win32":
+    #             path = r"C:\Program Files\Google\Google Earth Pro\client\googleearth.exe"
+    #         elif sys.platform == "darwin":
+    #             path = "/Applications/Google Earth Pro.app/Contents/MacOS/Google Earth Pro"
+    #         else:
+    #             path = "/usr/bin/google-earth-pro"
+    #         if os.path.exists(path):
+    #             subprocess.Popen([path])
+    #     except Exception:
+    #         pass
+
+    # def open_XYZ(self):
+    #     try:
+    #         # Define KML path for testing purposes
+    #         kml_path = r"C:\Users\anubh\Downloads\sample_locations2.kml"  # Replace with your actual KML file path
+            
+    #         # Determine Google Earth Pro path based on platform
+    #         if sys.platform == "win32":
+    #             earth_path = r"C:\Program Files\Google\Google Earth Pro\client\googleearth.exe"
+    #         elif sys.platform == "darwin":
+    #             earth_path = "/Applications/Google Earth Pro.app/Contents/MacOS/Google Earth Pro"
+    #         else:
+    #             earth_path = "/usr/bin/google-earth-pro"
+            
+    #         # Check if Google Earth Pro is installed
+    #         if not os.path.exists(earth_path):
+    #             # Show installation message
+    #             reply = QMessageBox.question(
+    #                 self, 
+    #                 "Google Earth Pro Not Found",
+    #                 "Google Earth Pro is not installed on your system.\n\n"
+    #                 "Would you like to download and install it?\n\n"
+    #                 "Click 'Yes' to open the download page, or 'No' to cancel.",
+    #                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+    #                 QMessageBox.StandardButton.Yes
+    #             )
+                
+    #             if reply == QMessageBox.StandardButton.Yes:
+    #                 # Open download page in default browser
+    #                 import webbrowser
+    #                 webbrowser.open("https://www.google.com/earth/versions/#earth-pro")
+    #             return
+            
+    #         # Check if KML file exists
+    #         if not os.path.exists(kml_path):
+    #             QMessageBox.warning(
+    #                 self,
+    #                 "KML File Not Found", 
+    #                 f"The KML file could not be found at:\n{kml_path}\n\n"
+    #                 "Please check the file path and try again."
+    #             )
+    #             return
+            
+    #         # Launch Google Earth Pro with the KML file
+    #         try:
+    #             subprocess.Popen([earth_path, kml_path])
+    #             # QMessageBox.information(
+    #             #     self,
+    #             #     "Success",
+    #             #     "Google Earth Pro has been launched with the KML file."
+    #             # )
+    #         except Exception as launch_error:
+    #             QMessageBox.critical(
+    #                 self,
+    #                 "Launch Error",
+    #                 f"Failed to launch Google Earth Pro:\n{str(launch_error)}"
+    #             )
+                
+    #     except Exception as e:
+    #         QMessageBox.critical(
+    #             self,
+    #             "Error",
+    #             f"An unexpected error occurred:\n{str(e)}"
+    #         )
+
     def open_XYZ(self):
+        if not self.project_is_open:
+            if self._ui_ready:
+                self._project_required_popup()
+            return
         try:
-            if sys.platform == "win32":
-                path = r"C:\Program Files\Google\Google Earth Pro\client\googleearth.exe"
-            elif sys.platform == "darwin":
-                path = "/Applications/Google Earth Pro.app/Contents/MacOS/Google Earth Pro"
+            # First check if a project is open
+            if not self.project_is_open or not self.project_root:
+                QMessageBox.warning(
+                    self,
+                    "No Project Open",
+                    "Please open a project first to load KML files from the project folder."
+                )
+                return
+            
+            # Search for KML files in the project folder
+            kml_files = []
+            project_path = Path(self.project_root)
+            
+            # Search for KML files in project root and subdirectories
+            kml_patterns = ["*.kml", "*.KML"]
+            for pattern in kml_patterns:
+                kml_files.extend(project_path.glob(pattern))
+                kml_files.extend(project_path.glob(f"**/{pattern}"))  # Search subdirectories too
+            
+            # Remove duplicates and convert to strings
+            kml_files = list(set(str(f) for f in kml_files))
+            
+            if not kml_files:
+                QMessageBox.information(
+                    self,
+                    "No KML Files Found",
+                    f"No KML files were found in the project folder:\n{self.project_root}\n\n"
+                    "Please ensure your KML files are placed in the project directory."
+                )
+                return
+            
+            # If multiple KML files found, let user choose
+            kml_path = None
+            if len(kml_files) == 1:
+                kml_path = kml_files[0]
             else:
-                path = "/usr/bin/google-earth-pro"
-            if os.path.exists(path):
-                subprocess.Popen([path])
-        except Exception:
-            pass
+                # Show selection dialog for multiple KML files
+                file_names = [os.path.basename(f) for f in kml_files]
+                selected_file, ok = QInputDialog.getItem(
+                    self,
+                    "Select KML File",
+                    f"Found {len(kml_files)} KML files. Please select one to open:",
+                    file_names,
+                    0,
+                    False
+                )
+                if ok and selected_file:
+                    # Find the full path for the selected file
+                    kml_path = next((f for f in kml_files if os.path.basename(f) == selected_file), None)
+            
+            if not kml_path:
+                return
+            
+            # Determine Google Earth Pro path based on platform
+            if sys.platform == "win32":
+                earth_path = r"C:\Program Files\Google\Google Earth Pro\client\googleearth.exe"
+            elif sys.platform == "darwin":
+                earth_path = "/Applications/Google Earth Pro.app/Contents/MacOS/Google Earth Pro"
+            else:
+                earth_path = "/usr/bin/google-earth-pro"
+            
+            # Check if Google Earth Pro is installed
+            if not os.path.exists(earth_path):
+                # Show installation message
+                reply = QMessageBox.question(
+                    self, 
+                    "Google Earth Pro Not Found",
+                    "Google Earth Pro is not installed on your system.\n\n"
+                    "Would you like to download and install it?\n\n"
+                    "Click 'Yes' to open the download page, or 'No' to cancel.",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.Yes
+                )
+                
+                if reply == QMessageBox.StandardButton.Yes:
+                    # Open download page in default browser
+                    import webbrowser
+                    webbrowser.open("https://www.google.com/earth/versions/#earth-pro")
+                return
+            
+            # Launch Google Earth Pro with the selected KML file
+            try:
+                subprocess.Popen([earth_path, kml_path])
+                # QMessageBox.information(
+                #     self,
+                #     "Success",
+                #     f"Google Earth Pro has been launched with:\n{os.path.basename(kml_path)}"
+                # )
+            except Exception as launch_error:
+                QMessageBox.critical(
+                    self,
+                    "Launch Error",
+                    f"Failed to launch Google Earth Pro with the KML file:\n{str(launch_error)}"
+                )
+                
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"An unexpected error occurred while searching for KML files:\n{str(e)}"
+            )
+
+
+
+
 
     def open_Cluster(self):
         Cluster_Dialog().exec()
-        
+
     def open_Ptal(self):
         try:
             file_path, _ = QFileDialog.getOpenFileName(
@@ -2382,12 +2892,145 @@ class MyMainWindow(QMainWindow):
     def open_Assessment(self):
         Assess_Dialog().exec()
 
+    # def open_PipeHigh(self):
+    #     try:
+    #         # ✅ Check if pipe_tally is loaded and pass it to PipeHighlightApp
+    #         if hasattr(self, 'pipe_tally') and isinstance(self.pipe_tally, pd.DataFrame) and not self.pipe_tally.empty:
+    #             print(f"🔍 Opening Pipe Highlights with {len(self.pipe_tally)} rows of data")
+    #             print(f"📊 Available columns: {list(self.pipe_tally.columns)}")
+                
+    #             from pages.Pipe_Highlights import run_app
+                
+    #             # ✅ Pass the loaded pipe_tally DataFrame to the app
+    #             run_app(pipe_tally_df=self.pipe_tally)
+                
+    #         else:
+    #             # If no pipe tally loaded, show informative error
+    #             QMessageBox.warning(
+    #                 self, 
+    #                 "No Pipe Tally Data", 
+    #                 "Please load a project with pipe tally data first.\n\n"
+    #                 "Steps to load data:\n"
+    #                 "1. Go to File → Create Project\n"
+    #                 "2. Select a folder containing pipe tally files\n"
+    #                 "3. Wait for the data to load\n"
+    #                 "4. Try opening Pipe Highlights again"
+    #             )
+                
+    #     except ImportError as e:
+    #         self.open_Error(f"Could not import Pipe Highlights module:\n{e}\n\nPlease check if the Pipe_Highlights.py file exists in the pages folder.")
+    #     except Exception as e:
+    #         self.open_Error(f"Error running Pipe Highlight:\n{e}")
+
+
     def open_PipeHigh(self):
+        """Open Pipeline Highlights embedded in the main window"""
         try:
-            from pages.Pipe_Highlights import run_app
-            run_app()
+            # Check if pipe_tally is loaded
+            if not hasattr(self, 'pipe_tally') or not isinstance(self.pipe_tally, pd.DataFrame) or self.pipe_tally.empty:
+                QMessageBox.warning(
+                    self, 
+                    "No Pipe Tally Data", 
+                    "Please load a project with pipe tally data first.\n\n"
+                    "Steps to load data:\n"
+                    "1. Go to File → Create Project\n"
+                    "2. Select a folder containing pipe tally files\n"
+                    "3. Wait for the data to load\n"
+                    "4. Try opening Pipe Highlights again"
+                )
+                return
+
+            # Check if Pipeline Highlights is already open
+            if hasattr(self, '_central_pipeline') and self.centralWidget() is self._central_pipeline:
+                return  # Already showing Pipeline Highlights
+                
+            # Save the original central widget
+            if not hasattr(self, '_central_original') or self._central_original is None:
+                self._central_original = self.centralWidget()
+
+            print(f"🔍 Opening Pipeline Highlights with {len(self.pipe_tally)} rows of data")
+            print(f"📊 Available columns: {list(self.pipe_tally.columns)}")
+            
+            # Import the embedded version
+            from pages.Pipe_Highlights_Embedded import PipeHighlightEmbedded
+            
+            # Create container widget
+            container = QWidget()
+            layout = QVBoxLayout(container)
+            layout.setContentsMargins(12, 12, 12, 12)
+            layout.setSpacing(10)
+
+            # Header with back button
+            header_layout = QHBoxLayout()
+            back_btn = QPushButton("◀ Back")
+            back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            back_btn.clicked.connect(self._close_pipeline_view)
+            
+            title_label = QLabel("")
+            title_label.setStyleSheet("font-weight: 600; font-size: 16pt; color: #2c3e50;")
+            
+            header_layout.addWidget(back_btn)
+            header_layout.addSpacing(20)
+            header_layout.addWidget(title_label)
+            header_layout.addStretch(1)
+            
+            layout.addLayout(header_layout)
+
+            # Create and add the Pipeline Highlights widget
+            self._pipeline_widget = PipeHighlightEmbedded(parent=container, pipe_tally_df=self.pipe_tally)
+            layout.addWidget(self._pipeline_widget, stretch=1)
+
+            # Store reference and switch central widget
+            self._central_pipeline = container
+            
+            # Switch to Pipeline Highlights view
+            if self._central_original is not None and self._central_original.parent() is self:
+                self.takeCentralWidget()
+            self.setCentralWidget(container)
+            
+            print("✅ Pipeline Highlights opened successfully in embedded mode")
+            
+        except ImportError as e:
+            self.open_Error(f"Could not import Pipeline Highlights module:\n{e}\n\nPlease check if the Pipe_Highlights_Embedded.py file exists in the pages folder.")
         except Exception as e:
-            self.open_Error(f"Error running Pipe Highlight:\n{e}")
+            self.open_Error(f"Error running Pipeline Highlights:\n{e}")
+            # Restore original view on error
+            try:
+                if hasattr(self, '_central_original') and self._central_original is not None:
+                    if self.centralWidget() is not self._central_original:
+                        self.setCentralWidget(self._central_original)
+            except Exception:
+                pass
+
+    def _close_pipeline_view(self):
+        """Close Pipeline Highlights and return to main view"""
+        try:
+            if self.centralWidget() is getattr(self, '_central_original', None):
+                return  # Already showing original view
+
+            # Take current widget and delete it
+            pipeline_central = self.takeCentralWidget()
+            if pipeline_central is not None:
+                pipeline_central.deleteLater()
+
+            # Restore original central widget
+            if hasattr(self, '_central_original') and self._central_original is not None:
+                if self._central_original.parent() is not self:
+                    self._central_original.setParent(self)
+                self.setCentralWidget(self._central_original)
+
+            # Clean up references
+            if hasattr(self, '_pipeline_widget'):
+                self._pipeline_widget = None
+            if hasattr(self, '_central_pipeline'):
+                self._central_pipeline = None
+                
+            print("✅ Returned to main view from Pipeline Highlights")
+            
+        except Exception as e:
+            print(f"⚠️ Error closing Pipeline Highlights view: {e}")
+
+
 
     def open_PipeScheme(self):
         try:
@@ -2411,7 +3054,7 @@ class MyMainWindow(QMainWindow):
         fil["ERF (ASME B31G)"] = pd.to_numeric(fil["ERF (ASME B31G)"], errors='coerce')
         fil[r"Orientation o' clock"] = fil[r"Orientation o' clock"].astype(str)
         fil["Surface Location"] = fil["Type"].apply(
-                        lambda x: "Internal" if "Internal" in x else ("External" if "External" in x else "Unknown")
+            lambda x: "Internal" if "Internal" in x else ("External" if "External" in x else "Unknown")
         )
         self.fr = Report(fil); self.fr.show()
 
@@ -2465,7 +3108,7 @@ class MyMainWindow(QMainWindow):
             w.valueChanged.connect(update_result)
         update_result()
         self.erf.show()
-       
+
     def open_Final_Report(self):
         p = resource_path(os.path.join("final_report", "Final_Report.pdf"))
         if os.path.exists(p): os.startfile(p)
@@ -2477,9 +3120,88 @@ class MyMainWindow(QMainWindow):
         else: self.open_Error("Prelimary report is not found.")
 
     def open_pipe_tally(self):
-        p = resource_path(os.path.join("pipetally", "pipe_tally.xlsx"))
-        if os.path.exists(p): os.startfile(p)
-        else: self.open_Error("Pipetally not found.")
+        # Check if a project is open
+        if not self.project_is_open or not self.project_root:
+            QMessageBox.warning(
+                self,
+                "No Project Open",
+                "Please create/open a project first to access the pipe tally file.\n\n"
+                "Steps:\n"
+                "1. Go to File → Create Project\n"
+                "2. Select a project folder\n"
+                "3. Then try accessing Pipe Tally again"
+            )
+            return
+            
+        if not hasattr(self, 'pipe_tally') or self.pipe_tally is None:
+            QMessageBox.warning(
+                self,
+                "No Pipe Tally Loaded",
+                "No pipe tally data is currently loaded from this project."
+            )
+            return
+        
+        # Search for pipe tally files ONLY in the project root directory (not subdirectories)
+        pipe_tally_files = []
+        project_path = Path(self.project_root)
+        
+        # Define pattern to match pipe tally related files (case-insensitive)
+        # Matches: pipetally, pipe_tally, tally_pipe, pipe-tally, etc.
+        import re
+        tally_pattern = re.compile(r'.*(pipe.*tally|tally.*pipe|pipetally|pipe_tally|pipe-tally).*\.(xlsx?|csv)$', re.IGNORECASE)
+        
+        # Search ONLY in project root (not subdirectories)
+        try:
+            for file_path in project_path.iterdir():  # Only direct children of root
+                if file_path.is_file() and tally_pattern.match(file_path.name):
+                    pipe_tally_files.append(str(file_path))
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error searching for pipe tally files:\n{e}"
+            )
+            return
+        
+        if not pipe_tally_files:
+            QMessageBox.warning(
+                self,
+                "Pipe Tally File Not Found",
+                f"Could not find any pipe tally files in the project root directory:\n{self.project_root}\n\n"
+                "Looking for files containing: 'pipetally', 'pipe_tally', 'tally_pipe', etc.\n"
+                "Note: Only searching in the root folder, not inside pipe subdirectories.\n\n"
+                "The pipe tally data is loaded in memory, but the source file could not be located."
+            )
+            return
+        
+        # If multiple files found, let user choose
+        pipe_tally_file = None
+        if len(pipe_tally_files) == 1:
+            pipe_tally_file = pipe_tally_files[0]
+        else:
+            # Show selection dialog for multiple pipe tally files
+            file_names = [os.path.basename(f) for f in pipe_tally_files]
+            selected_file, ok = QInputDialog.getItem(
+                self,
+                "Select Pipe Tally File",
+                f"Found {len(pipe_tally_files)} pipe tally files in the root directory. Please select one to open:",
+                file_names,
+                0,
+                False
+            )
+            if ok and selected_file:
+                # Find the full path for the selected file
+                pipe_tally_file = next((f for f in pipe_tally_files if os.path.basename(f) == selected_file), None)
+        
+        # Open the selected file
+        if pipe_tally_file:
+            try:
+                os.startfile(pipe_tally_file)
+            except Exception as e:
+                self.open_Error(f"Failed to open pipe tally file:\n{e}")
+        else:
+            QMessageBox.information(self, "No Selection", "No file was selected.")
+
 
     def open_manual(self):
         p = resource_path(os.path.join("manual", "user_manual.pdf"))
@@ -2650,7 +3372,7 @@ class MyMainWindow(QMainWindow):
     def _project_gate_targets(self):
         names = [
             "btnHeatmap", "btnLinechart", "btn3D",
-            "toolButtonHeatmap", "toolButtonLine", "toolButton3D",
+            "toolButtonHeatmap", "toolButtonLine", "toolButton3D", "toolButtonXYZ",
         ]
         widgets = [self.btnDigsheetAbs]
         for n in names:
@@ -2715,9 +3437,15 @@ class MyMainWindow(QMainWindow):
 
     def _has_valid_abs_selection(self) -> bool:
         tw = self.ui.tableWidgetDefect
-        if tw.rowCount() == 0 or tw.columnCount() == 0:
+        # if tw.rowCount() == 0 or tw.columnCount() == 0:
+        #     return False
+        if not tw.isVisible() or tw.rowCount() == 0 or tw.columnCount() == 0:
             return False
 
+        # ✅ Check if "no defects" message is showing
+        if hasattr(self, '_no_defects_container') and self._no_defects_container and self._no_defects_container.isVisible():
+            return False
+        
         abs_col = self._abs_col_index_silent()
         if abs_col is None:
             return False
@@ -2742,11 +3470,16 @@ class MyMainWindow(QMainWindow):
         return tab in ("Heatmap", "3D Graph", "3D")
 
     def update_digsheet_button_state(self):
+        if not self.project_is_open:
+            self.btnDigsheetAbs.setEnabled(False)
+            self.btnDigsheetAbs.setCursor(Qt.CursorShape.ForbiddenCursor)
+            self.btnDigsheetAbs.setToolTip("Create a project first to enable Digsheet generation.")
+            return
         can_show = (
-            self.project_is_open
-            and isinstance(self.pipe_tally, pd.DataFrame)
-            and self._is_graph_tab_ok()
-            and self._has_valid_abs_selection()
+                self.project_is_open
+                and isinstance(self.pipe_tally, pd.DataFrame)
+                and self._is_graph_tab_ok()
+                and self._has_valid_abs_selection()
         )
         self.btnDigsheetAbs.setEnabled(bool(can_show))
 
@@ -2775,6 +3508,24 @@ class MyMainWindow(QMainWindow):
                 subprocess.Popen([sys.executable, dig_py_abs, tally_pkl, str(abs_text)])
         except Exception as e:
             self.open_Error(f"Error opening ABS-distance digsheet:\n{e}")
+    
+    def _update_generate_actions(self):
+        """Update Generate menu buttons based on project and data status"""
+        # Check if pipe tally data is available
+        has_pipe_tally = isinstance(self.pipe_tally, pd.DataFrame) and not self.pipe_tally.empty
+        
+        # Update Pipe Tally button/action
+        if hasattr(self.ui, 'action__pipetally'):
+            self.ui.action__pipetally.setEnabled(self.project_is_open and has_pipe_tally)
+        
+        # Update Digsheet actions (both standard and ABS-based)
+        if hasattr(self.ui, 'actionStandard'):  # Standard digsheet
+            self.ui.actionStandard.setEnabled(self.project_is_open and has_pipe_tally)
+        
+        # The btnDigsheetAbs already has its own logic in update_digsheet_button_state()
+        # but we can ensure it also respects project state
+
+
 
     def close_project(self):
         try:
@@ -2789,6 +3540,8 @@ class MyMainWindow(QMainWindow):
             self.project_is_open = False
             self.project_root = None
             self.pkl_files = []
+            if hasattr(self, 'btnDigsheetAbs'):
+                self.btnDigsheetAbs.setEnabled(False)
             self.hmap = self.hmap_r = self.lplot = self.lplot_r = self.pipe3d = self.heatmap_box = None
             self.curr_data = None
             self.header_list = []
@@ -2802,6 +3555,7 @@ class MyMainWindow(QMainWindow):
             # ✅ Hide the "No Defects Found" message when closing project
             if hasattr(self, '_no_defects_container') and self._no_defects_container:
                 self._no_defects_container.hide()
+
 
             self._show_create_project_message()
             self.web_view.setUrl(QUrl())
@@ -2819,14 +3573,19 @@ class MyMainWindow(QMainWindow):
 
             self.btnDigsheetAbs.setEnabled(False)
             self._update_project_actions()
+            if hasattr(self, "_select_pipe_container") and self._select_pipe_container:
+                self._select_pipe_container.hide()
 
             QMessageBox.information(self, "Project Closed", "The project has been successfully closed.")
+            if hasattr(self, "_create_proj_container") and self._create_proj_container:
+                self._create_proj_container.show()
         except Exception as e:
             self.open_Error(e)
         finally:
             # Re-enable signals
             if tw is not None:
                 tw.blockSignals(False)
+
 
     def open_CMLD(self):
         selected_columns = [r"Abs. Distance (m)", r"Type", r"Orientation o' clock"]
@@ -2896,6 +3655,13 @@ class MyMainWindow(QMainWindow):
 
     def open_digs(self):
         try:
+            if not self.project_is_open:
+                QMessageBox.warning(
+                    self, 
+                    "No Project Open", 
+                    "Please create/open a project first to generate digsheets."
+                )
+                return
             if not isinstance(self.pipe_tally, pd.DataFrame):
                 QMessageBox.warning(self, "No Pipe Tally", "Load a pipe tally first."); return
             tally_pkl = _dump_tally_to_temp(self.pipe_tally)
@@ -2929,39 +3695,80 @@ class MyMainWindow(QMainWindow):
             # don't crash UI if something is missing during early init
             self._hscroll_ready = True
 
+    from PyQt6.QtGui import QPixmap
+
     def _setup_create_project_label(self):
-        """Setup 'Create the Project in File' message box (shown at startup)."""
-        self._create_proj_container = QWidget()
-        self._create_proj_container.setMaximumSize(500, 200)
-        self._create_proj_container.setMinimumSize(400, 150)
-        self._create_proj_container.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        """Create a centered overlay for 'Create Project' message"""
+        central = self.centralWidget()
+        self._create_proj_container = QWidget(central)
+        self._create_proj_container.setGeometry(central.rect())
+        self._create_proj_container.setStyleSheet("""
+            background-color: rgba(245, 247, 250, 200);
+        """)
 
         layout = QVBoxLayout(self._create_proj_container)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self._create_proj_label = QLabel("Create the Project in File Menu")
-        self._create_proj_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._create_proj_label.setStyleSheet("""
-            QLabel {
-                font-size: 16pt;
-                color: #666666;
-                font-weight: bold;
-                background-color: #f8f8f8;
-                border: 2px dashed #cccccc;
-                border-radius: 10px;
-                padding: 20px;
-                margin: 10px;
+        # Main card
+        card = QFrame()
+        card.setFixedWidth(420)
+        card.setStyleSheet("""
+            QFrame {
+                background-color: #ffffff;
+                border-radius: 14px;
+                border: 1px solid #e0e0e0;
+                padding: 30px 20px;
             }
         """)
-        layout.addWidget(self._create_proj_label)
+        card_layout = QVBoxLayout(card)
+        card_layout.setSpacing(20)
+        card_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        # Proper icon (no cropping)
+        icon_label = QLabel()
+        pixmap = QPixmap("icons/folder.png")  # ✅ use your own folder.png here
+        if not pixmap.isNull():
+            pixmap = pixmap.scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio,
+                                   Qt.TransformationMode.SmoothTransformation)
+            icon_label.setPixmap(pixmap)
+        else:
+            icon_label.setText("📁")  # fallback emoji
+            icon_label.setStyleSheet("font-size: 48px;")
+
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(icon_label)
+
+        # Title
+        title = QLabel("Create the Project")
+        title.setStyleSheet("""
+            font-size: 20pt;
+            font-weight: 600;
+            color: #2c3e50;
+        """)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(title)
+
+        # Divider
+        divider = QFrame()
+        divider.setFrameShape(QFrame.Shape.HLine)
+        divider.setStyleSheet("color: #e0e0e0; margin: 8px 0;")
+        card_layout.addWidget(divider)
+
+        # Subtitle (fixed clipping issue)
+        subtitle = QLabel("Go to <b>File → Create Project</b> in the menu bar")
+        subtitle.setWordWrap(True)
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        subtitle.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        subtitle.setStyleSheet("""
+            font-size: 12pt;
+            color: #555;
+        """)
+        card_layout.addWidget(subtitle)
+
+        layout.addWidget(card)
         self._create_proj_container.hide()
 
-        table_parent = self.ui.tableWidgetDefect.parentWidget()
-        if table_parent:
-            self._create_proj_container.setParent(table_parent)
-            self._create_proj_container.move(500, 50)  # adjust as needed
-    
     def _show_create_project_message(self):
         """Show 'Create the Project in File' message, hide table + scrollbars."""
         try:
@@ -3037,7 +3844,7 @@ if __name__ == "__main__":
         sys.argv = [dig_py, tally_pkl]
         runpy.run_path(dig_py, run_name="__main__")
         sys.exit(0)
-    
+
     app = MainApp(sys.argv)
     app.start()
     sys.exit(app.exec())

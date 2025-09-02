@@ -3,10 +3,10 @@ from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QFileDialog, QTextEdit
 import pandas as pd
 
-from Data_Gen.defectS_creator import create_defectSheet_and_heatmap_box
+from defectS_creator import create_defectSheet_and_heatmap_box
 # from Data_Gen.defectS_compare import create_defectSheet
-from Data_Gen.pipeTally_filter import create_pipe_tally
-from Data_Gen.html_filter import create_html_and_csv_from_pkl
+from pipeTally_filter import create_pipe_tally
+from html_filter import create_html_and_csv_from_pkl
 
 
 class ScriptRunnerApp(QWidget):

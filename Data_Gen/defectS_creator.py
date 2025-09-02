@@ -320,7 +320,7 @@ from joblib import Parallel, delayed
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-from Data_Gen.defectSheet_util import boxing2
+from defectSheet_util import boxing2
 
 # -------------------- CONFIG --------------------
 INITIAL_READ = 0.0       # At 400mm, F1H1 detects defect at 11:00 with roll 39.93
