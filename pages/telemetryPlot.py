@@ -9,7 +9,7 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from utils import resource_path
+from config.paths import resource_path
 import os
 from PyQt6.QtCore import QUrl
 

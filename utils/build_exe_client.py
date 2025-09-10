@@ -43,7 +43,7 @@ for folder in ["build", "dist"]:
         print(f"Removing old {folder_path} ...")
         shutil.rmtree(folder_path)
 
-spec_file = os.path.join(ROOT, "test_client.spec")
+spec_file = os.path.join(ROOT, "main_client_software.spec")
 if os.path.exists(spec_file):
     print(f"Removing old {spec_file} ...")
     os.remove(spec_file)
@@ -64,12 +64,12 @@ PyInstaller.__main__.run([
     "--add-data", "ui;ui/",
     "--add-data", "pages;pages/",
     "--add-data", "backend;backend/",
-    "--add-data", "Data_Gen;Data_Gen/",
+    # "--add-data", "Data_Gen;Data_Gen/",
     "--add-data", "dig;dig/",
     "--add-data", "manual;manual/",
     "--add-data", "pipetally;pipetally/",
     "--add-data", "final_report;final_report/",
     "--add-data", "preliminary_report;preliminary_report/",
     "--name", "main_client_software",  
-    "main.py"
+    "test8.py"
 ])

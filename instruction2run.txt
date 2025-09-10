@@ -1,0 +1,11 @@
+There are two ways to run this :
+    1- using modular approach
+    2- using one main file approach
+
+
+APPROACH - 1:
+    to run using modular approach, just run the main_module.py it will run the app using the modules 
+
+
+APPROACH - 2:
+    to run using one main file just run "main.py" this main.py is one code file , made from all modules in one file.
