@@ -65,7 +65,7 @@ from pages.Report import Report, Main1Tab, Main2Tab, Main3Tab
 from backend.line_plot import PlotWindow
 from backend.heatmap import HeatmapWindow as hm, pre_process, pre_process2  # noqa
 from ui.graphs_ui import GraphApp
-from Data_Gen.DataGenApp import ScriptRunnerApp  # noqa
+
 
 
 # --- Lightweight DataFrame model (no per-cell Qt items) ---
@@ -565,6 +565,98 @@ class MainApp(QApplication):
         self.close_splash_screen()
         self.show_main_window()
 
+class ColumnFilterDialog(QDialog):
+    def __init__(self, *, headers: list[str], checked: set[str], locked: set[str], parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Select Columns")
+        self.setModal(True)
+        self.resize(420, 520)
+
+        self._locked = set(locked)
+        # only show headers that are NOT locked
+        visible_headers = [h for h in headers if h not in self._locked]
+
+        # widgets
+        from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLineEdit, QListView, QPushButton, QLabel
+        from PyQt6.QtGui import QStandardItemModel, QStandardItem
+        from PyQt6.QtCore import Qt, QSortFilterProxyModel
+
+        lay = QVBoxLayout(self)
+
+        # search
+        self.search = QLineEdit(self)
+        self.search.setPlaceholderText("Search columns…")
+        lay.addWidget(self.search)
+
+        # list (checkable)
+        self.model = QStandardItemModel(self)
+        for name in visible_headers:
+            it = QStandardItem(name)
+            it.setCheckable(True)
+            it.setCheckState(Qt.CheckState.Checked if name in checked else Qt.CheckState.Unchecked)
+            it.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            self.model.appendRow(it)
+
+        self.proxy = QSortFilterProxyModel(self)
+        self.proxy.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.proxy.setFilterKeyColumn(0)
+        self.proxy.setSourceModel(self.model)
+
+        self.view = QListView(self)
+        self.view.setModel(self.proxy)
+        self.view.setEditTriggers(QListView.EditTrigger.NoEditTriggers)
+        lay.addWidget(self.view, 1)
+
+        # quick actions
+        row = QHBoxLayout()
+        self.btnAll = QPushButton("Select All")
+        self.btnNone = QPushButton("Select None")
+        row.addWidget(self.btnAll)
+        row.addWidget(self.btnNone)
+        row.addStretch(1)
+        lay.addLayout(row)
+
+        # footer
+        foot = QHBoxLayout()
+        self.info = QLabel("")  # shows e.g. "12 selected"
+        foot.addWidget(self.info)
+        foot.addStretch(1)
+        self.btnCancel = QPushButton("Cancel")
+        self.btnApply = QPushButton("Apply")
+        foot.addWidget(self.btnCancel)
+        foot.addWidget(self.btnApply)
+        lay.addLayout(foot)
+
+        # wire up
+        self.search.textChanged.connect(self.proxy.setFilterFixedString)
+        self.btnAll.clicked.connect(lambda: self._set_all(Qt.CheckState.Checked))
+        self.btnNone.clicked.connect(lambda: self._set_all(Qt.CheckState.Unchecked))
+        self.btnCancel.clicked.connect(self.reject)
+        self.btnApply.clicked.connect(self.accept)
+
+        self._update_info()
+        self.model.itemChanged.connect(lambda *_: self._update_info())
+
+    def _set_all(self, state: Qt.CheckState):
+        for r in range(self.model.rowCount()):
+            self.model.item(r).setCheckState(state)
+        self._update_info()
+
+    def _update_info(self):
+        total = self.model.rowCount()
+        sel = sum(1 for r in range(total) if self.model.item(r).checkState() == Qt.CheckState.Checked)
+        self.info.setText(f"{sel} / {total} visible columns selected")
+
+    def selected_names(self) -> set[str]:
+        """Return the names selected in the dialog (locked not included, they’re enforced by caller)."""
+        out = set()
+        for r in range(self.model.rowCount()):
+            it = self.model.item(r)
+            if it.checkState() == Qt.CheckState.Checked:
+                out.add(it.text())
+        return out
+
+
 class MyMainWindow(QMainWindow):
     REQUIRED_TALLY_COLS = [
         r"Abs. Distance (m)", r"Depth %", r"Type",
@@ -574,7 +666,48 @@ class MyMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.ui = Form()
+        
         self.ui.setupUi(self)
+        # Hide unwanted menu actions
+        if hasattr(self.ui, "action_Pipe_Locator"):
+            self.ui.action_Pipe_Locator.setVisible(False)
+
+        if hasattr(self.ui, "action_ERF"):
+            self.ui.action_ERF.setVisible(True)
+
+        if hasattr(self.ui, "action_Pipe_Sch"):
+            self.ui.action_Pipe_Sch.setVisible(True)
+
+        for tb in self.findChildren(QtWidgets.QToolBar):
+            if self.toolBarArea(tb) == Qt.ToolBarArea.LeftToolBarArea:
+                self.removeToolBar(tb)
+                tb.setParent(None)
+                tb.deleteLater()
+        self.menuBar().setStyleSheet("""
+    QMenuBar {
+        background-color: #000000;
+        color: white;
+    }
+    QMenuBar::item {
+        background: transparent;
+        padding: 4px 12px;
+    }
+    QMenuBar::item:selected {
+        background: #333333;
+        color: white;
+    }
+
+    /* Dropdown menus stay white */
+    QMenu {
+        background-color: #ffffff;
+        color: black;
+        border: 1px solid #cccccc;
+    }
+    QMenu::item:selected {
+        background: #c0c0c0;
+        color: #000000;
+    }
+""")
         self.child_windows = {}
 
         self._central_original = self.centralWidget()
@@ -607,6 +740,7 @@ class MyMainWindow(QMainWindow):
         self._reverting_tab = False
         self._last_allowed_tab_index = 0
         self._ui_ready = False  # set true after first layout/show
+        self._selected_columns: set[str] = set() 
 
         # ✅ Initialize "No Defects Found" label
         self._no_defects_label = None
@@ -616,6 +750,34 @@ class MyMainWindow(QMainWindow):
         self.loading_dialog = None
 
         self.ui.comboBoxPipe.setEditable(True)
+        import os
+
+        arrow_path = os.path.join(os.path.dirname(__file__), "ui", "icons", "arrow_down.svg").replace("\\", "/")
+
+        self.ui.comboBoxPipe.setStyleSheet(f"""
+            QComboBox {{
+                padding: 4px 8px;
+                border: 2px solid #000000;
+                border-radius: 6px;
+                background: white;
+            }}
+            QComboBox::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
+                border-left: 2px solid #000000;
+            }}
+            QComboBox::down-arrow {{
+                image: url({arrow_path});
+                width: 12px;
+                height: 12px;
+            }}
+            QComboBox QAbstractItemView {{
+                border: 2px solid #000000; 
+                selection-background-color: #3498db;
+                selection-color: white;
+            }}
+        """)
         self.ui.comboBoxPipe.clear()
         self.ui.comboBoxPipe.addItem("-Pipe-")
         self.ui.comboBoxPipe.setMaxVisibleItems(12)
@@ -637,6 +799,27 @@ class MyMainWindow(QMainWindow):
         self.btnDigsheetAbs = QPushButton("Digsheet")
         self.btnDigsheetAbs.setToolTip("Select an Absolute Distance cell in the defect table (on Heatmap/3D) to enable.")
         self.btnDigsheetAbs.setEnabled(False)
+        self.btnDigsheetAbs.setStyleSheet("""
+            QPushButton {
+                background: white;
+                border: 1px solid #3498db;
+                color: #3498db;
+                border-radius: 6px;
+                padding: 4px 12px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background: #ecf6fd;
+            }
+            QPushButton:pressed {
+                background: #d0e9fa;
+            }
+            QPushButton:disabled {
+                color: #a0a0a0;
+                background: #f5f5f5;
+                border: 2px solid #6e6e6e;
+            }
+        """)
         try:
             _parent = self.ui.comboBoxPipe.parentWidget()
             _lay = _parent.layout()
@@ -655,6 +838,27 @@ class MyMainWindow(QMainWindow):
         # Add Load button next to comboBoxPipe
         self.btnLoadPipe = QPushButton("Load")
         self.btnLoadPipe.setEnabled(False)
+        self.btnLoadPipe.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: 1px solid #2980b9;
+                border-radius: 6px;
+                padding: 4px 12px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+            QPushButton:pressed {
+                background-color: #1f5f8a;
+            }
+            QPushButton:disabled {
+            background-color: #a6a6a6;   
+            color: #f0f0f0;              
+            border: 2px solid #6e6e6e;   
+        }
+        """)
         _parent = self.ui.comboBoxPipe.parentWidget()
         _lay = _parent.layout()
         if _lay is not None:
@@ -668,6 +872,115 @@ class MyMainWindow(QMainWindow):
 
         # connect the load button
         self.btnLoadPipe.clicked.connect(self.load_selected_pipe)
+
+        #         # --- Column Filter UI ---
+        # self.columnFilter = QComboBox(self)
+        # self.columnFilter.setEditable(True)  # allow search
+        # self.columnFilter.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        # self.columnFilter.setMaxVisibleItems(15)
+        # # cf_model = QStandardItemModel()          # <- use the top-level import
+        # # self.columnFilter.setModel(cf_model)  
+        
+        # self._cf_model = QStandardItemModel(self.columnFilter)
+        # self.columnFilter.setModel(self._cf_model)
+
+
+        # self.btnApplyFilter = QPushButton("Apply Columns", self)
+        # self.btnApplyFilter.setEnabled(True)
+        # self.btnApplyFilter.clicked.connect(self.apply_column_filter)
+        # self.btnOpenFilterDlg = QPushButton("Filter Columns…", self)
+        # self.btnOpenFilterDlg.clicked.connect(self.open_column_filter_dialog)
+
+        # _parent = self.ui.comboBoxPipe.parentWidget()
+        # if _parent and _parent.layout():
+        #     pos = _parent.layout().indexOf(self.btnApplyFilter)
+        #     _parent.layout().insertWidget(pos + 1, self.btnOpenFilterDlg)
+        # else:
+        #     self.btnOpenFilterDlg.setParent(_parent)
+
+
+        # self.columnFilter.view().pressed.connect(self._on_column_item_pressed)
+
+        # # Make the line edit a read-only summary like "5 selected"
+        # self.columnFilter.setEditable(True)
+        # self.columnFilter.lineEdit().setReadOnly(True)
+        # self.columnFilter.lineEdit().setPlaceholderText("Columns…")
+
+        # # insert into same row as comboBoxPipe + btnLoadPipe
+        # _parent = self.ui.comboBoxPipe.parentWidget()
+        # if _parent and _parent.layout():
+        #     pos = _parent.layout().indexOf(self.btnLoadPipe)
+        #     _parent.layout().insertWidget(pos + 1, self.columnFilter)
+        #     _parent.layout().insertWidget(pos + 2, self.btnApplyFilter)
+
+        # self.btnOpenFilterDlg = QPushButton("Filter Columns…")
+
+        # # Style: white background, blue border, rounded corners
+        # self.btnOpenFilterDlg.setStyleSheet("""
+        #     QPushButton {
+        #         background-color: #ffffff;
+        #         color: #3498db;
+        #         border: 1.5px solid #3498db;
+        #         border-radius: 6px;
+        #         padding: 4px 12px;
+        #         font-weight: 500;
+        #     }
+        #     QPushButton:hover {
+        #         background-color: #ecf6fd;   /* very light blue */
+        #     }
+        #     QPushButton:pressed {
+        #         background-color: #d6ebfa;   /* slightly darker when pressed */
+        #     }
+        #     QPushButton:disabled {
+        #         background-color: #f2f2f2;
+        #         color: #a6a6a6;
+        #         border: 1.5px solid #cccccc;
+        #     }
+        # """)
+
+        # self.btnOpenFilterDlg.setCursor(Qt.CursorShape.PointingHandCursor)
+        # self.btnOpenFilterDlg.setToolTip("Choose which columns to show in the table below")
+
+        from PyQt6.QtGui import QIcon
+        from PyQt6.QtCore import QSize
+
+        # create the button (you already have this)
+        self.btnOpenFilterDlg = QPushButton("Filter Columns", self)
+
+        # attach icon
+        filter_icon_path = resource_path("ui/icons/filter.svg")   # or .png
+        self.btnOpenFilterDlg.setIcon(QIcon(filter_icon_path))
+        self.btnOpenFilterDlg.setIconSize(QSize(16, 16))          # 16–18px works well for a 28px-high button
+        self.btnOpenFilterDlg.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        # optional: keep your outlined styling unchanged
+        self.btnOpenFilterDlg.setStyleSheet("""
+            QPushButton {
+                background-color:#FFFFFF;
+                color: #000000;
+                border: 1.5px solid #000000;
+                border-radius: 6px;
+                padding: 4px 12px;  /* enough padding so icon+text breathe */
+                font-weight: 500;
+            }
+            QPushButton:hover { background-color: #d6d3ce; }
+            QPushButton:pressed { background-color: #111111; }
+            QPushButton:disabled {
+                background-color: #3a3a3a;
+                color: #aaaaaa;
+                border: 1.5px solid #555555;
+            }
+        """)
+
+
+        self.btnOpenFilterDlg.clicked.connect(self.open_column_filter_dialog)
+
+        _parent = self.ui.comboBoxPipe.parentWidget()
+        if _parent and _parent.layout():
+            pos = _parent.layout().indexOf(self.btnLoadPipe)
+            _parent.layout().insertWidget(pos + 2, self.btnOpenFilterDlg)
+        else:
+            self.btnOpenFilterDlg.setParent(_parent)
 
         self.ui.comboBoxPipe.currentIndexChanged.connect(self.update_load_button_state)
 
@@ -746,14 +1059,151 @@ class MyMainWindow(QMainWindow):
         # mark UI ready on next tick (prevents popup at startup)
         QTimer.singleShot(0, lambda: setattr(self, "_ui_ready", True))
 
-        try:
-            excel_path = resource_path("14inch Petrofac pipetally.xlsx")
-            if os.path.exists(excel_path) and self.pipe_tally is None:
-                self.pipe_tally = pd.read_excel(excel_path)
-        except Exception:
-            pass
+        # try:
+        #     excel_path = resource_path("14inch Petrofac pipetally.xlsx")
+        #     if os.path.exists(excel_path) and self.pipe_tally is None:
+        #         self.pipe_tally = pd.read_excel(excel_path)
+        # except Exception:
+        #     pass
 
         self._show_watermark()
+
+    
+    # def _on_column_item_pressed(self, index):
+    #     """Toggle the check state for a pressed item and keep the popup open."""
+    #     m = self.columnFilter.model()
+    #     item = m.itemFromIndex(index)
+    #     if not item:
+    #         return
+    #     item.setCheckState(
+    #         Qt.CheckState.Unchecked
+    #         if item.checkState() == Qt.CheckState.Checked
+    #         else Qt.CheckState.Checked
+    #     )
+    #     # Re-show popup so it doesn't close on each click
+    #     QTimer.singleShot(0, self.columnFilter.showPopup)
+    #     # Refresh summary text
+    #     self._column_summary_text()
+
+    def _current_headers_for_filter(self) -> list[str]:
+        """Mirror the same header source used by _refresh_column_filter_options()."""
+        headers = []
+        if hasattr(self.ui, "tableWidgetDefect") and self.ui.tableWidgetDefect.columnCount() > 0:
+            headers = [
+                (self.ui.tableWidgetDefect.horizontalHeaderItem(c).text()
+                if self.ui.tableWidgetDefect.horizontalHeaderItem(c) else f"Col {c}")
+                for c in range(self.ui.tableWidgetDefect.columnCount())
+            ]
+        elif hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
+            model = self.ui.tableView.model()
+            headers = [str(model.headerData(c, Qt.Orientation.Horizontal)) for c in range(model.columnCount())]
+        return headers
+
+    def _currently_checked_in_dropdown(self) -> set[str]:
+        """Read the check state from the existing dropdown (_cf_model)."""
+        out = set()
+        for r in range(self._cf_model.rowCount()):
+            it = self._cf_model.item(r)
+            if it.checkState() == Qt.CheckState.Checked:
+                out.add(it.text())
+        return out
+
+    # def open_column_filter_dialog(self):
+    #     """Open the dialog, then sync results back into the dropdown model and apply."""
+    #     headers = self._current_headers_for_filter()
+    #     checked = self._currently_checked_in_dropdown()
+    #     locked = set(getattr(self, "BACKEND_LOCKED_COLS", set()))
+
+    #     # create + exec dialog
+    #     dlg = ColumnFilterDialog(headers=headers, checked=checked, locked=locked, parent=self)
+    #     if dlg.exec() != QDialog.DialogCode.Accepted:
+    #         return
+
+    #     # union with locked (locked never appears in the dialog)
+    #     selected = set(dlg.selected_names()) | locked
+
+    #     # sync back into the dropdown’s model, skipping locked (those are not in the dropdown)
+    #     for r in range(self._cf_model.rowCount()):
+    #         it = self._cf_model.item(r)
+    #         it.setCheckState(Qt.CheckState.Checked if it.text() in selected else Qt.CheckState.Unchecked)
+
+    #     # refresh the summary text and apply using your existing logic
+    #     self._update_column_summary()
+    #     self.apply_column_filter()
+
+    def open_column_filter_dialog(self):
+        """Open column selector dialog and apply the result."""
+        headers = self._current_headers_for_filter()
+        locked = set(getattr(self, "BACKEND_LOCKED_COLS", set()))
+
+        # default: first time, select everything that's not locked
+        if not self._selected_columns:
+            checked = set(h for h in headers if h not in locked)
+        else:
+            checked = set(h for h in self._selected_columns if h in headers and h not in locked)
+
+        dlg = ColumnFilterDialog(headers=headers, checked=checked, locked=locked, parent=self)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        # persist + apply (locked are always enforced)
+        self._selected_columns = set(dlg.selected_names()) | locked
+        self.apply_column_filter()
+
+
+    def apply_column_filter(self):
+        """Hide/show columns based on self._selected_columns + locked columns."""
+        locked = set(getattr(self, "BACKEND_LOCKED_COLS", set()))
+
+        # If we have no selection yet, treat as 'show all'
+        if not self._selected_columns:
+            self._selected_columns = set(self._current_headers_for_filter()) | locked
+
+        names_to_keep = set(self._selected_columns) | locked
+
+        # Prefer bottom QTableWidgetDefect if it has columns
+        if hasattr(self.ui, "tableWidgetDefect") and self.ui.tableWidgetDefect.columnCount() > 0:
+            header_map = {
+                c: (self.ui.tableWidgetDefect.horizontalHeaderItem(c).text()
+                    if self.ui.tableWidgetDefect.horizontalHeaderItem(c) else f"Col {c}")
+                for c in range(self.ui.tableWidgetDefect.columnCount())
+            }
+            for c, name in header_map.items():
+                hide = (name not in names_to_keep) and (name not in locked)
+                self.ui.tableWidgetDefect.setColumnHidden(c, hide)
+            QTimer.singleShot(0, self._refresh_table_scrollbars)
+            return
+
+        # Fallback to the top QTableView
+        if hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
+            model = self.ui.tableView.model()
+            header_names = [str(model.headerData(c, Qt.Orientation.Horizontal)) for c in range(model.columnCount())]
+            for c, name in enumerate(header_names):
+                hide = (name not in names_to_keep) and (name not in locked)
+                self.ui.tableView.setColumnHidden(c, hide)
+
+
+
+    def _on_column_item_pressed(self, index):
+        """Toggle the check state; keep popup open and update summary."""
+        item = self._cf_model.itemFromIndex(index)
+        if not item:
+            return
+        item.setCheckState(
+            Qt.CheckState.Unchecked if item.checkState() == Qt.CheckState.Checked else Qt.CheckState.Checked
+        )
+        self._update_column_summary()
+        # keep popup open for multi-select
+        QTimer.singleShot(0, self.columnFilter.showPopup)
+
+
+    def _column_summary_text(self):
+        """Show 'N selected' in the combobox line edit."""
+        m = self.columnFilter.model()
+        checked = sum(1 for i in range(m.rowCount()) if m.item(i).checkState() == Qt.CheckState.Checked)
+        if self.columnFilter.isEditable() and self.columnFilter.lineEdit():
+            self.columnFilter.lineEdit().setText(f"{checked} selected" if checked else "None")
+
 
     def _setup_no_defects_label(self):
         """Create and setup the 'No Defects Found' label with absolute positioning"""
@@ -844,6 +1294,166 @@ class MyMainWindow(QMainWindow):
                     min-width: 40px;
                 }
             """)
+    def populate_column_filter(self, df: pd.DataFrame):
+        """Fill dropdown with all DataFrame columns (checkable)."""
+        model = self.columnFilter.model()
+        model.clear()
+
+        for col in df.columns:
+            it = QStandardItem(str(col))
+            # Make it user-checkable and enabled
+            it.setFlags(it.flags() | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
+            it.setData(Qt.CheckState.Checked, Qt.ItemDataRole.CheckStateRole)
+            model.appendRow(it)
+
+        # Update summary (e.g., "12 selected")
+        self._column_summary_text()
+
+
+    # def apply_column_filter(self):
+    #     """Re-render table with only selected columns."""
+    #     if self.curr_data is None:
+    #         return
+
+    #     m = self.columnFilter.model()
+    #     selected_cols = [
+    #         m.item(i).text()
+    #         for i in range(m.rowCount())
+    #         if m.item(i).checkState() == Qt.CheckState.Checked
+    #     ]
+
+    #     # Refresh summary text
+    #     self._column_summary_text()
+
+    #     # Show only selected columns (empty selection => show empty table, change if you prefer fallback)
+    #     filtered_df = self.curr_data[selected_cols] if selected_cols else self.curr_data
+
+
+    #     # Keep using proxy model path you already set up
+    #     self.df_model = PandasModel(filtered_df)
+    #     self.proxy_model.setSourceModel(self.df_model)
+    #     self.ui.tableView.setModel(self.proxy_model)
+
+    # def apply_column_filter(self):
+    #     """
+    #     Hide/show columns in the bottom defect table if present,
+    #     otherwise in the top tableView.
+    #     """
+    #     names_to_keep = []
+    #     for r in range(self._cf_model.rowCount()):
+    #         it = self._cf_model.item(r)
+    #         if it.checkState() == Qt.CheckState.Checked:
+    #             names_to_keep.append(it.text())
+
+    #     # Preferred target: bottom QTableWidget
+    #     if hasattr(self.ui, "tableWidgetDefect") and self.ui.tableWidgetDefect.columnCount() > 0:
+    #         header_map = {
+    #             c: (self.ui.tableWidgetDefect.horizontalHeaderItem(c).text()
+    #                 if self.ui.tableWidgetDefect.horizontalHeaderItem(c) else f"Col {c}")
+    #             for c in range(self.ui.tableWidgetDefect.columnCount())
+    #         }
+    #         for c, name in header_map.items():
+    #             self.ui.tableWidgetDefect.setColumnHidden(c, name not in names_to_keep)
+    #         QTimer.singleShot(0, self._refresh_table_scrollbars)
+    #         self._update_column_summary()
+    #         return
+
+    #     # Fallback: top QTableView
+    #     if hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
+    #         model = self.ui.tableView.model()
+    #         header_names = [str(model.headerData(c, Qt.Orientation.Horizontal)) for c in range(model.columnCount())]
+    #         for c, name in enumerate(header_names):
+    #             self.ui.tableView.setColumnHidden(c, name not in names_to_keep)
+    #     self._update_column_summary()
+    # def apply_column_filter(self):
+    #     names_to_keep = []
+    #     for r in range(self._cf_model.rowCount()):
+    #         it = self._cf_model.item(r)
+    #         if it.checkState() == Qt.CheckState.Checked:
+    #             names_to_keep.append(it.text())
+
+    #     # ← ensure locked columns are ALWAYS kept (even if they’re not in the dropdown)
+    #     names_to_keep = set(names_to_keep) | set(self.BACKEND_LOCKED_COLS)
+
+    #     if hasattr(self.ui, "tableWidgetDefect") and self.ui.tableWidgetDefect.columnCount() > 0:
+    #         header_map = {
+    #             c: (self.ui.tableWidgetDefect.horizontalHeaderItem(c).text()
+    #                 if self.ui.tableWidgetDefect.horizontalHeaderItem(c) else f"Col {c}")
+    #             for c in range(self.ui.tableWidgetDefect.columnCount())
+    #         }
+    #         for c, name in header_map.items():
+    #             hide = (name not in names_to_keep) and (name not in self.BACKEND_LOCKED_COLS)
+    #             self.ui.tableWidgetDefect.setColumnHidden(c, hide)
+    #         QTimer.singleShot(0, self._refresh_table_scrollbars)
+    #         self._update_column_summary()
+    #         return
+
+    #     if hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
+    #         model = self.ui.tableView.model()
+    #         header_names = [str(model.headerData(c, Qt.Orientation.Horizontal)) for c in range(model.columnCount())]
+    #         for c, name in enumerate(header_names):
+    #             hide = (name not in names_to_keep) and (name not in self.BACKEND_LOCKED_COLS)
+    #             self.ui.tableView.setColumnHidden(c, hide)
+
+    #     self._update_column_summary()
+
+
+
+
+    
+    def _restore_all_columns(self):
+        """Show all columns again (useful when closing a project)."""
+        if hasattr(self.ui, "tableWidgetDefect"):
+            for c in range(self.ui.tableWidgetDefect.columnCount()):
+                self.ui.tableWidgetDefect.setColumnHidden(c, False)
+        if hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
+            model = self.ui.tableView.model()
+            for c in range(model.columnCount()):
+                self.ui.tableView.setColumnHidden(c, False)
+
+
+    def _refresh_column_filter_options(self):
+        headers = []
+        if hasattr(self.ui, "tableWidgetDefect") and self.ui.tableWidgetDefect.columnCount() > 0:
+            headers = [
+                (self.ui.tableWidgetDefect.horizontalHeaderItem(c).text()
+                if self.ui.tableWidgetDefect.horizontalHeaderItem(c) else f"Col {c}")
+                for c in range(self.ui.tableWidgetDefect.columnCount())
+            ]
+        elif hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
+            model = self.ui.tableView.model()
+            headers = [str(model.headerData(c, Qt.Orientation.Horizontal)) for c in range(model.columnCount())]
+
+        self._cf_model.clear()
+        for name in headers:
+            if name in self.BACKEND_LOCKED_COLS:
+                continue  # ← don't show in dropdown, but still exists in table
+            it = QStandardItem(name)
+            it.setCheckable(True)
+            it.setCheckState(Qt.CheckState.Checked)
+            it.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            self._cf_model.appendRow(it)
+
+        self._update_column_summary()
+
+
+
+
+    
+    def _update_column_summary(self):
+        """Show 'All' / 'None' / 'N selected' in the combo line edit."""
+        total = self._cf_model.rowCount()
+        selected = sum(1 for r in range(total) if self._cf_model.item(r).checkState() == Qt.CheckState.Checked)
+        if not self.columnFilter.isEditable() or not self.columnFilter.lineEdit():
+            return
+        if selected == 0:
+            self.columnFilter.lineEdit().setText("None")
+        elif selected == total:
+            self.columnFilter.lineEdit().setText("All")
+        else:
+            self.columnFilter.lineEdit().setText(f"{selected} selected")
+
+
 
 
     def _setup_select_pipe_label(self):
@@ -1300,7 +1910,16 @@ class MyMainWindow(QMainWindow):
             QTabBar::tab:selected { color: white; font-weight: 600; }
         """)
         self.ui.verticalLayoutGraph.addWidget(self.splitter)
-        QTimer.singleShot(0, lambda: self.splitter.setSizes([self.height() // 2, self.height() // 2]))
+        # QTimer.singleShot(0, lambda: self.splitter.setSizes([self.height() // 2, self.height() // 2]))
+        # --- config variable ---
+        INIT_SPLIT_BOTTOM_RATIO = 0.45   # 65% bottom, 35% top
+
+        # later, in __init__ of your main window:
+        QTimer.singleShot(0, lambda: self.splitter.setSizes([
+            int(self.height() * (1 - INIT_SPLIT_BOTTOM_RATIO)),   # top
+            int(self.height() * INIT_SPLIT_BOTTOM_RATIO)          # bottom
+        ]))
+
 
         def _constrain_splitter_sizes():
             sizes = self.splitter.sizes()
@@ -1967,24 +2586,6 @@ class MyMainWindow(QMainWindow):
         else:
             self.btnLoadPipe.setEnabled(False)
 
-    # def on_data_loaded(self, df):
-    #     """Handle loaded DataFrame - runs on main thread"""
-    #     self.curr_data = df
-    #     self.header_list = list(df.columns)
-
-    #     # Update table model
-    #     self.model.clear()
-    #     self.model.setHorizontalHeaderLabels([str(c) for c in df.columns])
-    #     for _, row in df.iterrows():
-    #         row_items = []
-    #         for v in row.values:
-    #             item = QStandardItem("" if pd.isna(v) else str(v))
-    #             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-    #             row_items.append(item)
-    #         self.model.appendRow(row_items)
-
-    #     self.ui.tableView.setModel(self.model)
-    #     self.ui.tableView.setSortingEnabled(True)
     def on_data_loaded(self, df):
         """Handle loaded DataFrame - runs on main thread"""
         self.curr_data = df
@@ -2008,7 +2609,11 @@ class MyMainWindow(QMainWindow):
 
     def on_table_data_ready(self, df):
         """Handle processed table data"""
+        self.curr_data = df  # 👈 make sure we keep a reference for filtering later
+
         if df is not None:
+            # 👇 populate the column filter dropdown with available columns
+
             # Check if this is a PipeTally format or defects.csv format
             if "Feature Type" in df.columns:
                 self._populate_defect_table_from_tally(df)
@@ -2016,6 +2621,7 @@ class MyMainWindow(QMainWindow):
                 self._populate_defect_table_from_csv(df)
         else:
             self._show_no_defects_message()
+
 
     def on_loading_error(self, error_msg):
         """Handle loading errors"""
@@ -2099,10 +2705,10 @@ class MyMainWindow(QMainWindow):
             df["Defect_id"] = np.arange(1, len(df) + 1)
 
         desired_cols = [
-            "Defect_id","Abs. Distance (m)","Distance to U/S GW(m)","Pipe Number","Pipe Length (mm)",
-            "Feature Identification","Dimensions Classification","Orientation o' clock","Length (mm)",
-            "Width (mm)","WT (mm)","Depth %","Depth (mm)","Type","ERF (ASME B31G)","Psafe (ASME B31G) Barg",
-            "Latitude","Longitude","Comment",
+            "Defect_id","Abs. Distance (m)","Distance to U/S GW(m)","Pipe Number","Pipe Length (mm)","Feature Type",
+            "Feature Identification","Dimensions Classification","Orientation o' clock","WT (mm)","Length (mm)",
+            "Width (mm)","Depth %","Depth (mm)","Location","ERF (ASME B31G)","Psafe (ASME B31G) Barg",
+            "Latitude","Longitude" ,"Altitude","Comment","Empty"
         ]
         for col in desired_cols:
             if col not in df.columns:
@@ -2124,20 +2730,23 @@ class MyMainWindow(QMainWindow):
             'Distance to U/S GW(m)': 150,
             'Pipe Number': 150,
             'Pipe Length (mm)': 150,
+            'Feature Type': 150,
             'Feature Identification': 150,
             'Dimensions Classification': 150,
             'Orientation o\' clock': 150,
+            'WT (mm)': 150,
             'Length (mm)': 150,
             'Width (mm)': 150,
-            'WT (mm)': 150,
             'Depth %': 150,
             'Depth (mm)': 150,
-            'Type': 150,
+            'Location': 150,
             'ERF (ASME B31G)': 150,
             'Psafe (ASME B31G) Barg': 150,
             'Latitude': 150,
             'Longitude': 150,
-            'Comment': 570
+            'Altitude': 150,
+            'Comment': 150,
+            'Empty': 530
         }
 
         for c, col_name in enumerate(view.columns):
@@ -2172,6 +2781,66 @@ class MyMainWindow(QMainWindow):
         # Start first batch
         QTimer.singleShot(0, self._fill_tablewidget_chunk)
 
+
+    # def _fill_tablewidget_chunk(self):
+    #     """Append a batch of rows to QTableWidget without freezing UI."""
+    #     tw = self.ui.tableWidgetDefect
+    #     df = self._table_fill_df
+    #     start = self._table_fill_row
+    #     end   = min(start + self._table_fill_chunk, len(df))
+
+    #     # Fill rows for this batch
+    #     for r in range(start, end):
+    #         row_vals = df.iloc[r].to_list()
+    #         for c, v in enumerate(row_vals):
+    #             if isinstance(v, float):
+    #                 text = f"{v:.6g}"
+    #             elif pd.isna(v):
+    #                 text = ""
+    #             else:
+    #                 text = str(v)
+    #             item = QTableWidgetItem(text)
+    #             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
+    #             # Make items non-editable
+    #             item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+
+    #             tw.setItem(r, c, item)
+
+    #     self._table_fill_row = end
+
+    #     # update loader/progress
+    #     if self.loading_dialog:
+    #         done = end
+    #         total = len(df)
+    #         pct = int(100 * done / max(1, total))
+    #         self.loading_dialog.update_progress(pct, f"Preparing table ({done}/{total})...")
+    #         QtWidgets.QApplication.processEvents(QEventLoop.ProcessEventsFlag.AllEvents, 50)
+
+    #     if end >= len(df):
+    #         # finished
+    #         tw.setUpdatesEnabled(True)
+    #         tw.viewport().update()
+    #         header = tw.horizontalHeader()
+    #         header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+    #         header.setStretchLastSection(False)
+    #         self._is_filling_table = False
+
+    #         # Apply styling after table is filled
+    #         self._setup_table_styling()
+
+    #         if self.loading_dialog and self._pending_close_loader:
+    #             try:
+    #                 self.loading_dialog.close()
+    #             except Exception:
+    #                 pass
+    #             self.loading_dialog = None
+
+    #         self.update_digsheet_button_state()
+    #         QTimer.singleShot(0, self._refresh_table_scrollbars)
+    #     else:
+    #         # schedule next chunk (async → UI stays alive)
+    #         QTimer.singleShot(0, self._fill_tablewidget_chunk)
 
     def _fill_tablewidget_chunk(self):
         """Append a batch of rows to QTableWidget without freezing UI."""
@@ -2220,6 +2889,12 @@ class MyMainWindow(QMainWindow):
             # Apply styling after table is filled
             self._setup_table_styling()
 
+            # ✅ make the dropdown mirror the final table headers (== desired cols)
+            if not self._selected_columns:
+                self._selected_columns = set(self._current_headers_for_filter()) | set(self.BACKEND_LOCKED_COLS)
+            self.apply_column_filter()
+
+
             if self.loading_dialog and self._pending_close_loader:
                 try:
                     self.loading_dialog.close()
@@ -2236,9 +2911,79 @@ class MyMainWindow(QMainWindow):
 
 
 
+
     # ✅ Updated _populate_defect_table_from_csv with "No Defects Found" logic
-    def _populate_defect_table_from_csv(self, df: pd.DataFrame):
+    # def _populate_defect_table_from_csv(self, df: pd.DataFrame):
         
+    #     tw = self.ui.tableWidgetDefect
+    #     tw.clearSelection()
+
+    #     if df is None or df.empty:
+    #         self._show_no_defects_message()
+    #         return
+
+    #     # Show table since we have data
+    #     self._show_defects_table()
+
+    #     header_indices = {
+    #         'Defect_id': 0,
+    #         'Absolute_Distance': 1,
+    #         'Upstream_Distance': 2,
+    #         'Feature_Type': 3,
+    #         'Dimension_Class': 4,
+    #         'Orientation': 5,
+    #         'WT': 6,
+    #         'Length': 7,
+    #         'Width': 8,
+    #         'Depth_Peak': 9
+    #     }
+    #     colmap_candidates = {
+    #         'Box Number': 'Defect_id',
+    #         'Defect_id': 'Defect_id',
+    #         'Absolute Distance': 'Absolute_Distance',
+    #         'Abs. Distance (m)': 'Absolute_Distance',
+    #         'Upstream': 'Upstream_Distance',
+    #         'Distance to U/S GW(m)': 'Upstream_Distance',
+    #         'Type': 'Feature_Type',
+    #         'Dimensions  Classification': 'Dimension_Class',
+    #         "Orientation o' clock": 'Orientation',
+    #         'Ori Val': 'Orientation',
+    #         'WT (mm)': 'WT',
+    #         'WT': 'WT',
+    #         'Width': 'Width',
+    #         'Breadth': 'Width',
+    #         'Peak Value': 'Depth_Peak',
+    #         'Depth % ': 'Depth_Peak',
+    #         'Depth %': 'Depth_Peak',
+    #         'Length': 'Length'
+    #     }
+    #     column_mapping = {}
+    #     for src, dst in colmap_candidates.items():
+    #         if src in df.columns: column_mapping[src] = dst
+
+    #     tw = self.ui.tableWidgetDefect
+    #     num_rows = len(df); num_cols = len(header_indices)
+    #     tw.setRowCount(num_rows); tw.setColumnCount(num_cols)
+    #     tw.setHorizontalHeaderLabels(list(header_indices.keys()))
+
+    #     for r, (_, row) in enumerate(df.iterrows()):
+    #         for src, dst in column_mapping.items():
+    #             if dst in header_indices:
+    #                 c = header_indices[dst]
+    #                 v = row[src]
+    #                 if isinstance(v, float): v = f"{v:.2f}"
+    #                 item = QTableWidgetItem(str(v))
+    #                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
+    #                 # Make items non-editable
+    #                 item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+
+    #                 tw.setItem(r, c, item)
+
+    #     # Apply styling
+    #     self._setup_table_styling()
+    #     self.update_digsheet_button_state()
+    def _populate_defect_table_from_csv(self, df: pd.DataFrame):
         tw = self.ui.tableWidgetDefect
         tw.clearSelection()
 
@@ -2283,11 +3028,13 @@ class MyMainWindow(QMainWindow):
         }
         column_mapping = {}
         for src, dst in colmap_candidates.items():
-            if src in df.columns: column_mapping[src] = dst
+            if src in df.columns:
+                column_mapping[src] = dst
 
-        tw = self.ui.tableWidgetDefect
-        num_rows = len(df); num_cols = len(header_indices)
-        tw.setRowCount(num_rows); tw.setColumnCount(num_cols)
+        num_rows = len(df)
+        num_cols = len(header_indices)
+        tw.setRowCount(num_rows)
+        tw.setColumnCount(num_cols)
         tw.setHorizontalHeaderLabels(list(header_indices.keys()))
 
         for r, (_, row) in enumerate(df.iterrows()):
@@ -2295,7 +3042,8 @@ class MyMainWindow(QMainWindow):
                 if dst in header_indices:
                     c = header_indices[dst]
                     v = row[src]
-                    if isinstance(v, float): v = f"{v:.2f}"
+                    if isinstance(v, float):
+                        v = f"{v:.2f}"
                     item = QTableWidgetItem(str(v))
                     item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -2307,6 +3055,17 @@ class MyMainWindow(QMainWindow):
         # Apply styling
         self._setup_table_styling()
         self.update_digsheet_button_state()
+
+        # ✅ keep the dropdown in sync with the visible table headers
+        if not self._selected_columns:
+            self._selected_columns = set(self._current_headers_for_filter()) | set(self.BACKEND_LOCKED_COLS)
+        self.apply_column_filter()
+
+
+
+
+
+
 
 
     # Guarded tab change handler (prevents switching when no project and shows popup)
@@ -2377,6 +3136,10 @@ class MyMainWindow(QMainWindow):
             self.update_digsheet_button_state()
         except Exception as e:
             self.open_Error(e)
+    
+
+    BACKEND_LOCKED_COLS = {"Empty"}  # ← keep shown in table, never in dropdown
+
 
     def _refresh_current_view(self):
         """Force the current tab to re-render with latest asset paths."""
@@ -2967,7 +3730,7 @@ class MyMainWindow(QMainWindow):
             layout.addLayout(header_layout)
 
             # Create and add the Pipeline Highlights widget
-            self._pipeline_widget = PipeHighlightEmbedded(parent=container, pipe_tally_df=self.pipe_tally)
+            self._pipeline_widget = PipeHighlightEmbedded(parent=container, pipe_tally_df=self.pipe_tally, project_root=self.project_root)
             layout.addWidget(self._pipeline_widget, stretch=1)
 
             # Store reference and switch central widget

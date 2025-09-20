@@ -581,10 +581,10 @@ class MyMainWindow(QMainWindow):
             self.ui.action_Pipe_Locator.setVisible(False)
 
         if hasattr(self.ui, "action_ERF"):
-            self.ui.action_ERF.setVisible(False)
+            self.ui.action_ERF.setVisible(True)
 
         if hasattr(self.ui, "action_Pipe_Sch"):
-            self.ui.action_Pipe_Sch.setVisible(False)
+            self.ui.action_Pipe_Sch.setVisible(True)
 
         for tb in self.findChildren(QtWidgets.QToolBar):
             if self.toolBarArea(tb) == Qt.ToolBarArea.LeftToolBarArea:
@@ -857,12 +857,12 @@ class MyMainWindow(QMainWindow):
         # mark UI ready on next tick (prevents popup at startup)
         QTimer.singleShot(0, lambda: setattr(self, "_ui_ready", True))
 
-        try:
-            excel_path = resource_path("14inch Petrofac pipetally.xlsx")
-            if os.path.exists(excel_path) and self.pipe_tally is None:
-                self.pipe_tally = pd.read_excel(excel_path)
-        except Exception:
-            pass
+        # try:
+        #     excel_path = resource_path("14inch Petrofac pipetally.xlsx")
+        #     if os.path.exists(excel_path) and self.pipe_tally is None:
+        #         self.pipe_tally = pd.read_excel(excel_path)
+        # except Exception:
+        #     pass
 
         self._show_watermark()
 
@@ -2764,83 +2764,6 @@ class MyMainWindow(QMainWindow):
         self.pipe_tally = None
         return False
 
-    # def open_XYZ(self):
-    #     try:
-    #         if sys.platform == "win32":
-    #             path = r"C:\Program Files\Google\Google Earth Pro\client\googleearth.exe"
-    #         elif sys.platform == "darwin":
-    #             path = "/Applications/Google Earth Pro.app/Contents/MacOS/Google Earth Pro"
-    #         else:
-    #             path = "/usr/bin/google-earth-pro"
-    #         if os.path.exists(path):
-    #             subprocess.Popen([path])
-    #     except Exception:
-    #         pass
-
-    # def open_XYZ(self):
-    #     try:
-    #         # Define KML path for testing purposes
-    #         kml_path = r"C:\Users\anubh\Downloads\sample_locations2.kml"  # Replace with your actual KML file path
-            
-    #         # Determine Google Earth Pro path based on platform
-    #         if sys.platform == "win32":
-    #             earth_path = r"C:\Program Files\Google\Google Earth Pro\client\googleearth.exe"
-    #         elif sys.platform == "darwin":
-    #             earth_path = "/Applications/Google Earth Pro.app/Contents/MacOS/Google Earth Pro"
-    #         else:
-    #             earth_path = "/usr/bin/google-earth-pro"
-            
-    #         # Check if Google Earth Pro is installed
-    #         if not os.path.exists(earth_path):
-    #             # Show installation message
-    #             reply = QMessageBox.question(
-    #                 self, 
-    #                 "Google Earth Pro Not Found",
-    #                 "Google Earth Pro is not installed on your system.\n\n"
-    #                 "Would you like to download and install it?\n\n"
-    #                 "Click 'Yes' to open the download page, or 'No' to cancel.",
-    #                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-    #                 QMessageBox.StandardButton.Yes
-    #             )
-                
-    #             if reply == QMessageBox.StandardButton.Yes:
-    #                 # Open download page in default browser
-    #                 import webbrowser
-    #                 webbrowser.open("https://www.google.com/earth/versions/#earth-pro")
-    #             return
-            
-    #         # Check if KML file exists
-    #         if not os.path.exists(kml_path):
-    #             QMessageBox.warning(
-    #                 self,
-    #                 "KML File Not Found", 
-    #                 f"The KML file could not be found at:\n{kml_path}\n\n"
-    #                 "Please check the file path and try again."
-    #             )
-    #             return
-            
-    #         # Launch Google Earth Pro with the KML file
-    #         try:
-    #             subprocess.Popen([earth_path, kml_path])
-    #             # QMessageBox.information(
-    #             #     self,
-    #             #     "Success",
-    #             #     "Google Earth Pro has been launched with the KML file."
-    #             # )
-    #         except Exception as launch_error:
-    #             QMessageBox.critical(
-    #                 self,
-    #                 "Launch Error",
-    #                 f"Failed to launch Google Earth Pro:\n{str(launch_error)}"
-    #             )
-                
-    #     except Exception as e:
-    #         QMessageBox.critical(
-    #             self,
-    #             "Error",
-    #             f"An unexpected error occurred:\n{str(e)}"
-    #         )
-
     def open_XYZ(self):
         if not self.project_is_open:
             if self._ui_ready:
@@ -2992,36 +2915,6 @@ class MyMainWindow(QMainWindow):
 
     def open_Assessment(self):
         Assess_Dialog().exec()
-
-    # def open_PipeHigh(self):
-    #     try:
-    #         # ✅ Check if pipe_tally is loaded and pass it to PipeHighlightApp
-    #         if hasattr(self, 'pipe_tally') and isinstance(self.pipe_tally, pd.DataFrame) and not self.pipe_tally.empty:
-    #             print(f"🔍 Opening Pipe Highlights with {len(self.pipe_tally)} rows of data")
-    #             print(f"📊 Available columns: {list(self.pipe_tally.columns)}")
-                
-    #             from pages.Pipe_Highlights import run_app
-                
-    #             # ✅ Pass the loaded pipe_tally DataFrame to the app
-    #             run_app(pipe_tally_df=self.pipe_tally)
-                
-    #         else:
-    #             # If no pipe tally loaded, show informative error
-    #             QMessageBox.warning(
-    #                 self, 
-    #                 "No Pipe Tally Data", 
-    #                 "Please load a project with pipe tally data first.\n\n"
-    #                 "Steps to load data:\n"
-    #                 "1. Go to File → Create Project\n"
-    #                 "2. Select a folder containing pipe tally files\n"
-    #                 "3. Wait for the data to load\n"
-    #                 "4. Try opening Pipe Highlights again"
-    #             )
-                
-    #     except ImportError as e:
-    #         self.open_Error(f"Could not import Pipe Highlights module:\n{e}\n\nPlease check if the Pipe_Highlights.py file exists in the pages folder.")
-    #     except Exception as e:
-    #         self.open_Error(f"Error running Pipe Highlight:\n{e}")
 
 
     def open_PipeHigh(self):

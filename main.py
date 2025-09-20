@@ -65,7 +65,7 @@ from pages.Report import Report, Main1Tab, Main2Tab, Main3Tab
 from backend.line_plot import PlotWindow
 from backend.heatmap import HeatmapWindow as hm, pre_process, pre_process2  # noqa
 from ui.graphs_ui import GraphApp
-from Data_Gen.DataGenApp import ScriptRunnerApp  # noqa
+
 
 
 # --- Lightweight DataFrame model (no per-cell Qt items) ---
@@ -267,12 +267,19 @@ class PipeLoaderWorker(QThread):
             self.time_estimate.emit(estimated_remaining)
 
     def _find_pipe_directory(self):
+        # Look for pipe directories inside pipes_data subfolder
+        pipes_data_dir = os.path.join(self.project_root, "pipes_data")
+        if not os.path.isdir(pipes_data_dir):
+            print(f"[Warning] pipes_data directory not found in {self.project_root}")
+            return None
+        
         candidates = [
-            os.path.join(self.project_root, f"pipe_{self.pipe_idx}"),
-            os.path.join(self.project_root, f"pipe-{self.pipe_idx}"),
-            os.path.join(self.project_root, f"Pipe_{self.pipe_idx}"),
+            os.path.join(pipes_data_dir, f"pipe_{self.pipe_idx}"),
+            os.path.join(pipes_data_dir, f"pipe-{self.pipe_idx}"),
+            os.path.join(pipes_data_dir, f"Pipe_{self.pipe_idx}"),
         ]
         return next((d for d in candidates if os.path.isdir(d)), None)
+
 
     def _load_html_assets(self, pipe_dir):
         if not pipe_dir:
@@ -567,8 +574,48 @@ class MyMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.ui = Form()
-        self.ui.setupUi(self)
         
+        self.ui.setupUi(self)
+        # Hide unwanted menu actions
+        if hasattr(self.ui, "action_Pipe_Locator"):
+            self.ui.action_Pipe_Locator.setVisible(False)
+
+        if hasattr(self.ui, "action_ERF"):
+            self.ui.action_ERF.setVisible(False)
+
+        if hasattr(self.ui, "action_Pipe_Sch"):
+            self.ui.action_Pipe_Sch.setVisible(False)
+
+        for tb in self.findChildren(QtWidgets.QToolBar):
+            if self.toolBarArea(tb) == Qt.ToolBarArea.LeftToolBarArea:
+                self.removeToolBar(tb)
+                tb.setParent(None)
+                tb.deleteLater()
+        self.menuBar().setStyleSheet("""
+    QMenuBar {
+        background-color: #000000;
+        color: white;
+    }
+    QMenuBar::item {
+        background: transparent;
+        padding: 4px 12px;
+    }
+    QMenuBar::item:selected {
+        background: #333333;
+        color: white;
+    }
+
+    /* Dropdown menus stay white */
+    QMenu {
+        background-color: #ffffff;
+        color: black;
+        border: 1px solid #cccccc;
+    }
+    QMenu::item:selected {
+        background: #c0c0c0;
+        color: #000000;
+    }
+""")
         self.child_windows = {}
 
         self._central_original = self.centralWidget()
@@ -610,6 +657,34 @@ class MyMainWindow(QMainWindow):
         self.loading_dialog = None
 
         self.ui.comboBoxPipe.setEditable(True)
+        import os
+
+        arrow_path = os.path.join(os.path.dirname(__file__), "ui", "icons", "arrow_down.svg").replace("\\", "/")
+
+        self.ui.comboBoxPipe.setStyleSheet(f"""
+            QComboBox {{
+                padding: 4px 8px;
+                border: 2px solid #000000;
+                border-radius: 6px;
+                background: white;
+            }}
+            QComboBox::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
+                border-left: 2px solid #000000;
+            }}
+            QComboBox::down-arrow {{
+                image: url({arrow_path});
+                width: 12px;
+                height: 12px;
+            }}
+            QComboBox QAbstractItemView {{
+                border: 2px solid #000000; 
+                selection-background-color: #3498db;
+                selection-color: white;
+            }}
+        """)
         self.ui.comboBoxPipe.clear()
         self.ui.comboBoxPipe.addItem("-Pipe-")
         self.ui.comboBoxPipe.setMaxVisibleItems(12)
@@ -631,6 +706,27 @@ class MyMainWindow(QMainWindow):
         self.btnDigsheetAbs = QPushButton("Digsheet")
         self.btnDigsheetAbs.setToolTip("Select an Absolute Distance cell in the defect table (on Heatmap/3D) to enable.")
         self.btnDigsheetAbs.setEnabled(False)
+        self.btnDigsheetAbs.setStyleSheet("""
+            QPushButton {
+                background: white;
+                border: 1px solid #3498db;
+                color: #3498db;
+                border-radius: 6px;
+                padding: 4px 12px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background: #ecf6fd;
+            }
+            QPushButton:pressed {
+                background: #d0e9fa;
+            }
+            QPushButton:disabled {
+                color: #a0a0a0;
+                background: #f5f5f5;
+                border: 2px solid #6e6e6e;
+            }
+        """)
         try:
             _parent = self.ui.comboBoxPipe.parentWidget()
             _lay = _parent.layout()
@@ -649,6 +745,27 @@ class MyMainWindow(QMainWindow):
         # Add Load button next to comboBoxPipe
         self.btnLoadPipe = QPushButton("Load")
         self.btnLoadPipe.setEnabled(False)
+        self.btnLoadPipe.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: 1px solid #2980b9;
+                border-radius: 6px;
+                padding: 4px 12px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+            QPushButton:pressed {
+                background-color: #1f5f8a;
+            }
+            QPushButton:disabled {
+            background-color: #a6a6a6;   
+            color: #f0f0f0;              
+            border: 2px solid #6e6e6e;   
+        }
+        """)
         _parent = self.ui.comboBoxPipe.parentWidget()
         _lay = _parent.layout()
         if _lay is not None:
@@ -740,12 +857,12 @@ class MyMainWindow(QMainWindow):
         # mark UI ready on next tick (prevents popup at startup)
         QTimer.singleShot(0, lambda: setattr(self, "_ui_ready", True))
 
-        try:
-            excel_path = resource_path("14inch Petrofac pipetally.xlsx")
-            if os.path.exists(excel_path) and self.pipe_tally is None:
-                self.pipe_tally = pd.read_excel(excel_path)
-        except Exception:
-            pass
+        # try:
+        #     excel_path = resource_path("14inch Petrofac pipetally.xlsx")
+        #     if os.path.exists(excel_path) and self.pipe_tally is None:
+        #         self.pipe_tally = pd.read_excel(excel_path)
+        # except Exception:
+        #     pass
 
         self._show_watermark()
 
@@ -1089,7 +1206,7 @@ class MyMainWindow(QMainWindow):
         self.main_web_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
 
         self.web_view = QWebEngineView()
-        self.web_view.setFixedSize(2500, 600)
+        self.web_view.setFixedSize(2500, 650)
         self.main_web_scroll_area.setWidget(self.web_view)
 
         # 1) scrollable view
@@ -1621,11 +1738,16 @@ class MyMainWindow(QMainWindow):
             if not loaded_tally:
                 print("[pipe_tally] No tally file found in this project; graphs/reports will warn if needed.")
 
-            self.pkl_files = [
-                os.path.join(root, f)
-                for f in os.listdir(root)
-                if f.lower().endswith(".pkl")
-            ]
+            pickle_data_dir = os.path.join(root, "pickle_data")
+            if os.path.isdir(pickle_data_dir):
+                self.pkl_files = [
+                    os.path.join(pickle_data_dir, f)
+                    for f in os.listdir(pickle_data_dir)
+                    if f.lower().endswith(".pkl")
+                ]
+            else:
+                self.pkl_files = []
+                print(f"[Warning] pickle_data directory not found in {root}")
 
             def nkey(path):
                 filename = os.path.basename(path)
@@ -2590,18 +2712,23 @@ class MyMainWindow(QMainWindow):
             print(f"Error setting up scrollbars: {e}")
 
     def _auto_load_pipe_tally(self, root: str) -> bool:
+            # Look for pipe tally files inside pipetally_main subfolder
+        pipetally_dir = os.path.join(root, "pipetally_main")
+        if not os.path.isdir(pipetally_dir):
+            print(f"[Warning] pipetally_main directory not found in {root}")
+            self.pipe_tally = None
+            return False
+        
         candidates = [
-            os.path.join(root, "pipetally", "pipe_tally.xlsx"),
-            os.path.join(root, "pipetally", "pipe_tally.csv"),
-            os.path.join(root, "pipe_tally.xlsx"),
-            os.path.join(root, "pipe_tally.csv"),
+            os.path.join(pipetally_dir, "pipe_tally.xlsx"),
+            os.path.join(pipetally_dir, "pipe_tally.csv"),
         ]
-        for d in (root, os.path.join(root, "pipetally")):
-            if os.path.isdir(d):
-                for f in os.listdir(d):
-                    name = f.lower()
-                    if name.endswith((".xlsx", ".xls", ".csv")):
-                        candidates.append(os.path.join(d, f))
+        
+        # Also scan for any tally-related files in the pipetally_main directory
+        for f in os.listdir(pipetally_dir):
+            name = f.lower()
+            if name.endswith((".xlsx", ".xls", ".csv")):
+                candidates.append(os.path.join(pipetally_dir, f))
         seen = set()
         for path in candidates:
             if not path or path in seen:
@@ -2951,7 +3078,7 @@ class MyMainWindow(QMainWindow):
             layout.addLayout(header_layout)
 
             # Create and add the Pipeline Highlights widget
-            self._pipeline_widget = PipeHighlightEmbedded(parent=container, pipe_tally_df=self.pipe_tally)
+            self._pipeline_widget = PipeHighlightEmbedded(parent=container, pipe_tally_df=self.pipe_tally, project_root=self.project_root)
             layout.addWidget(self._pipeline_widget, stretch=1)
 
             # Store reference and switch central widget
@@ -3084,14 +3211,66 @@ class MyMainWindow(QMainWindow):
         self.erf.show()
 
     def open_Final_Report(self):
-        p = resource_path(os.path.join("final_report", "Final_Report.pdf"))
-        if os.path.exists(p): os.startfile(p)
-        else: self.open_Error("Final report PDF not found.")
+        # Check if a project is open
+        if not self.project_is_open or not self.project_root:
+            QMessageBox.warning(
+                self,
+                "No Project Open", 
+                "Please create/open a project first to access the Final Report."
+            )
+            return
+        
+        # Look for Final_Report.pdf in the report folder within project root
+        report_dir = os.path.join(self.project_root, "report")
+        final_report_path = os.path.join(report_dir, "FR.pdf")
+        
+        if not os.path.exists(final_report_path):
+            QMessageBox.warning(
+                self,
+                "Final Report Not Found",
+                f"Could not find 'Final_Report.pdf' in the report directory:\n{report_dir}"
+            )
+            return
+        
+        try:
+            os.startfile(final_report_path)
+        except Exception as e:
+            self.open_Error(f"Failed to open Final Report:\n{e}")
+
 
     def open_Preliminary_Report(self):
-        p = resource_path(os.path.join("preliminary_report", "Preliminary_Report.pdf"))
-        if os.path.exists(p): os.startfile(p)
-        else: self.open_Error("Prelimary report is not found.")
+        # Check if a project is open
+        if not self.project_is_open or not self.project_root:
+            QMessageBox.warning(
+                self,
+                "No Project Open",
+                "Please create/open a project first to access the Preliminary Report.\n\n"
+                "Steps:\n"
+                "1. Go to File → Create Project\n"
+                "2. Select a project folder\n"
+                "3. Then try accessing Preliminary Report again"
+            )
+            return
+        
+        # Look for PR.pdf in the report folder within project root
+        report_dir = os.path.join(self.project_root, "report")
+        prelim_report_path = os.path.join(report_dir, "PR.pdf")
+        
+        if not os.path.exists(prelim_report_path):
+            QMessageBox.warning(
+                self,
+                "Preliminary Report Not Found",
+                f"Could not find 'PR.pdf' in the report directory:\n{report_dir}\n\n"
+                "Please ensure the report folder exists in your project and contains PR.pdf"
+            )
+            return
+        
+        # Open the preliminary report
+        try:
+            os.startfile(prelim_report_path)
+        except Exception as e:
+            self.open_Error(f"Failed to open Preliminary Report:\n{e}")
+
 
     def open_pipe_tally(self):
         # Check if a project is open
@@ -3125,10 +3304,22 @@ class MyMainWindow(QMainWindow):
         tally_pattern = re.compile(r'.*(pipe.*tally|tally.*pipe|pipetally|pipe_tally|pipe-tally).*\.(xlsx?|csv)$', re.IGNORECASE)
         
         # Search ONLY in project root (not subdirectories)
+       # Search ONLY in pipetally_main subfolder
+        pipetally_main_path = project_path / "pipetally_main"
+        if not pipetally_main_path.is_dir():
+            QMessageBox.warning(
+                self,
+                "Pipetally Directory Not Found",
+                f"Could not find 'pipetally_main' folder in the project directory:\n{self.project_root}\n\n"
+                "Please ensure the pipetally_main folder exists in your project."
+            )
+            return
+
         try:
-            for file_path in project_path.iterdir():  # Only direct children of root
+            for file_path in pipetally_main_path.iterdir():  # Only direct children of pipetally_main
                 if file_path.is_file() and tally_pattern.match(file_path.name):
                     pipe_tally_files.append(str(file_path))
+
         except Exception as e:
             QMessageBox.critical(
                 self,
@@ -3488,16 +3679,40 @@ class MyMainWindow(QMainWindow):
         # Check if pipe tally data is available
         has_pipe_tally = isinstance(self.pipe_tally, pd.DataFrame) and not self.pipe_tally.empty
         
+        # Check if preliminary report exists
+        has_prelim_report = False
+        if self.project_is_open and self.project_root:
+            report_dir = os.path.join(self.project_root, "report")
+            prelim_report_path = os.path.join(report_dir, "PR.pdf")
+            has_prelim_report = os.path.exists(prelim_report_path)
+
+        # Check if final report exists
+        has_final_report = False
+        if self.project_is_open and self.project_root:
+            report_dir = os.path.join(self.project_root, "report")
+            final_report_path = os.path.join(report_dir, "FR.pdf")
+            has_final_report = os.path.exists(final_report_path)
+
+        # Update BOTH Final Report actions ✅
+        if hasattr(self.ui, 'action_Final_Report'):
+            self.ui.action_Final_Report.setEnabled(self.project_is_open and has_final_report)
+            
+        if hasattr(self.ui, 'Final_Report'):  # ← Add this block
+            self.ui.Final_Report.setEnabled(self.project_is_open and has_final_report)
+        
         # Update Pipe Tally button/action
         if hasattr(self.ui, 'action__pipetally'):
             self.ui.action__pipetally.setEnabled(self.project_is_open and has_pipe_tally)
         
+        # Update Preliminary Report action
+        if hasattr(self.ui, 'action_Preliminary_Report'):
+            self.ui.action_Preliminary_Report.setEnabled(self.project_is_open and has_prelim_report)
+        
         # Update Digsheet actions (both standard and ABS-based)
         if hasattr(self.ui, 'actionStandard'):  # Standard digsheet
             self.ui.actionStandard.setEnabled(self.project_is_open and has_pipe_tally)
-        
-        # The btnDigsheetAbs already has its own logic in update_digsheet_button_state()
-        # but we can ensure it also respects project state
+
+
 
 
 
