@@ -1594,6 +1594,16 @@ class MyMainWindow(QMainWindow):
             act_pipehigh.setEnabled(self.project_is_open)
         self._update_generate_actions()
 
+
+    def open_graphs_window(self):
+        if self.pipe_tally is None:
+            QMessageBox.warning(self, "No Pipe Tally", "Please create or load a project first.")
+            return
+
+        if self._central_graphs is None:
+            self._central_graphs = GraphApp(self.pipe_tally,self.project_root)
+        self.setCentralWidget(self._central_graphs)
+
     # ---------------------------------------------------
 
     # ---------- guarded connections for heatmap/line/3D ----------
@@ -1605,6 +1615,9 @@ class MyMainWindow(QMainWindow):
             ("action_LineChart", "LineChart"),
             ("action_3D_Graph", "3D"),
         ]
+        if hasattr(self.ui, "action_graphs"):
+            self.ui.action_graphs.triggered.connect(self.open_graphs_window)
+            
         for aname, tab in action_map:
             act = getattr(a, aname, None)
             if isinstance(act, QAction):
@@ -2910,79 +2923,6 @@ class MyMainWindow(QMainWindow):
 
 
 
-
-
-    # ✅ Updated _populate_defect_table_from_csv with "No Defects Found" logic
-    # def _populate_defect_table_from_csv(self, df: pd.DataFrame):
-        
-    #     tw = self.ui.tableWidgetDefect
-    #     tw.clearSelection()
-
-    #     if df is None or df.empty:
-    #         self._show_no_defects_message()
-    #         return
-
-    #     # Show table since we have data
-    #     self._show_defects_table()
-
-    #     header_indices = {
-    #         'Defect_id': 0,
-    #         'Absolute_Distance': 1,
-    #         'Upstream_Distance': 2,
-    #         'Feature_Type': 3,
-    #         'Dimension_Class': 4,
-    #         'Orientation': 5,
-    #         'WT': 6,
-    #         'Length': 7,
-    #         'Width': 8,
-    #         'Depth_Peak': 9
-    #     }
-    #     colmap_candidates = {
-    #         'Box Number': 'Defect_id',
-    #         'Defect_id': 'Defect_id',
-    #         'Absolute Distance': 'Absolute_Distance',
-    #         'Abs. Distance (m)': 'Absolute_Distance',
-    #         'Upstream': 'Upstream_Distance',
-    #         'Distance to U/S GW(m)': 'Upstream_Distance',
-    #         'Type': 'Feature_Type',
-    #         'Dimensions  Classification': 'Dimension_Class',
-    #         "Orientation o' clock": 'Orientation',
-    #         'Ori Val': 'Orientation',
-    #         'WT (mm)': 'WT',
-    #         'WT': 'WT',
-    #         'Width': 'Width',
-    #         'Breadth': 'Width',
-    #         'Peak Value': 'Depth_Peak',
-    #         'Depth % ': 'Depth_Peak',
-    #         'Depth %': 'Depth_Peak',
-    #         'Length': 'Length'
-    #     }
-    #     column_mapping = {}
-    #     for src, dst in colmap_candidates.items():
-    #         if src in df.columns: column_mapping[src] = dst
-
-    #     tw = self.ui.tableWidgetDefect
-    #     num_rows = len(df); num_cols = len(header_indices)
-    #     tw.setRowCount(num_rows); tw.setColumnCount(num_cols)
-    #     tw.setHorizontalHeaderLabels(list(header_indices.keys()))
-
-    #     for r, (_, row) in enumerate(df.iterrows()):
-    #         for src, dst in column_mapping.items():
-    #             if dst in header_indices:
-    #                 c = header_indices[dst]
-    #                 v = row[src]
-    #                 if isinstance(v, float): v = f"{v:.2f}"
-    #                 item = QTableWidgetItem(str(v))
-    #                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-
-    #                 # Make items non-editable
-    #                 item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-
-    #                 tw.setItem(r, c, item)
-
-    #     # Apply styling
-    #     self._setup_table_styling()
-    #     self.update_digsheet_button_state()
     def _populate_defect_table_from_csv(self, df: pd.DataFrame):
         tw = self.ui.tableWidgetDefect
         tw.clearSelection()
@@ -3138,7 +3078,7 @@ class MyMainWindow(QMainWindow):
             self.open_Error(e)
     
 
-    BACKEND_LOCKED_COLS = {"Empty"}  # ← keep shown in table, never in dropdown
+    BACKEND_LOCKED_COLS = {"Empty"}  # for styling purpose this is takin extra ,DONT REMOVE IT FROM THE SET
 
 
     def _refresh_current_view(self):
@@ -3295,7 +3235,7 @@ class MyMainWindow(QMainWindow):
             header.addWidget(back_btn); header.addSpacing(12); header.addWidget(title); header.addStretch(1)
             v.addLayout(header)
 
-            graphs_widget = graphs_ui.GraphApp(dataframe=self.pipe_tally)
+            graphs_widget = graphs_ui.GraphApp(dataframe=self.pipe_tally, project_root=self.project_root)
             v.addWidget(graphs_widget, stretch=1)
 
             self._graphs_widget = graphs_widget

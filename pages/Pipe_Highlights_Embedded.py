@@ -209,7 +209,7 @@ class PipeHighlightEmbedded(QWidget):
         # ✅ Create the scrollable content widget
         content_widget = QWidget()
         content_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        content_widget.setMinimumHeight(1600)
+        content_widget.setMinimumHeight(2200)
         
         content_layout = QVBoxLayout(content_widget)
         content_layout.setContentsMargins(25, 25, 25, 25)
@@ -625,63 +625,170 @@ class PipeHighlightEmbedded(QWidget):
 
 
 
+    # def _create_statistics_section(self, parent_layout):
+    #     """Simple working statistics and charts section"""
+        
+    #     splitter = QSplitter(Qt.Orientation.Horizontal)
+        
+    #     # Simple stats frame
+    #     stats_frame = QFrame()
+    #     stats_frame.setFixedWidth(350)
+    #     stats_frame.setStyleSheet("""
+    #         QFrame {
+    #             background: #f5f5f5;
+    #             border: 1px solid #ccc;
+    #             border-radius: 10px;
+    #             padding: 15px;
+    #         }
+    #     """)
+        
+    #     stats_layout = QVBoxLayout(stats_frame)
+    #     stats_layout.setSpacing(15)
+        
+    #     # Simple title
+    #     stats_title = QLabel("📈 Pipeline Statistics")
+    #     stats_title.setStyleSheet("""
+    #         QLabel {
+    #             font-size: 16pt;
+    #             font-weight: bold;
+    #             color: #333;
+    #             padding: 10px;
+    #             background: white;
+    #             border-radius: 8px;
+    #         }
+    #     """)
+    #     stats_layout.addWidget(stats_title)
+        
+    #     # Add groups
+    #     self._create_stats_group(stats_layout, "🔢 Anomaly Counts", [
+    #         ("Total Anomalies", self.TOT_ANAL, "#3b82f6"),
+    #         ("Internal Anomalies", self.INT_ANAL, "#ef4444"),
+    #         ("External Anomalies", self.EXT_ANAL, "#06b6d4"),
+    #     ])
+        
+    #     self._create_stats_group(stats_layout, "⚡ ERF Analysis", [
+    #         ("0.95 > ", self.ERF_95, "#10b981"),
+    #         ("0.95 ≤ ERF < 1", self.ERF_95_1, "#f59e0b"),
+    #         ("ERF ≥ 1", self.ERF_1, "#ef4444"),
+    #     ])
+        
+    #     self._create_stats_group(stats_layout, "📊 Depth Distribution", [
+    #         ("Depth < 25%", self.DEP_25, "#8b5cf6"),
+    #         ("25% ≤ Depth < 50%", self.DEP_25_50, "#10b981"),
+    #         ("50% ≤ Depth < 80%", self.DEP_50_80, "#f59e0b"),
+    #         ("80% ≤ Depth ≤ 100%", self.DEP_80_100, "#ef4444"),
+    #     ])
+        
+    #     stats_layout.addStretch()
+        
+    #     # Charts frame (keep your existing charts code)
+    #     charts_frame = QFrame()
+    #     charts_frame.setStyleSheet("""
+    #         QFrame {
+    #             background: white;
+    #             border: 1px solid #ccc;
+    #             border-radius: 10px;
+    #             padding: 15px;
+    #         }
+    #     """)
+        
+    #     charts_layout = QVBoxLayout(charts_frame)
+        
+    #     charts_title = QLabel("📊 Data Visualization")
+    #     charts_title.setStyleSheet("""
+    #         QLabel {
+    #             font-size: 16pt;
+    #             font-weight: bold;
+    #             color: #333;
+    #             padding: 10px;
+    #             text-align: center;
+    #         }
+    #     """)
+    #     charts_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    #     charts_layout.addWidget(charts_title)
+        
+    #     # Your existing matplotlib code
+    #     self.figure = Figure(figsize=(8, 12), dpi=90, facecolor='white')
+    #     self.canvas = FigureCanvas(self.figure)
+    #     self.canvas.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+    #     self.canvas.setMinimumSize(500, 950)
+        
+    #     charts_layout.addWidget(self.canvas, 1)
+    #     self._create_charts()
+        
+    #     # Add to splitter
+    #     splitter.addWidget(stats_frame)
+    #     splitter.addWidget(charts_frame)
+    #     splitter.setSizes([350, 950])
+        
+    #     parent_layout.addWidget(splitter, 1)
     def _create_statistics_section(self, parent_layout):
-        """Simple working statistics and charts section"""
-        
+        """Statistics (left, scrollable) and Charts (right, flexible) section"""
+
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        
-        # Simple stats frame
+
+        # --- 📈 Pipeline Statistics (left panel with scroll) ---
+        stats_scroll = QScrollArea()
+        stats_scroll.setWidgetResizable(True)
+        stats_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        stats_scroll.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background: transparent;
+            }
+        """)
+
         stats_frame = QFrame()
-        stats_frame.setFixedWidth(350)
         stats_frame.setStyleSheet("""
             QFrame {
-                background: #f5f5f5;
-                border: 1px solid #ccc;
-                border-radius: 10px;
+                background: #f9fafb;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
                 padding: 15px;
             }
         """)
-        
         stats_layout = QVBoxLayout(stats_frame)
         stats_layout.setSpacing(15)
-        
-        # Simple title
+        stats_layout.setContentsMargins(12, 12, 12, 12)
+
         stats_title = QLabel("📈 Pipeline Statistics")
         stats_title.setStyleSheet("""
             QLabel {
                 font-size: 16pt;
                 font-weight: bold;
-                color: #333;
+                color: #1e293b;
                 padding: 10px;
                 background: white;
                 border-radius: 8px;
             }
         """)
         stats_layout.addWidget(stats_title)
-        
-        # Add groups
+
+        # Add groups (all three, so they match charts)
         self._create_stats_group(stats_layout, "🔢 Anomaly Counts", [
             ("Total Anomalies", self.TOT_ANAL, "#3b82f6"),
             ("Internal Anomalies", self.INT_ANAL, "#ef4444"),
             ("External Anomalies", self.EXT_ANAL, "#06b6d4"),
         ])
-        
+
         self._create_stats_group(stats_layout, "⚡ ERF Analysis", [
-            ("0.95 > ", self.ERF_95, "#10b981"),
+            ("ERF < 0.95", self.ERF_95, "#10b981"),
             ("0.95 ≤ ERF < 1", self.ERF_95_1, "#f59e0b"),
             ("ERF ≥ 1", self.ERF_1, "#ef4444"),
         ])
-        
-        # self._create_stats_group(stats_layout, "📊 Depth Distribution", [
-        #     ("Depth < 25%", self.DEP_25, "#8b5cf6"),
-        #     ("25% ≤ Depth < 50%", self.DEP_25_50, "#10b981"),
-        #     ("50% ≤ Depth < 80%", self.DEP_50_80, "#f59e0b"),
-        #     ("80% ≤ Depth ≤ 100%", self.DEP_80_100, "#ef4444"),
-        # ])
-        
-        stats_layout.addStretch()
-        
-        # Charts frame (keep your existing charts code)
+
+        self._create_stats_group(stats_layout, "📊 Depth Distribution", [
+            ("Depth < 25%", self.DEP_25, "#8b5cf6"),
+            ("25% ≤ Depth < 50%", self.DEP_25_50, "#10b981"),
+            ("50% ≤ Depth < 80%", self.DEP_50_80, "#f59e0b"),
+            ("80% ≤ Depth ≤ 100%", self.DEP_80_100, "#ef4444"),
+        ])
+
+        stats_layout.addStretch(1)
+
+        stats_scroll.setWidget(stats_frame)
+
+        # --- 📊 Charts (right panel, flexible) ---
         charts_frame = QFrame()
         charts_frame.setStyleSheet("""
             QFrame {
@@ -691,37 +798,39 @@ class PipeHighlightEmbedded(QWidget):
                 padding: 15px;
             }
         """)
-        
         charts_layout = QVBoxLayout(charts_frame)
-        
+
         charts_title = QLabel("📊 Data Visualization")
+        charts_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         charts_title.setStyleSheet("""
             QLabel {
                 font-size: 16pt;
                 font-weight: bold;
-                color: #333;
+                color: #1e293b;
                 padding: 10px;
-                text-align: center;
             }
         """)
-        charts_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         charts_layout.addWidget(charts_title)
-        
-        # Your existing matplotlib code
+
+        # Matplotlib canvas
         self.figure = Figure(figsize=(8, 12), dpi=90, facecolor='white')
         self.canvas = FigureCanvas(self.figure)
         self.canvas.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.canvas.setMinimumSize(500, 650)
-        
+
+        # Dynamic height: 320px per chart
+        num_charts = 3 
+        self.canvas.setMinimumSize(500, 320 * num_charts + 550)
+
         charts_layout.addWidget(self.canvas, 1)
         self._create_charts()
-        
-        # Add to splitter
-        splitter.addWidget(stats_frame)
+
+        # --- Add both panels to splitter ---
+        splitter.addWidget(stats_scroll)
         splitter.addWidget(charts_frame)
-        splitter.setSizes([350, 950])
-        
+        splitter.setSizes([380, 1000])  # left ~380px, right flexible
+
         parent_layout.addWidget(splitter, 1)
+
 
 
 
@@ -960,10 +1069,10 @@ class PipeHighlightEmbedded(QWidget):
                 bottom=0.04,
                 left=0.08,
                 right=0.72,
-                hspace=0.75
+                hspace=0.15
             )
             
-            axs = self.figure.subplots(2, 1)
+            axs = self.figure.subplots(3, 1)
             
             def autopct_func(pct):
                 return f'{pct:.1f}%' if pct >= 1.5 else ''
@@ -991,7 +1100,7 @@ class PipeHighlightEmbedded(QWidget):
                     autotext.set_fontweight('bold')
                     
                 legend1 = axs[0].legend(labels_1, loc='center left', bbox_to_anchor=(1.05, 0.5), 
-                                       fontsize=12, frameon=True, fancybox=True, shadow=True)
+                                       fontsize=9, frameon=True, fancybox=True, shadow=True)
                 legend1.get_frame().set_facecolor('white')
                 legend1.get_frame().set_alpha(0.9)
             else:
@@ -1027,35 +1136,35 @@ class PipeHighlightEmbedded(QWidget):
                            fontsize=16, color='#6b7280', transform=axs[1].transAxes)
             
             axs[1].set_title('⚡ Engineering Risk Factor (ERF) Analysis', fontsize=16, fontweight='bold', 
-                           pad=35, color='#1f2937')
+                           pad=15, color='#1f2937')
 
             # # ✨ Chart 3: Depth Distribution
-            # labels_3 = ['Shallow\n(< 25%)', 'Moderate\n(25% - 50%)', 'Deep\n(50% - 80%)', 'Critical\n(≥ 80%)']
-            # sizes_3 = [self.DEP_25, self.DEP_25_50, self.DEP_50_80, self.DEP_80_100]
+            labels_3 = ['Shallow\n(< 25%)', 'Moderate\n(25% - 50%)', 'Deep\n(50% - 80%)', 'Critical\n(≥ 80%)']
+            sizes_3 = [self.DEP_25, self.DEP_25_50, self.DEP_50_80, self.DEP_80_100]
             
-            # if sum(sizes_3) > 0:
-            #     wedges, texts, autotexts = axs[2].pie(
-            #         sizes_3, 
-            #         colors=premium_colors_3, 
-            #         autopct=autopct_func, 
-            #         startangle=90,
-            #         textprops={'fontsize': 12, 'fontweight': 'bold', 'color': 'white'},
-            #         wedgeprops={'edgecolor': 'white', 'linewidth': 2, 'antialiased': True}
-            #     )
-            #     for autotext in autotexts:
-            #         autotext.set_fontsize(13)
-            #         autotext.set_fontweight('bold')
+            if sum(sizes_3) > 0:
+                wedges, texts, autotexts = axs[2].pie(
+                    sizes_3, 
+                    colors=premium_colors_3, 
+                    autopct=autopct_func, 
+                    startangle=90,
+                    textprops={'fontsize': 12, 'fontweight': 'bold', 'color': 'white'},
+                    wedgeprops={'edgecolor': 'white', 'linewidth': 2, 'antialiased': True}
+                )
+                for autotext in autotexts:
+                    autotext.set_fontsize(13)
+                    autotext.set_fontweight('bold')
                     
-            #     legend3 = axs[2].legend(labels_3, loc='center left', bbox_to_anchor=(1.05, 0.5), 
-            #                            fontsize=12, frameon=True, fancybox=True, shadow=True)
-            #     legend3.get_frame().set_facecolor('white')
-            #     legend3.get_frame().set_alpha(0.9)
-            # else:
-            #     axs[2].text(0.5, 0.5, '📊 No Data Available', ha='center', va='center', 
-            #                fontsize=16, color='#6b7280', transform=axs[2].transAxes)
+                legend3 = axs[2].legend(labels_3, loc='center left', bbox_to_anchor=(1.05, 0.5), 
+                                       fontsize=12, frameon=True, fancybox=True, shadow=True)
+                legend3.get_frame().set_facecolor('white')
+                legend3.get_frame().set_alpha(0.9)
+            else:
+                axs[2].text(0.5, 0.5, '📊 No Data Available', ha='center', va='center', 
+                           fontsize=16, color='#6b7280', transform=axs[2].transAxes)
             
-            # axs[2].set_title('📊 Corrosion Depth Distribution Analysis', fontsize=16, fontweight='bold', 
-            #                pad=35, color='#1f2937')
+            axs[2].set_title(' Depth Distribution Analysis', fontsize=16, fontweight='bold', 
+                           pad=15, color='#1f2937')
 
             # ✨ PREMIUM: Ensure all axes are equal and clean
             for ax in axs:
