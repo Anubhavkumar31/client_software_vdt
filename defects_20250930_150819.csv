@@ -1,0 +1,9 @@
+Defect_id,Abs. Distance (m),Distance to U/S GW(m),Pipe Number,Pipe Length (mm),Feature Type,Feature Identification,Dimensions Classification,Orientation o' clock,WT (mm),Length (mm),Width (mm),Depth %,Depth (mm),Location,ERF (ASME B31G),Psafe (ASME B31G) Barg,Latitude,Longitude,Altitude,Comment
+71,629.781,2.405,36,12.46,Metal Loss,Corrosion,PITTING,08:26:19,12.7,48,30,12,1.52,,0.304,411.445,16.4608,82.187,,nan
+72,629.908,4.182,36,12.46,Metal Loss,Corrosion,GENERAL,08:53:44,12.7,122,47,22,2.79,,0.327,382.391,16.4608,82.1869,,nan
+73,632.987,6.664,36,12.46,Metal Loss,Corrosion,PITTING,08:50:52,12.7,29,18,19,2.41,,0.302,413.308,16.4608,82.1869,,nan
+74,635.765,11.599,36,12.46,Metal Loss,Corrosion,PITTING,08:45:24,12.7,29,18,19,2.41,,0.302,413.308,16.4608,82.1869,,nan
+75,629.781,2.405,36,12.46,Metal Loss,Corrosion,PITTING,08:26:19,12.7,48,30,12,1.52,,0.304,411.445,16.4608,82.187,,nan
+76,629.908,4.182,36,12.46,Metal Loss,Corrosion,GENERAL,08:53:44,12.7,122,47,22,2.79,,0.327,382.391,16.4608,82.1869,,nan
+77,632.987,6.664,36,12.46,Metal Loss,Corrosion,PITTING,08:50:52,12.7,29,18,19,2.41,,0.302,413.308,16.4608,82.1869,,nan
+78,635.765,11.599,36,12.46,Metal Loss,Corrosion,PITTING,08:45:24,12.7,29,18,19,2.41,,0.302,413.308,16.4608,82.1869,,nan

@@ -1084,6 +1084,135 @@ class MyMainWindow(QMainWindow):
     #     QTimer.singleShot(0, self.columnFilter.showPopup)
     #     # Refresh summary text
     #     self._column_summary_text()
+    def _mount_existing_digsheet(self, *, start_at_abs=None):
+        """
+        Instantiate your existing dig_sheet window and host it inline.
+        Requires no changes in dig_sheet.py. If your class names differ,
+        update the list below.
+        """
+        # Clean previous mount
+        if getattr(self, "_digsheet_host", None) is not None:
+            try:
+                self._digsheet_host.setParent(None)
+                self._digsheet_host.deleteLater()
+            except Exception:
+                pass
+            self._digsheet_host = None
+
+        # 1) Create the window from dig_sheet (try common class names)
+        win = None
+        for cls_name in ("DigSheet", "DigsheetWindow", "DigSheetWindow", "MainWindow", "Dialog", "DigsheetDialog"):
+            if hasattr(dig_sheet, cls_name):
+                try:
+                    win = getattr(dig_sheet, cls_name)()
+                    break
+                except Exception:
+                    pass
+
+        # If there is a factory function, try it as a fallback
+        if win is None:
+            for fn_name in ("run_app", "create_window", "build_window"):
+                if hasattr(dig_sheet, fn_name):
+                    try:
+                        win = getattr(dig_sheet, fn_name)()
+                        break
+                    except Exception:
+                        pass
+
+        if win is None:
+            QMessageBox.critical(self, "Dig Sheet", "Couldn’t instantiate dig sheet from dig_sheet.py")
+            return
+
+        # 2) Pass data if your window exposes a setter (best effort)
+        for setter in ("set_data_frame", "set_dataframe", "load_dataframe", "set_data"):
+            if hasattr(win, setter):
+                try:
+                    getattr(win, setter)(self.curr_data)
+                    break
+                except Exception:
+                    pass
+
+        # 3) Focus a specific absolute distance if available
+        if start_at_abs is not None:
+            for jump in ("jump_to_abs", "open_by_abs", "focus_abs", "set_start_abs"):
+                if hasattr(win, jump):
+                    try:
+                        getattr(win, jump)(start_at_abs)
+                        break
+                    except Exception:
+                        pass
+
+        # 4) Host the top-level window as a child widget
+        win.setParent(self.digsheet_page)
+        win.setWindowFlags(Qt.Widget)   # key: render inside our layout, not as a new window
+        win.setMinimumSize(400, 300)
+        self.digsheet_layout.addWidget(win)
+        self._digsheet_host = win
+
+        # reveal the Dig Sheet page
+        self.bottom_stack.setCurrentWidget(self.digsheet_page)
+
+
+    def _launch_external_digsheet(self, start_at_abs=None):
+        """
+        Launch dig/dig_sheet.py as a separate process (Tkinter app).
+        This avoids importing Tk before a root exists and bypasses Qt embedding.
+        """
+        try:
+            # Build the script path
+            script = os.path.join(os.path.dirname(__file__), "dig", "dig_sheet.py")
+
+            # Compose args; if your dig_sheet supports a CLI arg, pass it. If not, it will be ignored.
+            args = [sys.executable, script]
+            if start_at_abs is not None:
+                # Try a friendly flag; safe if dig_sheet ignores unknown args
+                args += ["--abs-distance", str(start_at_abs)]
+
+            # Launch detached so it doesn't block the Qt app
+            subprocess.Popen(args, close_fds=(sys.platform != "win32"))
+        except Exception as e:
+            QMessageBox.critical(self, "Dig Sheet", f"Failed to launch digsheet:\n{e}")
+
+
+    def open_digsheet_by_abs_from_selection(self):
+        """
+        Called by your 'Digsheet' button.
+        Reads 'Abs. Distance (m)' from the selected row and opens Dig Sheet inline.
+        """
+        tw = self.ui.tableWidgetDefect
+        if not tw or tw.currentRow() < 0:
+            QMessageBox.information(self, "Dig Sheet", "Select a defect row first.")
+            return
+
+        # find the 'Abs. Distance (m)' column
+        def _col_by_name(wanted):
+            for c in range(tw.columnCount()):
+                it = tw.horizontalHeaderItem(c)
+                if it and it.text().strip().lower() == wanted.strip().lower():
+                    return c
+            return -1
+
+        c_abs = _col_by_name("Abs. Distance (m)")
+        if c_abs == -1:
+            QMessageBox.warning(self, "Dig Sheet", "Column 'Abs. Distance (m)' not found.")
+            return
+
+        it = tw.item(tw.currentRow(), c_abs)
+        if not it or not it.text().strip():
+            QMessageBox.warning(self, "Dig Sheet", "Selected row has no absolute distance.")
+            return
+
+        txt = it.text().strip()
+        try:
+            start_at_abs = float(txt)
+        except Exception:
+            start_at_abs = txt
+
+        # self._mount_existing_digsheet(start_at_abs=start_at_abs)
+        self._launch_external_digsheet(start_at_abs=start_at_abs)
+
+
+
 
     def _current_headers_for_filter(self) -> list[str]:
         """Mirror the same header source used by _refresh_column_filter_options()."""
@@ -2133,7 +2262,17 @@ class MyMainWindow(QMainWindow):
         a.action_Preliminary_Report.triggered.connect(self.open_Preliminary_Report)
         a.action__pipetally.triggered.connect(self.open_pipe_tally)
         a.action_Manual.triggered.connect(self.open_manual)
-        a.actionStandard.triggered.connect(self.open_digs)  # original (by defect no.)
+        # a.actionStandard.triggered.connect(self.open_digs)  # original (by defect no.)
+        # Generate → Digsheet should open the embedded view using the selected row's Abs. Distance
+        try:
+            a.actionStandard.triggered.disconnect()
+        except Exception:
+            pass
+        a.actionStandard.setText("Digsheet")
+        a.actionStandard.setToolTip("Open digsheet (embedded) for the selected defect")
+        a.actionStandard.triggered.connect(self.open_digsheet_by_abs_from_selection)
+
+
 
     def load_next_pipe(self):
         """Go to next pipe and load automatically"""
@@ -4246,6 +4385,13 @@ class MyMainWindow(QMainWindow):
         else:
             self.btnDigsheetAbs.setCursor(Qt.CursorShape.ForbiddenCursor)
             self.btnDigsheetAbs.setToolTip("Select an Absolute Distance cell in the table below to enable.")
+    def open_digsheet(self):
+        try:
+            script = os.path.join(os.path.dirname(__file__), "dig", "dig_sheet.py")
+            subprocess.Popen([sys.executable, script], cwd=os.path.dirname(script))
+        except Exception as e:
+            QMessageBox.critical(self, "Dig Sheet", f"Failed to launch dig_sheet.py:\n{e}")
+
 
     def open_digsheet_by_abs_from_selection(self):
         try:

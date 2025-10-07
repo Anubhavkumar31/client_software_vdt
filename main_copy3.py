@@ -1532,6 +1532,10 @@ class MyMainWindow(QMainWindow):
                 self.ui.tableWidgetDefect.hide()
             if hasattr(self, 'table_scrollbar'):
                 self.table_scrollbar.hide()
+
+            if hasattr(self, 'left_vscrollbar'):
+                self.left_vscrollbar.hide()
+
         except Exception as e:
             print(f"Error showing no defects message: {e}")
 
@@ -1546,6 +1550,10 @@ class MyMainWindow(QMainWindow):
                 self.ui.tableWidgetDefect.show()
             if hasattr(self, 'table_scrollbar'):
                 self.table_scrollbar.show()
+
+            if hasattr(self, 'left_vscrollbar'):
+                self.left_vscrollbar.show()
+
 
             print("📊 Displaying defects table")
         except Exception as e:
@@ -1703,7 +1711,72 @@ class MyMainWindow(QMainWindow):
 
         parent_vbox.addWidget(row_frame)
         return bar
+    
+    def _install_left_vbar(self, tw: QtWidgets.QTableWidget):
+        """
+        Place a custom vertical scrollbar inside the table's left margin and
+        sync it to the table's internal vertical scrollbar.
+        """
+        LEFT_GUTTER = 16  # width for the left vbar inside the table
+        # Reserve space on the left *inside* the table for our bar
+        tw.setViewportMargins(LEFT_GUTTER, 0, 0, 0)
 
+        # Create the bar as a child of the table so it sits in the viewport area
+        self.left_vbar = QScrollBar(Qt.Orientation.Vertical, tw)
+        self.left_vbar.setObjectName("leftTableVBar")
+        self.left_vbar.setStyleSheet(SCROLLBAR_STYLE)
+        self.left_vbar.setFixedWidth(LEFT_GUTTER)
+
+        # Hide the table's built-in right vbar; we will drive it via the left one
+        tw.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        inner_vbar = tw.verticalScrollBar()  # still exists, just hidden
+
+        # keep ranges/values in sync
+        def _apply_range():
+            self.left_vbar.blockSignals(True)
+            self.left_vbar.setRange(inner_vbar.minimum(), inner_vbar.maximum())
+            self.left_vbar.setPageStep(inner_vbar.pageStep())
+            self.left_vbar.setSingleStep(inner_vbar.singleStep())
+            self.left_vbar.setValue(inner_vbar.value())
+            self.left_vbar.blockSignals(False)
+
+        def _on_left_changed(v):
+            inner_vbar.setValue(v)
+
+        def _on_inner_changed(v):
+            self.left_vbar.blockSignals(True)
+            self.left_vbar.setValue(v)
+            self.left_vbar.blockSignals(False)
+
+        def _on_inner_range_changed(_min, _max):
+            _apply_range()
+
+        self.left_vbar.valueChanged.connect(_on_left_changed)
+        inner_vbar.valueChanged.connect(_on_inner_changed)
+        inner_vbar.rangeChanged.connect(_on_inner_range_changed)
+
+        # position the left bar so it starts below the header and fills the viewport height
+        self._update_left_vbar_geometry(tw)
+        tw.installEventFilter(self)  # so we can reposition it on resize/show
+
+        # first-time sync after layout settles
+        QTimer.singleShot(0, _apply_range)
+        self._style_left_vertical_bar()
+
+    def _update_left_vbar_geometry(self, tw: QtWidgets.QTableWidget):
+        """Keep the left scrollbar aligned with the table’s viewport (below header)."""
+        try:
+            header_h = tw.horizontalHeader().height() if tw.horizontalHeader() else 0
+            x = 0
+            y = header_h
+            w = self.left_vbar.width()
+            h = tw.viewport().height()
+            self.left_vbar.setGeometry(x, y, w, h)
+            self.left_vbar.raise_()
+        except Exception:
+            pass
+
+    
     def _build_splitter(self):
         # Create main web view with scrollbar
         self.main_web_page = QWidget()
@@ -1802,9 +1875,14 @@ class MyMainWindow(QMainWindow):
         # Tight top bar (TABLE)
         self.table_scrollbar = self._make_topbar_row("tableTopBar", defect_layout, bar_h=10, left_px=1300, right_px=570)
         self.table_scrollbar.hide()
+
         # Table directly under the bar
         defect_layout.addWidget(self.ui.tableWidgetDefect)
 
+        vh = self.ui.tableWidgetDefect.verticalHeader()
+        vh.setVisible(False)                     # hides the left row-number/header blocks
+        self.ui.tableWidgetDefect.setCornerButtonEnabled(False)
+        self._install_left_vbar(self.ui.tableWidgetDefect)
         # Sync custom table bar with internal table hbar
         self._setup_table_scrollbar_sync()
 
@@ -1973,6 +2051,43 @@ class MyMainWindow(QMainWindow):
             QTimer.singleShot(10, self._refresh_table_scrollbars)
 
         self.splitter.splitterMoved.connect(_on_splitter_moved)
+
+    def _setup_left_vertical_scrollbar_sync(self):
+        """Sync the custom left vertical scrollbar with tableWidgetDefect's internal vbar."""
+        tw = self.ui.tableWidgetDefect
+        inner_vbar = tw.verticalScrollBar()  # still exists even if hidden
+        left_vbar = self.left_vscrollbar
+
+        # Mirror range/page/single step from the table's scrollbar
+        def _apply_range():
+            left_vbar.blockSignals(True)
+            left_vbar.setRange(inner_vbar.minimum(), inner_vbar.maximum())
+            left_vbar.setPageStep(inner_vbar.pageStep())
+            left_vbar.setSingleStep(inner_vbar.singleStep())
+            left_vbar.setValue(inner_vbar.value())
+            left_vbar.blockSignals(False)
+
+        # When user drags the left bar -> scroll table
+        def _on_left_changed(v):
+            inner_vbar.setValue(v)
+
+        # When table scrolls (keyboard, wheel, selection, data fill, etc.) -> move left bar
+        def _on_inner_changed(v):
+            left_vbar.blockSignals(True)
+            left_vbar.setValue(v)
+            left_vbar.blockSignals(False)
+
+        def _on_inner_range_changed(_min, _max):
+            _apply_range()
+
+        # Connect both ways
+        left_vbar.valueChanged.connect(_on_left_changed)
+        inner_vbar.valueChanged.connect(_on_inner_changed)
+        inner_vbar.rangeChanged.connect(_on_inner_range_changed)
+
+        # Initial apply on next tick (table might not have full range yet)
+        QTimer.singleShot(0, _apply_range)
+
 
     def _setup_table_scrollbar_sync(self):
         """Setup synchronization between custom table scrollbar and table's internal scrollbar"""
@@ -2329,6 +2444,78 @@ class MyMainWindow(QMainWindow):
                 self._create_proj_container.show()
 
             self.open_Error(e)
+
+    def _style_left_vertical_bar(self):
+        # icon paths
+        up    = resource_path("ui/icons/arrow_up.svg").replace("\\", "/")
+        down  = resource_path("ui/icons/arrow_down.svg").replace("\\", "/")
+
+        # dimensions
+        btn = 18       # arrow button size
+        w   = 16       # bar width
+        r   = 8        # thumb radius
+
+        style = f"""
+        /* entire bar */
+        QScrollBar#leftTableVBar:vertical {{
+            width:{w}px;
+            margin:{btn + 2}px 0;           /* room for arrow buttons */
+            background: transparent;
+            border: none;
+        }}
+
+        /* the thumb */
+        QScrollBar#leftTableVBar::handle:vertical {{
+            min-height: 36px;
+            border-radius:{r}px;
+            background: #6b6b6b;
+            border: 1px solid rgba(0,0,0,0.25);
+        }}
+        QScrollBar#leftTableVBar::handle:vertical:hover {{
+            background: #7f7f7f;
+        }}
+        QScrollBar#leftTableVBar::handle:vertical:pressed {{
+            background: #4f4f4f;
+        }}
+
+        /* top arrow */
+        QScrollBar#leftTableVBar::sub-line:vertical {{
+            height:{btn}px; width:{btn}px;
+            subcontrol-origin: margin;
+            subcontrol-position: top;
+            border: none;
+            border-radius:{btn//2}px;
+            background: #e7e7e7;
+            image: url("{up}");
+        }}
+        /* bottom arrow */
+        QScrollBar#leftTableVBar::add-line:vertical {{
+            height:{btn}px; width:{btn}px;
+            subcontrol-origin: margin;
+            subcontrol-position: bottom;
+            border: none;
+            border-radius:{btn//2}px;
+            background: #e7e7e7;
+            image: url("{down}");
+        }}
+        QScrollBar#leftTableVBar::sub-line:vertical:hover,
+        QScrollBar#leftTableVBar::add-line:vertical:hover {{
+            background: #d7d7d7;
+        }}
+        QScrollBar#leftTableVBar::sub-line:vertical:pressed,
+        QScrollBar#leftTableVBar::add-line:vertical:pressed {{
+            background: #c7c7c7;
+        }}
+
+        /* the “pages” above/below the thumb */
+        QScrollBar#leftTableVBar::sub-page:vertical,
+        QScrollBar#leftTableVBar::add-page:vertical {{
+            background: #f2f2f2;
+            border: none;
+        }}
+        """
+        self.left_vbar.setStyleSheet(style)
+
 
     def _apply_scrollbar_theme(self, _accent_ignored="#b8b8b8"):
         handle_radius = 10
@@ -3695,42 +3882,138 @@ class MyMainWindow(QMainWindow):
             except Exception:
                 pass
 
-    def _close_pipeline_view(self):
-        """Close Pipeline Highlights and return to main view"""
-        try:
-            if self.centralWidget() is getattr(self, '_central_original', None):
-                return  # Already showing original view
-
-            # Take current widget and delete it
-            pipeline_central = self.takeCentralWidget()
-            if pipeline_central is not None:
-                pipeline_central.deleteLater()
-
-            # Restore original central widget
-            if hasattr(self, '_central_original') and self._central_original is not None:
-                if self._central_original.parent() is not self:
-                    self._central_original.setParent(self)
-                self.setCentralWidget(self._central_original)
-
-            # Clean up references
-            if hasattr(self, '_pipeline_widget'):
-                self._pipeline_widget = None
-            if hasattr(self, '_central_pipeline'):
-                self._central_pipeline = None
-                
-            print("✅ Returned to main view from Pipeline Highlights")
-            
-        except Exception as e:
-            print(f"⚠️ Error closing Pipeline Highlights view: {e}")
-
 
 
     def open_PipeScheme(self):
         try:
-            from pipeline_schema.pipeline_schema import run_app
-            run_app()
+            # Check if Pipeline Scheme is already open
+            if hasattr(self, 'centralpipeline') and self.centralWidget() is self.centralpipeline:
+                return  # Already showing Pipeline Scheme
+                
+            # Save the original central widget if not already saved
+            if not hasattr(self, 'centraloriginal') or self.centraloriginal is None:
+                self.centraloriginal = self.centralWidget()
+                
+            print("Opening Pipeline Scheme in embedded mode...")
+            
+            # Create a container widget for the embedded view
+            container = QtWidgets.QWidget()
+            layout = QtWidgets.QVBoxLayout(container)
+            layout.setContentsMargins(12, 12, 12, 12)
+            layout.setSpacing(10)
+            
+            # Create header with back button
+            header_layout = QtWidgets.QHBoxLayout()
+            back_btn = QtWidgets.QPushButton("← Back")
+            back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            back_btn.clicked.connect(self.closepipelineview)
+            
+            title_label = QtWidgets.QLabel("Pipeline Scheme Report")
+            title_label.setStyleSheet("font-weight: 600; font-size: 16pt; color: #2c3e50;")
+            
+            header_layout.addWidget(back_btn)
+            header_layout.addSpacing(20)
+            header_layout.addWidget(title_label)
+            header_layout.addStretch(1)
+            layout.addLayout(header_layout)
+            
+            # Import and create the Tkinter application
+            from PyQt6.QtCore import QTimer
+            from PyQt6.QtGui import QWindow
+            import tkinter as tk
+            from pipeline_schema.pipeline_schema import PipelineApp
+            
+            # 1. Create Tk window (no mainloop)
+            self.tk_root = tk.Tk()
+            self.tk_root.overrideredirect(True)  # hide native title-bar
+            self.tk_app = PipelineApp(self.tk_root)  # build UI
+            self.tk_root.update_idletasks()  # ensure window exists
+            
+            # 2. Wrap the native handle
+            wid = int(self.tk_root.winfo_id())  # HWND/XID of Tk window
+            qwin = QWindow.fromWinId(wid)  # foreign QWindow
+            embed = QtWidgets.QWidget.createWindowContainer(qwin)  # QWidget wrapper
+            embed.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+            
+            # 3. Add to the PyQt layout
+            layout.addWidget(embed, stretch=1)
+            
+            # 4. Keep Tk responsive from the Qt event-loop
+            self._tk_timer = QTimer(self)  # store to prevent GC
+            self._tk_timer.timeout.connect(self.tk_root.update)
+            self._tk_timer.start(16)  # ~60 Hz
+            
+            # Store reference and switch central widget
+            self.centralpipeline = container
+            
+            # Switch to Pipeline Scheme view
+            if self.centraloriginal is not None and self.centraloriginal.parent() is self:
+                self.takeCentralWidget()
+            self.setCentralWidget(container)
+            
+            print("Pipeline Scheme opened successfully in embedded mode")
+            
+        except ImportError as e:
+            self.open_Error(f"Could not import Pipeline Scheme module: {e}")
         except Exception as e:
-            self.open_Error(f"Error running Pipeline Schema:\n{e}")
+            self.open_Error(f"Error running Pipeline Scheme: {e}")
+
+
+    def closepipelineview(self):
+        """Return from the embedded Pipe-Scheme view to the normal UI."""
+        try:
+            # Stop the timer and destroy Tk window
+            if hasattr(self, "_tk_timer"):
+                self._tk_timer.stop()
+                del self._tk_timer
+            if hasattr(self, "tk_root"):
+                try:
+                    self.tk_root.destroy()
+                except Exception:
+                    pass
+                del self.tk_root
+            
+            # Nothing to do if already on the main screen
+            if self.centralWidget() is getattr(self, "centraloriginal", None):
+                return
+
+            # Remove the embedded widget cleanly
+            current = self.takeCentralWidget()
+            if current is not None:
+                current.deleteLater()
+
+            # Restore whatever was showing before Pipe-Scheme opened
+            if getattr(self, "centraloriginal", None) is not None:
+                self.setCentralWidget(self.centraloriginal)
+
+            # Release references so the next open works from a clean state
+            self.centralpipeline = None
+
+        except Exception as e:
+            self.open_Error(f"Error closing Pipe Scheme: {e}")
+
+
+    def generate_pipeline_html(self):
+        # Extract the core pipeline visualization logic from pipeline_schema.py
+        # and convert it to HTML/JavaScript that can be displayed in QWebEngineView
+        return """
+        <html>
+        <head>
+            <title>Pipeline Scheme</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                .pipeline-container { width: 100%; height: 600px; border: 1px solid #ccc; }
+            </style>
+        </head>
+        <body>
+            <h2>Pipeline Scheme Visualization</h2>
+            <div class="pipeline-container">
+                <!-- Your pipeline visualization content here -->
+            </div>
+        </body>
+        </html>
+        """
+
 
     def open_Report(self):
         cols = [r"Abs. Distance (m)", r"Depth %", r"Type", r"ERF (ASME B31G)", r"Orientation o' clock"]

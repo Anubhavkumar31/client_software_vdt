@@ -9,10 +9,7 @@ from PIL import ImageGrab, Image, ImageTk
 import time
 import pickle
 import sys
-
-
-
-
+# from main import pipe_tally
 batch_cancelled = False
 
 # ---- Section IDs and names (stable API) ----
@@ -25,6 +22,7 @@ SECTION_MAP = {
               
 }
 
+
 SECTION_THRESHOLDS = {
     "Client Description":       (0, 0, 175, 40),
     "Feature Location on Pipe": (5, 32, 170, 93),
@@ -32,6 +30,9 @@ SECTION_THRESHOLDS = {
     "Feature Description":      (0, 110, 175, 170),
     "Pipe Location":            (0, 107, 175, 220),
 }
+
+
+
 
 scrollable_active = False
 
@@ -68,12 +69,12 @@ def on_load_click():
     global df
     try:
         # Check if the argument (pipe_tally file) is passed
-        if len(sys.argv) > 1:
-            pipe_tally_file = sys.argv[1]
-            project_root = sys.argv[2]
-            csv_path  = os.path.join(project_root, "constants.csv")
-            xlsx_path = os.path.join(project_root, "constants.xlsx")
-            constants_file = csv_path if os.path.exists(csv_path) else xlsx_path   
+        # if len(sys.argv) > 1:
+            pipe_tally_file = r"F:\work_new\client_software\test_data_cs\pickle7\pipetally_main\Pipe_Tally_8inch.xlsx"
+            # project_root = sys.argv[2]
+            # csv_path  = os.path.join(project_root, "constants.csv")
+            # xlsx_path = os.path.join(project_root, "constants.xlsx")
+            constants_file = r"F:\work_new\client_software\test_data_cs\pickle7\constants.xlsx" 
             print(f"constants_file path: {constants_file}")
             pipe_tally = load_pipe_tally(pipe_tally_file)  # Deserialize the pipe_tally
             df = pipe_tally
@@ -111,8 +112,8 @@ def on_load_click():
 
 
 
-        else:
-            print("No pipe_tally file provide or maybe proect_root")
+        # else:
+            # print("No pipe_tally file provide or maybe proect_root")
     except Exception as e:
         print(f"Error in on_load_click: {e}")
     if 'df' not in globals() or df is None:
@@ -864,12 +865,21 @@ canvas.bind_all("<Button-5>", _on_mousewheel)          # Linux scroll down
 
 def load_pipe_tally(pipe_tally_file):
     try:
-        with open(pipe_tally_file, "rb") as f:
-            pipe_tally = pickle.load(f)
-        return pipe_tally
+        ext = os.path.splitext(pipe_tally_file)[1].lower()
+        if ext in (".xlsx", ".xls"):
+            # Excel → DataFrame
+            return pd.read_excel(pipe_tally_file)
+        elif ext == ".csv":
+            return pd.read_csv(pipe_tally_file)
+        elif ext in (".pkl", ".pickle"):
+            # Real pickle → use pandas helper (or pickle.load)
+            return pd.read_pickle(pipe_tally_file)
+        else:
+            raise ValueError(f"Unsupported file type: {ext}")
     except Exception as e:
-        print(f"Error loading pipe_tally: {e}")
-        sys.exit(1)
+        print(f"Error loading pipe_tally ({pipe_tally_file}): {e}")
+        messagebox.showerror("Load Error", f"Could not load: {pipe_tally_file}\n\n{e}")
+        return None
 
 # Variables
 pipe_id_var = tk.StringVar()
@@ -1423,10 +1433,6 @@ def fetch_data():
         messagebox.showerror("Input Error", "Please enter a valid S.no")
 
 
-
-
-
-
 from PIL import Image, ImageTk
 
 # ---------- Client Description (at top) ----------
@@ -1486,10 +1492,6 @@ try:
     client_desc_frame.logo_ref = logo_tk  # prevent garbage collection
 except Exception as e:
     print("Logo load failed:", e)
-
-
-
-
 
 
 # Main content

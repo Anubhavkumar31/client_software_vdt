@@ -195,7 +195,7 @@ def setup_table_scroll(table):
     vheader.setDefaultSectionSize(40)
 
     # Set slower scroll speed
-    table.verticalScrollBar().setSingleStep(2)
+    table.verticalScrollBar().setSingleStep(15)
 
 
 class PipeLoaderWorker(QThread):
@@ -1532,6 +1532,10 @@ class MyMainWindow(QMainWindow):
                 self.ui.tableWidgetDefect.hide()
             if hasattr(self, 'table_scrollbar'):
                 self.table_scrollbar.hide()
+
+            if hasattr(self, 'left_vscrollbar'):
+                self.left_vscrollbar.hide()
+
         except Exception as e:
             print(f"Error showing no defects message: {e}")
 
@@ -1546,6 +1550,10 @@ class MyMainWindow(QMainWindow):
                 self.ui.tableWidgetDefect.show()
             if hasattr(self, 'table_scrollbar'):
                 self.table_scrollbar.show()
+
+            if hasattr(self, 'left_vscrollbar'):
+                self.left_vscrollbar.show()
+
 
             print("📊 Displaying defects table")
         except Exception as e:
@@ -1703,7 +1711,72 @@ class MyMainWindow(QMainWindow):
 
         parent_vbox.addWidget(row_frame)
         return bar
+    
+    def _install_left_vbar(self, tw: QtWidgets.QTableWidget):
+        """
+        Place a custom vertical scrollbar inside the table's left margin and
+        sync it to the table's internal vertical scrollbar.
+        """
+        LEFT_GUTTER = 16  # width for the left vbar inside the table
+        # Reserve space on the left *inside* the table for our bar
+        tw.setViewportMargins(LEFT_GUTTER, 0, 0, 0)
 
+        # Create the bar as a child of the table so it sits in the viewport area
+        self.left_vbar = QScrollBar(Qt.Orientation.Vertical, tw)
+        self.left_vbar.setObjectName("leftTableVBar")
+        self.left_vbar.setStyleSheet(SCROLLBAR_STYLE)
+        self.left_vbar.setFixedWidth(LEFT_GUTTER)
+
+        # Hide the table's built-in right vbar; we will drive it via the left one
+        tw.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        inner_vbar = tw.verticalScrollBar()  # still exists, just hidden
+
+        # keep ranges/values in sync
+        def _apply_range():
+            self.left_vbar.blockSignals(True)
+            self.left_vbar.setRange(inner_vbar.minimum(), inner_vbar.maximum())
+            self.left_vbar.setPageStep(inner_vbar.pageStep())
+            self.left_vbar.setSingleStep(inner_vbar.singleStep())
+            self.left_vbar.setValue(inner_vbar.value())
+            self.left_vbar.blockSignals(False)
+
+        def _on_left_changed(v):
+            inner_vbar.setValue(v)
+
+        def _on_inner_changed(v):
+            self.left_vbar.blockSignals(True)
+            self.left_vbar.setValue(v)
+            self.left_vbar.blockSignals(False)
+
+        def _on_inner_range_changed(_min, _max):
+            _apply_range()
+
+        self.left_vbar.valueChanged.connect(_on_left_changed)
+        inner_vbar.valueChanged.connect(_on_inner_changed)
+        inner_vbar.rangeChanged.connect(_on_inner_range_changed)
+
+        # position the left bar so it starts below the header and fills the viewport height
+        self._update_left_vbar_geometry(tw)
+        tw.installEventFilter(self)  # so we can reposition it on resize/show
+
+        # first-time sync after layout settles
+        QTimer.singleShot(0, _apply_range)
+        self._style_left_vertical_bar()
+
+    def _update_left_vbar_geometry(self, tw: QtWidgets.QTableWidget):
+        """Keep the left scrollbar aligned with the table’s viewport (below header)."""
+        try:
+            header_h = tw.horizontalHeader().height() if tw.horizontalHeader() else 0
+            x = 0
+            y = header_h
+            w = self.left_vbar.width()
+            h = tw.viewport().height()
+            self.left_vbar.setGeometry(x, y, w, h)
+            self.left_vbar.raise_()
+        except Exception:
+            pass
+
+    
     def _build_splitter(self):
         # Create main web view with scrollbar
         self.main_web_page = QWidget()
@@ -1802,9 +1875,14 @@ class MyMainWindow(QMainWindow):
         # Tight top bar (TABLE)
         self.table_scrollbar = self._make_topbar_row("tableTopBar", defect_layout, bar_h=10, left_px=1300, right_px=570)
         self.table_scrollbar.hide()
+
         # Table directly under the bar
         defect_layout.addWidget(self.ui.tableWidgetDefect)
 
+        vh = self.ui.tableWidgetDefect.verticalHeader()
+        vh.setVisible(False)                     # hides the left row-number/header blocks
+        self.ui.tableWidgetDefect.setCornerButtonEnabled(False)
+        self._install_left_vbar(self.ui.tableWidgetDefect)
         # Sync custom table bar with internal table hbar
         self._setup_table_scrollbar_sync()
 
@@ -1974,6 +2052,43 @@ class MyMainWindow(QMainWindow):
 
         self.splitter.splitterMoved.connect(_on_splitter_moved)
 
+    def _setup_left_vertical_scrollbar_sync(self):
+        """Sync the custom left vertical scrollbar with tableWidgetDefect's internal vbar."""
+        tw = self.ui.tableWidgetDefect
+        inner_vbar = tw.verticalScrollBar()  # still exists even if hidden
+        left_vbar = self.left_vscrollbar
+
+        # Mirror range/page/single step from the table's scrollbar
+        def _apply_range():
+            left_vbar.blockSignals(True)
+            left_vbar.setRange(inner_vbar.minimum(), inner_vbar.maximum())
+            left_vbar.setPageStep(inner_vbar.pageStep())
+            left_vbar.setSingleStep(inner_vbar.singleStep())
+            left_vbar.setValue(inner_vbar.value())
+            left_vbar.blockSignals(False)
+
+        # When user drags the left bar -> scroll table
+        def _on_left_changed(v):
+            inner_vbar.setValue(v)
+
+        # When table scrolls (keyboard, wheel, selection, data fill, etc.) -> move left bar
+        def _on_inner_changed(v):
+            left_vbar.blockSignals(True)
+            left_vbar.setValue(v)
+            left_vbar.blockSignals(False)
+
+        def _on_inner_range_changed(_min, _max):
+            _apply_range()
+
+        # Connect both ways
+        left_vbar.valueChanged.connect(_on_left_changed)
+        inner_vbar.valueChanged.connect(_on_inner_changed)
+        inner_vbar.rangeChanged.connect(_on_inner_range_changed)
+
+        # Initial apply on next tick (table might not have full range yet)
+        QTimer.singleShot(0, _apply_range)
+
+
     def _setup_table_scrollbar_sync(self):
         """Setup synchronization between custom table scrollbar and table's internal scrollbar"""
         table_inner_hbar = self.ui.tableWidgetDefect.horizontalScrollBar()
@@ -2039,7 +2154,7 @@ class MyMainWindow(QMainWindow):
                 tw.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
 
                 # Set scroll speed
-                tw.verticalScrollBar().setSingleStep(2)
+                tw.verticalScrollBar().setSingleStep(15)
 
                 # Force geometry updates
                 tw.viewport().update()
@@ -2061,7 +2176,7 @@ class MyMainWindow(QMainWindow):
                 tv.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
 
                 # Set scroll speed
-                tv.verticalScrollBar().setSingleStep(2)
+                tv.verticalScrollBar().setSingleStep(15)
 
                 tv.viewport().update()
                 tv.updateGeometry()
@@ -2329,6 +2444,78 @@ class MyMainWindow(QMainWindow):
                 self._create_proj_container.show()
 
             self.open_Error(e)
+
+    def _style_left_vertical_bar(self):
+        # icon paths
+        up    = resource_path("ui/icons/arrow_up.svg").replace("\\", "/")
+        down  = resource_path("ui/icons/arrow_down.svg").replace("\\", "/")
+
+        # dimensions
+        btn = 18       # arrow button size
+        w   = 16       # bar width
+        r   = 8        # thumb radius
+
+        style = f"""
+        /* entire bar */
+        QScrollBar#leftTableVBar:vertical {{
+            width:{w}px;
+            margin:{btn + 2}px 0;           /* room for arrow buttons */
+            background: transparent;
+            border: none;
+        }}
+
+        /* the thumb */
+        QScrollBar#leftTableVBar::handle:vertical {{
+            min-height: 36px;
+            border-radius:{r}px;
+            background: #6b6b6b;
+            border: 1px solid rgba(0,0,0,0.25);
+        }}
+        QScrollBar#leftTableVBar::handle:vertical:hover {{
+            background: #7f7f7f;
+        }}
+        QScrollBar#leftTableVBar::handle:vertical:pressed {{
+            background: #4f4f4f;
+        }}
+
+        /* top arrow */
+        QScrollBar#leftTableVBar::sub-line:vertical {{
+            height:{btn}px; width:{btn}px;
+            subcontrol-origin: margin;
+            subcontrol-position: top;
+            border: none;
+            border-radius:{btn//2}px;
+            background: #e7e7e7;
+            image: url("{up}");
+        }}
+        /* bottom arrow */
+        QScrollBar#leftTableVBar::add-line:vertical {{
+            height:{btn}px; width:{btn}px;
+            subcontrol-origin: margin;
+            subcontrol-position: bottom;
+            border: none;
+            border-radius:{btn//2}px;
+            background: #e7e7e7;
+            image: url("{down}");
+        }}
+        QScrollBar#leftTableVBar::sub-line:vertical:hover,
+        QScrollBar#leftTableVBar::add-line:vertical:hover {{
+            background: #d7d7d7;
+        }}
+        QScrollBar#leftTableVBar::sub-line:vertical:pressed,
+        QScrollBar#leftTableVBar::add-line:vertical:pressed {{
+            background: #c7c7c7;
+        }}
+
+        /* the “pages” above/below the thumb */
+        QScrollBar#leftTableVBar::sub-page:vertical,
+        QScrollBar#leftTableVBar::add-page:vertical {{
+            background: #f2f2f2;
+            border: none;
+        }}
+        """
+        self.left_vbar.setStyleSheet(style)
+
 
     def _apply_scrollbar_theme(self, _accent_ignored="#b8b8b8"):
         handle_radius = 10
@@ -3725,12 +3912,37 @@ class MyMainWindow(QMainWindow):
 
 
 
+    # def open_PipeScheme(self):
+    #     try:
+    #         from pipeline_schema.pipeline_schema import run_app
+    #         run_app()
+    #     except Exception as e:
+    #         self.open_Error(f"Error running Pipeline Schema:\n{e}")
+
     def open_PipeScheme(self):
         try:
             from pipeline_schema.pipeline_schema import run_app
-            run_app()
+            run_app(pipe_tally= self.project_root)   # <-- use the path stored on your main app
         except Exception as e:
             self.open_Error(f"Error running Pipeline Schema:\n{e}")
+
+    # def open_PipeScheme(self):
+    #     try:
+    #         from pipeline_schema.pipeline_schema import run_app
+
+    #         print("DEBUG pipe_tally type:", type(self.pipe_tally))
+    #         if isinstance(self.pipe_tally, pd.DataFrame):
+    #             print("DEBUG pipe_tally shape:", self.pipe_tally.shape)
+    #             print("DEBUG pipe_tally columns:", list(self.pipe_tally.columns)[:10])
+    #         else:
+    #             print("DEBUG pipe_tally value:", self.pipe_tally)
+
+    #         run_app(pipe_tally=self.pipe_tally)
+
+    #     except Exception as e:
+    #         self.open_Error(f"Error running Pipeline Schema:\n{e}")
+
+
 
     def open_Report(self):
         cols = [r"Abs. Distance (m)", r"Depth %", r"Type", r"ERF (ASME B31G)", r"Orientation o' clock"]
