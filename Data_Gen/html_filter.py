@@ -473,7 +473,7 @@ def save_interactive_heatmap(df_new_tab9, datafile, test_val, map_ori_sens, fold
     # Get x-axis values
     if 'ODDO1' in datafile.columns:
         x_vals = (pd.to_numeric(datafile['ODDO1'], errors='coerce') / 1000.0).round(2)
-        x_label = 'Absolute Distance (m)'
+        x_label = 'Absolute Distance (m) --- Hall Sensor Heatmap'
     else:
         x_vals = pd.Series(np.arange(len(datafile)))
         x_label = 'Index'
@@ -588,7 +588,7 @@ def save_interactive_heatmap_proximity(df_new_tab9, datafile, test_val, map_ori_
     # Get x-axis values
     if 'ODDO1' in datafile.columns:
         x_vals = (pd.to_numeric(datafile['ODDO1'], errors='coerce') / 1000.0).round(2)
-        x_label = 'Absolute Distance (m)'
+        x_label = 'Absolute Distance (m) --- Proximity Sensor Heatmap'
     else:
         x_vals = pd.Series(np.arange(len(datafile)))
         x_label = 'Index'
@@ -618,8 +618,8 @@ def save_interactive_heatmap_proximity(df_new_tab9, datafile, test_val, map_ori_
         colorscale='jet',
         # zmin=-4,
         # zmax=8,
-        colorbar=dict(title="Sensor Value (%)"),
-        showscale=True,
+        # colorbar=dict(title="Sensor Value (%)"),
+        showscale=False,
         hoverongaps=False,
         hovertemplate='<b>%{x}</b><br>' +
                      '<b>%{y}</b><br>' +

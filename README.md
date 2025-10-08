@@ -27,7 +27,7 @@ cd <repo-name>
 
 2. **Install dependencies:**
 ```
-pip install -r requirements.txt
+pip install -r requirements_latest.txt or other txt whichever you need but requirements_latest.txt is recommended
 ```
 
 3. **Run the application:**
