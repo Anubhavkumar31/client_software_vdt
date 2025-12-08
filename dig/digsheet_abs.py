@@ -14,7 +14,10 @@ import time
 import pickle
 import traceback
 import tkinter as tk
-from tkinter import messagebox, filedialog
+import tkinter as tk
+import tkinter.filedialog as filedialog
+import tkinter.messagebox as messagebox
+
 from PIL import ImageGrab, Image, ImageTk
 import pandas as pd
 import img2pdf
@@ -45,20 +48,20 @@ else:
 # ---- Section IDs and names (stable API) ----
 SECTION_MAP = {
     1: "Client Description",  # NEW
-    2: "Feature Location on Pipe",
+    2: "Feature Location on Joint",
     3: "Comment",
     4: "Feature Description",
-    5: "Pipe Location", 
+    5: "Joint Location",
               
 }
 
 
 SECTION_THRESHOLDS = {
     "Client Description":       (0, 0, 175, 40),
-    "Feature Location on Pipe": (5, 32, 170, 93),
+    "Feature Location on Joint": (5, 32, 170, 93),
     "Comment":                  (0, 85, 175, 120),
     "Feature Description":      (0, 110, 175, 170),
-    "Pipe Location":            (0, 107, 175, 220),
+    "Joint Location":            (0, 107, 175, 220),
 }
 
 
@@ -497,10 +500,10 @@ def get_section_coords():
     root.update_idletasks()
     sections = {
         "Client Description": client_desc_frame,
-        "Feature Location on Pipe": main_frame,
+        "Feature Location on Joint": main_frame,
         "Comment": comment_frame,
         "Feature Description": feature_desc_frame,
-        "Pipe Location": third_frame,
+        "Joint Location": third_frame,
     }
     coords = {}
     for name, frame in sections.items():
@@ -528,7 +531,7 @@ def print_section_coords():
 def save_individual_section(section_id):
     """
     Save a screenshot of a specific section using its own threshold tuple.
-      section_id: 1=Feature Location on Pipe, 2=Feature Description, 3=Pipe Location, 4=Client Description
+      section_id: 1=Feature Location on Joint, 2=Feature Description, 3=Joint Location, 4=Client Description
     Thresholds come from SECTION_THRESHOLDS[name] as (dx0, dy0, dx1, dy1).
     """
     if section_id not in SECTION_MAP:
@@ -948,7 +951,7 @@ feature_frame = tk.Frame(main_frame, bg="white", padx=5, pady=5, highlightbackgr
 feature_frame.pack(side="left", fill="both", expand=True, padx=5)
 
 # Title inside Feature on Pipe box
-tk.Label(feature_frame, text="Feature Location on Pipe:", bg="white", fg="deepskyblue", font=("Arial", 10, "bold")).pack(pady=(0, 5))
+tk.Label(feature_frame, text="Feature Location on Joint:", bg="white", fg="deepskyblue", font=("Arial", 10, "bold")).pack(pady=(0, 5))
 pipe_canvas1 = tk.Canvas(feature_frame, width=360, height=160, bg="white", highlightthickness=0)
 pipe_canvas1.pack()
 
@@ -960,7 +963,7 @@ desc_frame.pack(side="left", fill="both", expand=True, padx=5)
 # tk.Label(desc_frame, text="Pipe Description:", bg="white", fg="deepskyblue",
 #         font=("Arial", 10, "bold")).grid(row=0, column=0, columnspan=5, padx=5,pady=5, sticky="ew")
 
-tk.Label(desc_frame, text="Pipe Description:", bg="white", fg="deepskyblue",
+tk.Label(desc_frame, text="Joint Description:", bg="white", fg="deepskyblue",
          font=("Arial", 10, "bold")
 ).grid(row=0, column=0, columnspan=5, padx=5, pady=(0, 5), sticky="ew")
 
@@ -968,8 +971,8 @@ tk.Label(desc_frame, text="Pipe Description:", bg="white", fg="deepskyblue",
 
 # Layout fields
 fields = [
-    ("Pipe Number", pipe_id_var),
-    ("Pipe Length (m)", length_var),
+    ("Joint Number", pipe_id_var),
+    ("Joint Length (m)", length_var),
     ("WT (mm)", wt_var),
     ("Latitude", latitude_var),
     ("Longitude", longitude_var),
@@ -1061,7 +1064,7 @@ third_frame = tk.Frame(scrollable_frame, bg="white", padx=10, pady=10, highlight
 third_frame.pack(fill="both", padx=15, pady=4)
 
 # Title for the Third Block
-tk.Label(third_frame, text="Pipe Location:", bg="white", fg="deepskyblue",
+tk.Label(third_frame, text="Joint Location:", bg="white", fg="deepskyblue",
         font=("Arial", 9, "bold")).grid(row=0, column=0, columnspan=5,  sticky="ew")
 
 # --- Sub-blocks Representation ---
@@ -1106,7 +1109,7 @@ pipe_canvas.create_text(mid_x + 310, mid_y - 80, text="D/S", font=("Arial", 9, "
 pipe_canvas.create_text(mid_x - 310, mid_y + 40, text="L", font=("Arial", 9, "bold"), fill="deepskyblue")
 pipe_canvas.create_text(mid_x + 310, mid_y + 40, text="R", font=("Arial", 9, "bold"), fill="deepskyblue")
 
-pipe_info = ["Pipe No:", "Pipe Length(m):", "WT(mm):"]
+pipe_info = ["Joint No:", "Joint Length(m):", "WT(mm):"]
 for i, label in enumerate(pipe_info):
     pipe_canvas.create_text(mid_x - 320, mid_y + 75 + i * 15, text=label, font=("Arial", 9), anchor="w")
 

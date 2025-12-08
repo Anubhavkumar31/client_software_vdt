@@ -1319,8 +1319,8 @@ class PipeHighlightEmbedded(QWidget):
         self.DF = 0.72
         self.UTS = 413.686
         self.SMYS = 2493.8
+        self.PIPELINE_SECTION = "Mainline"
 
-        
     def _calculate_statistics(self):
         """Calculate statistics from the loaded DataFrame"""
         print("🔍 Calculating statistics...")
@@ -1387,8 +1387,8 @@ class PipeHighlightEmbedded(QWidget):
                 depth_data = pd.to_numeric(self.pipe_tally_df[depth_col], errors='coerce').dropna()
                 if len(depth_data) > 0:
                     # Create 10% bins
-                    bins = list(range(0, 101, 10))  # 0, 10, ..., 100
-                    labels = [f"{i + 1}-{i + 10}" if i > 0 else "0-10" for i in range(0, 100, 10)]
+                    bins = list(range(0, 81, 10))  # 0, 10, ..., 100
+                    labels = [f"{i + 1}-{i + 10}" if i > 0 else "0-10" for i in range(0, 80, 10)]
                     depth_bins = pd.cut(depth_data, bins=bins, labels=labels, include_lowest=True, right=True)
 
                     # Save distribution as dict for later use in UI

@@ -1,16 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Modern Pipeline Report & Visualizer (Tkinter)
-Excel-robust version: works with Pipe_Tally_8inch.xlsx and similar variants.
-
-- Tabs: Project Info • Visualize • Export
-- Toolbar: Run ID search, slot picker, actions
-- Status bar + progress bar
-- Canvas: color-coded pipe boxes, hover tooltips, zoom/pan
-- Data Grid: filterable (critical/external/internal/pipe no.)
-- PDF Export: screenshot-based (kept stable), two per A4 page
-"""
-
 import os
 import re
 import sys
@@ -18,6 +5,7 @@ import hashlib
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
+# from pages.Pipe_Highlights import run_app
 # Optional modern theming
 _USING_BOOTSTRAP = False
 try:
@@ -34,6 +22,7 @@ import mysql.connector
 
 from utils import resource_path
 
+
 # --------------------------- Small Utilities -----------------------------
 
 def safe_parse_time(clock_orientation):
@@ -45,7 +34,7 @@ def safe_parse_time(clock_orientation):
     if isinstance(clock_orientation, str):
         try:
             s = clock_orientation.strip()
-            s = s.replace("o' clock", "o clock").replace("o’ clock", "o clock")
+            s = s.replace("o' clock", "o clock").replace("oâ€™ clock", "o clock")
             if ":" in s:
                 h, m = s.split(":")[0:2]
                 return int(float(h)), int(float(m))
@@ -68,6 +57,7 @@ class PipelineApp:
     def __init__(self, root, pipe_tally=None):
         self.root = root
         self.pipe_tally = pipe_tally
+        print(self.pipe_tally)
         self.root.title("Pipeline Scheme Report & Pipe Number Visualizer")
         try:
             self.root.iconbitmap(resource_path('pipeline_schema/LOGO-withoutbg.ico'))
@@ -217,8 +207,8 @@ class PipelineApp:
         bottom.columnconfigure(0, weight=1)
         bottom.rowconfigure(0, weight=1)
 
-        self.tree = ttk.Treeview(bottom, columns=("Pipe","Length","WT","Feature","Depth%","Type","Clock","DistUS(m)"), show="headings", height=8)
-        for col, w in [("Pipe",80),("Length",80),("WT",60),("Feature",140),("Depth%",80),("Type",80),("Clock",100),("DistUS(m)",90)]:
+        self.tree = ttk.Treeview(bottom, columns=("Joint","Length","WT","Feature","Depth%","Type","Clock","DistUS(m)"), show="headings", height=8)
+        for col, w in [("Joint",80),("Length",80),("WT",60),("Feature",140),("Depth%",80),("Type",80),("Clock",100),("DistUS(m)",90)]:
             self.tree.heading(col, text=col); self.tree.column(col, width=w, anchor="center")
         self.tree.grid(row=0, column=0, sticky="nsew")
         tree_scroll = ttk.Scrollbar(bottom, orient=tk.VERTICAL, command=self.tree.yview); tree_scroll.grid(row=0, column=1, sticky="ns")
@@ -283,8 +273,8 @@ class PipelineApp:
     def _normalize_col(col: str) -> str:
         s = str(col)
         s = s.replace("\n", " ")
-        s = s.replace("’", "'")
-        s = s.replace("°", "")
+        s = s.replace("â€™", "'")
+        s = s.replace("Â°", "")
         s = s.lower().strip()
         s = re.sub(r"\s+", " ", s)
         s = s.replace(".", "")  # "No." -> "No"
@@ -329,7 +319,7 @@ class PipelineApp:
             out["Pipe Length (m)"]  = pd.to_numeric(out["Pipe Length (m)"], errors="coerce")
             out["Pipe Length (mm)"] = out["Pipe Length (m)"] * 1000.0
 
-        # Wall thickness → WT (mm)
+        # Wall thickness â†’ WT (mm)
         col_wt = pick("wt (mm)", "wall thickness (mm)", "wt", "wall thickness", "thickness (mm)")
         if col_wt is not None:
             out.rename(columns={col_wt: "WT (mm)"}, inplace=True)
@@ -374,7 +364,8 @@ class PipelineApp:
 
     def _read_excel(self):
         # constants_file = os.path.join(self.project_root, "constants.xlsx")
-        default_path = os.path.join(self.pipe_tally, "pipetally_main", "Pipe_Tally_8inch.xlsx")
+        # default_path = os.path.join(self.pipe_tally, "pipetally_main", "Pipe_Tally_8inch.xlsx")
+        default_path = "D:\pickle_6\pipetally_main\Pipe_Tally_8inch.xlsx"
         # if self.pipe_tally and os.path.isfile(self.pipe_tally):
         #     path = self.pipe_tally
         # else:
@@ -459,7 +450,7 @@ class PipelineApp:
         for col in ["Pipe Length (mm)", "Pipe Length (m)", "WT (mm)", "Depth %", "Distance to U/S GW(m)"]:
             loaded[col] = pd.to_numeric(loaded[col], errors="coerce")
 
-        loaded["Orientation o' clock"] = loaded["Orientation o' clock"].astype(str).str.replace("’", "'").str.replace("o' clock", "o clock")
+        loaded["Orientation o' clock"] = loaded["Orientation o' clock"].astype(str).str.replace("â€™", "'").str.replace("o' clock", "o clock")
 
         self.data = loaded
         self._update_status("Excel loaded.")
@@ -543,7 +534,7 @@ class PipelineApp:
         # Left-side labels
         for i in range(10):
             y0 = start_y + i*gap_y
-            self.pipe_canvas.create_text(start_x, y0 - 42, text="Pipe Number:", font=("Segoe UI", 9), anchor="w")
+            self.pipe_canvas.create_text(start_x, y0 - 42, text="Joint Number:", font=("Segoe UI", 9), anchor="w")
             self.pipe_canvas.create_text(start_x, y0 - 26, text="Length (m):",  font=("Segoe UI", 8), anchor="w")
             self.pipe_canvas.create_text(start_x, y0 - 10, text="WT (mm):",     font=("Segoe UI", 8), anchor="w")
 
@@ -648,8 +639,74 @@ class PipelineApp:
                 "defects": defects_here
             }
 
-        self._update_canvas_scrollregion()
+        # Update scroll region (include legend width)
+        bbox = self.pipe_canvas.bbox("all")
+        if bbox:
+            x1, y1, x2, y2 = bbox
+            # Add extra margin so legend isn’t cut off
+            self.pipe_canvas.configure(scrollregion=(x1, y1, x2 + 200, y2 + 100))
+
         self._update_status("Rendered.")
+
+        # ------------------ Add Legend ------------------
+        # ------------------ Add Legend (placed neatly on right side) ------------------
+        # Find bounding box of all joints
+        bbox = self.pipe_canvas.bbox("all")
+        if bbox:
+            min_x, min_y, max_x, max_y = bbox
+        else:
+            min_x, min_y, max_x, max_y = 60, 120, 1500, 800
+
+        # Legend position: on the right side, beside the last column
+        legend_x = max_x + 40  # a bit to the right of the last joint
+        legend_y = min_y + 40  # aligned with the top row
+        w, h = 150, 130
+
+        # Background
+        self.pipe_canvas.create_rectangle(
+            legend_x, legend_y,
+            legend_x + w, legend_y + h,
+            outline="#888", fill="#fdfdfd"
+        )
+
+        # Title
+        self.pipe_canvas.create_text(
+            legend_x + w / 2, legend_y + 12,
+            text="Legend", font=("Segoe UI", 9, "bold")
+        )
+
+        # Items
+        y = legend_y + 26
+        dy = 14
+        font_small = ("Segoe UI", 8)
+
+        # Metal Loss
+        items = [
+            ("green", "Metal Loss < 20%"),
+            ("blue", "Metal Loss 20–50%"),
+            ("red", "Metal Loss > 50%"),
+        ]
+        for color, text in items:
+            self.pipe_canvas.create_oval(legend_x + 8, y, legend_x + 14, y + 6, fill=color, outline="")
+            self.pipe_canvas.create_text(legend_x + 22, y + 3, text=text, anchor="w", font=font_small)
+            y += dy
+
+        # Bend
+        self.pipe_canvas.create_text(legend_x + 10, y + 3, text="*", font=("Segoe UI", 10))
+        self.pipe_canvas.create_text(legend_x + 22, y + 3, text="Bend", anchor="w", font=font_small)
+        y += dy
+
+        # Severity Boxes
+        boxes = [
+            ("#e8fff0", "Normal Joint"),
+            ("#eef3ff", "Medium Severity"),
+            ("#ffecec", "High Severity"),
+        ]
+        for fill, label in boxes:
+            self.pipe_canvas.create_rectangle(legend_x + 8, y - 3, legend_x + 18, y + 7, fill=fill, outline="#333")
+            self.pipe_canvas.create_text(legend_x + 24, y + 2, text=label, anchor="w", font=font_small)
+            y += dy
+        # ----------------------------------------------------------------------
 
     # --------------------- Canvas Helpers & Events ----------------------
 
@@ -726,9 +783,9 @@ class PipelineApp:
                     tip += "\nDefects:"
                     for d in payload['defects']:
                         if d[0] == "Metal Loss":
-                            tip += f"\n• Metal Loss {'' if d[1] is None else d[1]}% ({d[2]}), {d[3]}, US {d[4]}m"
+                            tip += f"\nâ€¢ Metal Loss {'' if d[1] is None else d[1]}% ({d[2]}), {d[3]}, US {d[4]}m"
                         elif d[0] == "Bend":
-                            tip += f"\n• Bend @ {d[3]} ({d[4]}m)"
+                            tip += f"\nâ€¢ Bend @ {d[3]} ({d[4]}m)"
                 self._show_tooltip(event.x_root, event.y_root, tip)
                 return
         self._hide_tooltip()
@@ -899,5 +956,6 @@ if __name__ == "__main__":
     main()
 
 def run_app(pipe_tally=None):
+    print(pipe_tally)
     root = create_window(pipe_tally=pipe_tally)        # <-- pass it in
     root.mainloop()

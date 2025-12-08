@@ -31,7 +31,11 @@ import tempfile
 import time
 import traceback
 import tkinter as tk
-from tkinter import messagebox, filedialog, ttk
+import tkinter as tk
+import tkinter.filedialog as filedialog
+import tkinter.messagebox as messagebox
+
+from tkinter import ttk
 
 import pandas as pd
 from PIL import Image, ImageGrab, ImageTk
@@ -45,17 +49,17 @@ root = None               # the toplevel window (winfo_toplevel)
 # ------- Section IDs and capture thresholds -------
 SECTION_MAP = {
     1: "Client Description",
-    2: "Feature Location on Pipe",
+    2: "Feature Location on Joint",
     3: "Comment",
     4: "Feature Description",
-    5: "Pipe Location",
+    5: "Joint Location",
 }
 SECTION_THRESHOLDS = {
     "Client Description":       (0, 0, 175, 40),
-    "Feature Location on Pipe": (5, 32, 170, 93),
+    "Feature Location on Joint": (5, 32, 170, 93),
     "Comment":                  (0, 85, 175, 120),
     "Feature Description":      (0, 110, 175, 170),
-    "Pipe Location":            (0, 107, 175, 220),
+    "Joint Location":            (0, 107, 175, 220),
 }
 
 # ------- State / UI globals used across functions -------
@@ -339,7 +343,7 @@ def get_section_coords():
         "Feature Location on Pipe": main_frame,
         "Comment": comment_frame,
         "Feature Description": feature_desc_frame,
-        "Pipe Location": third_frame,
+        "Joint Location": third_frame,
     }
     coords = {}
     for name, frame in sections.items():
@@ -1385,19 +1389,19 @@ def _build_ui(project_root=None):
 
     feature_frame = tk.Frame(main_frame, bg="white", padx=5, pady=5, highlightbackground="black", highlightthickness=1)
     feature_frame.pack(side="left", fill="both", expand=True, padx=5)
-    tk.Label(feature_frame, text="Feature Location on Pipe:", bg="white", fg="deepskyblue",
+    tk.Label(feature_frame, text="Feature Location on Joint:", bg="white", fg="deepskyblue",
              font=("Arial", 10, "bold")).pack(pady=(0, 5))
     pipe_canvas1 = tk.Canvas(feature_frame, width=360, height=160, bg="white", highlightthickness=0)
     pipe_canvas1.pack()
 
     desc_frame = tk.Frame(main_frame, bg="white", padx=5, pady=5, highlightbackground="black", highlightthickness=1)
     desc_frame.pack(side="left", fill="both", expand=True, padx=5)
-    tk.Label(desc_frame, text="Pipe Description:", bg="white", fg="deepskyblue",
+    tk.Label(desc_frame, text="Joint Description:", bg="white", fg="deepskyblue",
              font=("Arial", 10, "bold")).grid(row=0, column=0, columnspan=5, padx=5, pady=(0, 5), sticky="ew")
 
     fields = [
-        ("Pipe Number", pipe_id_var),
-        ("Pipe Length (m)", length_var),
+        ("Joint Number", pipe_id_var),
+        ("Joint Length (m)", length_var),
         ("WT (mm)", wt_var),
         ("Latitude", latitude_var),
         ("Longitude", longitude_var),
@@ -1460,7 +1464,7 @@ def _build_ui(project_root=None):
                            highlightbackground="black", highlightthickness=1)
     third_frame.pack(fill="both", padx=15, pady=4)
 
-    tk.Label(third_frame, text="Pipe Location:", bg="white", fg="deepskyblue",
+    tk.Label(third_frame, text="Joint Location:", bg="white", fg="deepskyblue",
              font=("Arial", 9, "bold")).grid(row=0, column=0, columnspan=5, sticky="ew")
     global pipe_canvas
     pipe_canvas = tk.Canvas(third_frame, width=650, height=370, bg="white", highlightthickness=0)

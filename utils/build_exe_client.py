@@ -1,75 +1,93 @@
-# import os
-# import PyInstaller.__main__
-
-# # Switch to project root (parent of utils/)
-# ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# os.chdir(ROOT)
-
-# PyInstaller.__main__.run([
-#     "--noconfirm",
-#     "--onefile",
-#     "--windowed",
-#     "--exclude-module", "PyQt5",
-#     "--add-data", "ui;ui/",
-#     "--add-data", "pages;pages/",
-#     "--add-data", "backend;backend/",
-#     "--add-data", "Data_Gen;Data_Gen/",
-#     "--add-data", "dig;dig/",
-#     "--add-data", "manual;manual/",
-#     "--add-data", "pipetally;pipetally/",
-#     "--add-data", "final_report;final_report/",
-#     "--add-data", "preliminary_report;preliminary_report/",
-#     "--hidden-import", "PyQt6.QtWebEngineWidgets",
-#     "--hidden-import", "PyQt6.QtWebEngineCore",
-#     "--hidden-import", "PyQt6.QtPrintSupport",
-#     "--collect-all", "numpy",
-#     "--collect-all", "pandas",
-#     "--name", "test_client",   # 👈 Name of final exe
-#     "test.py"
-# ])
-
 import os
 import shutil
 import PyInstaller.__main__
 
-# Switch to project root (parent of utils/)
+# -----------------------------
+# Setup paths
+# -----------------------------
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
 
-# --- Clean previous build outputs ---
-for folder in ["build", "dist"]:
-    folder_path = os.path.join(ROOT, folder)
-    if os.path.exists(folder_path):
-        print(f"Removing old {folder_path} ...")
-        shutil.rmtree(folder_path)
+print(f"📁 Building from project root: {ROOT}")
 
-spec_file = os.path.join(ROOT, "main_client_software.spec")
-if os.path.exists(spec_file):
-    print(f"Removing old {spec_file} ...")
-    os.remove(spec_file)
+DIST_PATH = os.path.join(ROOT, "dist")
+BUILD_PATH = os.path.join(ROOT, "build")
+SPEC_FILE = os.path.join(ROOT, "main_client_software.spec")
+EXE_NAME = "main_client_software"
+EXE_PATH = os.path.join(DIST_PATH, EXE_NAME, f"{EXE_NAME}.exe")
 
-# --- Build EXE with PyInstaller ---
+# -----------------------------
+# Clean old build files
+# -----------------------------
+for folder in [BUILD_PATH, DIST_PATH]:
+    if os.path.exists(folder):
+        print(f"🧹 Removing old {folder} ...")
+        shutil.rmtree(folder)
+
+if os.path.exists(SPEC_FILE):
+    print(f"🧹 Removing old spec file {SPEC_FILE} ...")
+    os.remove(SPEC_FILE)
+
+if os.path.exists(EXE_PATH):
+    print(f"🧹 Removing old EXE {EXE_PATH} ...")
+    os.remove(EXE_PATH)
+
+# -----------------------------
+# Build configuration
+# -----------------------------
+# Note: Using one-folder build (no --onefile) for instant startup speed.
+# Uncomment "--onefile" below if you need a single EXE (will be slower on launch).
+
 PyInstaller.__main__.run([
     "--noconfirm",
-    "--onefile",           
-    "--windowed",          
-    "--exclude-module", "PyQt5",
+    "--windowed",
+    "--clean",                # Cleans PyInstaller cache for fresh build
+    # "--onefile",             # Uncomment if single-file EXE is desired
+    "--distpath", DIST_PATH,
+    "--workpath", BUILD_PATH,
+
+    # Exclude unnecessary test packages
+    "--exclude-module", "pandas.tests",
+    "--exclude-module", "sklearn.tests",
+
+    # Collect full package data
     "--collect-all", "numpy",
     "--collect-all", "pandas",
-    "--collect-all", "kaleido",    
-    "--hidden-import", "kaleido",  
-    "--hidden-import", "PyQt6.QtWebEngineWidgets",
-    "--hidden-import", "PyQt6.QtWebEngineCore",
-    "--hidden-import", "PyQt6.QtPrintSupport",
-    "--add-data", "ui;ui/",
-    "--add-data", "pages;pages/",
-    "--add-data", "backend;backend/",
-    # "--add-data", "Data_Gen;Data_Gen/",
-    "--add-data", "dig;dig/",
-    "--add-data", "manual;manual/",
-    "--add-data", "pipetally;pipetally/",
-    "--add-data", "final_report;final_report/",
-    "--add-data", "preliminary_report;preliminary_report/",
-    "--name", "main_client_software",  
-    "test8.py"
+    "--collect-all", "kaleido",
+    "--collect-all", "pywin32",
+    "--collect-all", "img2pdf",
+    "--collect-all", "PIL",
+
+    # Hidden imports for GUI, imaging, printing, and PDF generation
+    "--hidden-import", "tkinter",
+    "--hidden-import", "tkinter.filedialog",
+    "--hidden-import", "tkinter.messagebox",
+    "--hidden-import", "PIL.ImageGrab",
+    "--hidden-import", "win32print",
+    "--hidden-import", "win32api",
+    "--hidden-import", "win32con",
+    "--hidden-import", "pywintypes",
+    "--hidden-import", "pythoncom",
+    "--hidden-import", "img2pdf",
+
+    # Optional: specify UPX directory if installed to compress binaries
+    # "--upx-dir", "C:\\path\\to\\upx",
+
+    # Data folders to bundle
+    f"--add-data={os.path.join(ROOT, 'ui')};ui/",
+    f"--add-data={os.path.join(ROOT, 'pages')};pages/",
+    f"--add-data={os.path.join(ROOT, 'backend')};backend/",
+    f"--add-data={os.path.join(ROOT, 'dig')};dig/",
+    f"--add-data={os.path.join(ROOT, 'manual')};manual/",
+    f"--add-data={os.path.join(ROOT, 'pipetally')};pipetally/",
+    f"--add-data={os.path.join(ROOT, 'final_report')};final_report/",
+    f"--add-data={os.path.join(ROOT, 'preliminary_report')};preliminary_report/",
+    f"--add-data={os.path.join(ROOT, 'pipeline_schema')};pipeline_schema/",
+
+    "--name", EXE_NAME,
+    "main_latest1.py"
 ])
+
+print("\n✅ Build complete! Check:")
+print(f"   → {os.path.join(DIST_PATH, EXE_NAME)}")
+print("   (Opens instantly since it's a folder-based build)")

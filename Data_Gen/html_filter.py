@@ -819,7 +819,7 @@ def save_proximity_linechart(
         font={"family": "courier"},
         legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='left', x=0),
         xaxis_title=x_label,
-        yaxis_title="Scaled Proximity Sensor (0–1, offset)",
+        # yaxis_title="Scaled Proximity Sensor (0–1, offset)",
     )
     # keep titles close to axes
     fig.update_xaxes(title_standoff=8, automargin=True, dtick=dtick)

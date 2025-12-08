@@ -31,7 +31,7 @@ import plotly.graph_objects as go
 from PyQt6 import uic, QtWidgets
 from PyQt6.QtCore import (
     Qt, QSortFilterProxyModel, QThread, pyqtSignal,
-    QTimer, QUrl, QEvent, QEventLoop
+    QTimer, QUrl, QEvent, QEventLoop,QSize
 )
 # PyQt6 GUI
 from PyQt6.QtGui import (
@@ -59,7 +59,9 @@ from pages.telemetryPlot import TPlot_Frame as telePlot
 from pages.anamolyPlot import ADPlot_Frame as adPlot
 from pages.about import About_Dialog
 from pages.adminPanel import Admin_Panel
-from pages.ERF import ERF
+from pages.erf1 import ERF1App as ERF
+
+
 from pages.XYZ import XYZ  # noqa
 from pages.metrics import Metric_Dialog  # noqa
 from pages.cluster import Cluster_Dialog
@@ -345,30 +347,47 @@ class PipeLoaderWorker(QThread):
 
         return None
 
+    # def _process_table_data(self, df):
+    #     if df is None or df.empty:
+    #         return None
+
+    #     # Check if this is a PipeTally file (has Feature Type column) or defects.csv
+    #     if "Feature Type" in df.columns:
+    #         # Filter Metal Loss defects
+    #         original_count = len(df)
+    #         df = df[df["Feature Type"].astype(str).str.strip().str.lower() == "metal loss"]
+
+    #         if df.empty:
+    #             return None
+
+    #         # Round numeric columns
+    #         numeric_columns = [
+    #             'Depth %', 'Depth (mm)', 'ERF (ASME B31G)', 'Psafe (ASME B31G) Barg',
+    #             'Abs. Distance (m)', 'Distance to U/S GW(m)', 'Length (mm)',
+    #             'Width (mm)', 'WT (mm)', 'Pipe Length (mm)'
+    #         ]
+    #         for col in numeric_columns:
+    #             if col in df.columns:
+    #                 df[col] = pd.to_numeric(df[col], errors='coerce').round(3)
+
+    #     return df
     def _process_table_data(self, df):
+        """Return full PipeTally data without filtering or skipping."""
         if df is None or df.empty:
             return None
 
-        # Check if this is a PipeTally file (has Feature Type column) or defects.csv
-        if "Feature Type" in df.columns:
-            # Filter Metal Loss defects
-            original_count = len(df)
-            df = df[df["Feature Type"].astype(str).str.strip().str.lower() == "metal loss"]
-
-            if df.empty:
-                return None
-
-            # Round numeric columns
-            numeric_columns = [
-                'Depth %', 'Depth (mm)', 'ERF (ASME B31G)', 'Psafe (ASME B31G) Barg',
-                'Abs. Distance (m)', 'Distance to U/S GW(m)', 'Length (mm)',
-                'Width (mm)', 'WT (mm)', 'Pipe Length (mm)'
-            ]
-            for col in numeric_columns:
-                if col in df.columns:
-                    df[col] = pd.to_numeric(df[col], errors='coerce').round(3)
+        # Just round numeric columns, no filtering
+        numeric_columns = [
+            'Depth %', 'Depth (mm)', 'ERF (ASME B31G)', 'Psafe (ASME B31G) Barg',
+            'Abs. Distance (m)', 'Distance to U/S GW(m)', 'Length (mm)',
+            'Width (mm)', 'WT (mm)', 'Pipe Length (mm)'
+        ]
+        for col in numeric_columns:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').round(3)
 
         return df
+
 
 
 class ModernLoadingDialog(QDialog):
@@ -706,62 +725,68 @@ class SyncPlotlyView(QWebEngineView):
     def _install_hooks_if_needed(self, ok: bool):
         if not ok or self._installed:
             return
+
         js = r"""
-(function(){
-  if (window.__pie_hooks_installed) return;
-  window.__pie_hooks_installed = true;
+        (function(){
+          if (window.__pie_hooks_installed) return;
+          window.__pie_hooks_installed = true;
 
-  function getGraph(){
-    // common Plotly HTML exports
-    var g = document.querySelector('.js-plotly-plot');
-    if (!g) g = document.querySelector('div[data-plotly]');
-    // fallback: first div with a plotly uid (robust for kaleido/plotly.io.write_html)
-    if (!g) {
-      var cand = Array.from(document.querySelectorAll('div'));
-      g = cand.find(d => d && d._fullLayout);
-    }
-    return g;
-  }
+          function getGraph(){
+            let g = document.querySelector('.js-plotly-plot');
+            if (!g) g = document.querySelector('div[data-plotly]');
+            if (!g) {
+              const cand = Array.from(document.querySelectorAll('div'));
+              g = cand.find(d => d && d._fullLayout);
+            }
+            return g;
+          }
 
-  function normalizeRanges(e){
-    var out = {};
-    if ('xaxis.range' in e) out['xaxis.range'] = e['xaxis.range'];
-    else if ('xaxis.range[0]' in e && 'xaxis.range[1]' in e)
-      out['xaxis.range'] = [e['xaxis.range[0]'], e['xaxis.range[1]']];
+          function emitRange(){
+            const g = getGraph();
+            if (!g || !window.Plotly) return;
+            const x = g.layout?.xaxis?.range;
+            const y = g.layout?.yaxis?.range;
+            if (x && y) {
+              try {
+                console.log('RANGE:' + JSON.stringify({'xaxis.range':x, 'yaxis.range':y}));
+              } catch(e){}
+            }
+          }
 
-    if ('yaxis.range' in e) out['yaxis.range'] = e['yaxis.range'];
-    else if ('yaxis.range[0]' in e && 'yaxis.range[1]' in e)
-      out['yaxis.range'] = [e['yaxis.range[0]'], e['yaxis.range[1]']];
-    return out;
-  }
+          function install(){
+            const g = getGraph();
+            if (!g || !window.Plotly) { setTimeout(install, 200); return; }
 
-  function install(){
-    var g = getGraph();
-    if (!g || !window.Plotly) { setTimeout(install, 100); return; }
+            // Catch all interactions that change zoom/pan
+            g.on('plotly_relayout', emitRange);
+            g.on('plotly_doubleclick', emitRange);
+            g.on('plotly_afterplot', emitRange);
+            g.on('plotly_redraw', emitRange);
+            g.on('plotly_autosize', emitRange);
+            g.on('plotly_restyle', emitRange);
 
-    g.on('plotly_relayout', function(e){
-      try { console.log('RANGE:' + JSON.stringify(normalizeRanges(e))); } catch(err) {}
-    });
+            //  Support mouse wheel zoom
+            g.addEventListener('wheel', () => setTimeout(emitRange, 200));
 
-    // OPTIONAL hover relay (off by default)
-    // g.on('plotly_hover', function(ev){
-    //   var p = (ev.points && ev.points[0]) || null;
-    //   if (p) try { console.log('HOVER:' + JSON.stringify({x:p.x, y:p.y})); } catch(err) {}
-    // });
+            // 🔹 Support laptop touchpad pinch / scroll gestures
+            g.addEventListener('gesturechange', () => setTimeout(emitRange, 200));
+            g.addEventListener('touchmove', () => setTimeout(emitRange, 200));
 
-    window.__pie_applyRelayout = function(payload){
-      try {
-        var g2 = getGraph();
-        if (!g2) return;
-        Plotly.relayout(g2, payload);
-      } catch(err) {}
-    };
-  }
-  install();
-})();
-"""
+            // 🔹 Function called from Python to apply the other heatmap's range
+            window.__pie_applyRelayout = function(payload){
+              try {
+                const g2 = getGraph();
+                if (g2 && window.Plotly) Plotly.relayout(g2, payload);
+              } catch(err){}
+            };
+          }
+
+          install();
+        })();
+        """
         self.page().runJavaScript(js)
         self._installed = True
+
 
     def apply_relayout(self, payload: dict):
         """Apply ranges from the other view (with a feedback guard)."""
@@ -786,7 +811,7 @@ class MyMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.ui = Form()
-        
+
         self.ui.setupUi(self)
         # Hide unwanted menu actions
         if hasattr(self.ui, "action_Pipe_Locator"):
@@ -797,6 +822,7 @@ class MyMainWindow(QMainWindow):
 
         if hasattr(self.ui, "action_Pipe_Sch"):
             self.ui.action_Pipe_Sch.setVisible(True)
+            self.ui.action_Pipe_Sch.setEnabled(False)
 
         for tb in self.findChildren(QtWidgets.QToolBar):
             if self.toolBarArea(tb) == Qt.ToolBarArea.LeftToolBarArea:
@@ -860,7 +886,7 @@ class MyMainWindow(QMainWindow):
         self._reverting_tab = False
         self._last_allowed_tab_index = 0
         self._ui_ready = False  # set true after first layout/show
-        self._selected_columns: set[str] = set() 
+        self._selected_columns: set[str] = set()
         self.hhmap = None  # hallsensor_heatmap*.html
         self.phmap = None  # proximity_heatmap*.html
         self._hm_layout_mode = "vertical"  # "horizontal" = side-by-side, "vertical" = stacked
@@ -918,6 +944,13 @@ class MyMainWindow(QMainWindow):
         # after other attrs like self.prox_linechart = None
         self._scroll_scale = 3  # try 5–10; higher => gentler/longer scroll
         setup_table_scroll(self.ui.tableView)
+        # ✅ Prevent the tables from auto-resizing to content (so scrollbars appear)
+        self.ui.tableWidgetDefect.setSizeAdjustPolicy(
+            QtWidgets.QAbstractScrollArea.SizeAdjustPolicy.AdjustIgnored
+        )
+        self.ui.tableView.setSizeAdjustPolicy(
+            QtWidgets.QAbstractScrollArea.SizeAdjustPolicy.AdjustIgnored
+        )
 
         # Digsheet button (ABS-based)
         self.btnDigsheetAbs = QPushButton("Digsheet")
@@ -1003,8 +1036,8 @@ class MyMainWindow(QMainWindow):
         # self.columnFilter.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         # self.columnFilter.setMaxVisibleItems(15)
         # # cf_model = QStandardItemModel()          # <- use the top-level import
-        # # self.columnFilter.setModel(cf_model)  
-        
+        # # self.columnFilter.setModel(cf_model)
+
         # self._cf_model = QStandardItemModel(self.columnFilter)
         # self.columnFilter.setModel(self._cf_model)
 
@@ -1070,6 +1103,7 @@ class MyMainWindow(QMainWindow):
 
         # create the button (you already have this)
         self.btnOpenFilterDlg = QPushButton("Filter Columns", self)
+        self.btnOpenFilterDlg.setEnabled(False)
 
         # attach icon
         filter_icon_path = resource_path("ui/icons/filter.svg")   # or .png
@@ -1090,9 +1124,9 @@ class MyMainWindow(QMainWindow):
             QPushButton:hover { background-color: #d6d3ce; }
             QPushButton:pressed { background-color: #111111; }
             QPushButton:disabled {
-                background-color: #3a3a3a;
-                color: #aaaaaa;
-                border: 1.5px solid #555555;
+                background-color: #a6a6a6;
+                color: #f0f0f0;
+                border: 2px solid #6e6e6e; 
             }
         """)
 
@@ -1105,7 +1139,7 @@ class MyMainWindow(QMainWindow):
             _parent.layout().insertWidget(pos + 2, self.btnOpenFilterDlg)
         else:
             self.btnOpenFilterDlg.setParent(_parent)
-        
+
                 # Create the dropdown tab switcher
         self.tabSwitcherDropdown = QComboBox(self)
         self.tabSwitcherDropdown.setToolTip("Switch between chart tabs")
@@ -1114,34 +1148,42 @@ class MyMainWindow(QMainWindow):
         self.tabSwitcherDropdown.setMaximumWidth(150)
 
         # Style the dropdown to match your other buttons
-        self.tabSwitcherDropdown.setStyleSheet('''
-            QComboBox {
+        arrow_path = os.path.join(os.path.dirname(__file__), "ui", "icons", "arrow_down.svg").replace("\\", "/")
+
+        self.tabSwitcherDropdown.setStyleSheet(f"""
+            QComboBox {{
                 background-color: #FFFFFF;
                 color: #000000;
                 border: 1.5px solid #000000;
                 border-radius: 6px;
                 padding: 4px 12px;
                 font-weight: 500;
-            }
-            QComboBox:hover {
+            }}
+            QComboBox:hover {{
                 background-color: #d6d3ce;
-            }
-            QComboBox:pressed {
+            }}
+            QComboBox:pressed {{
                 background-color: #111111;
                 color: white;
-            }
-            QComboBox::drop-down {
+            }}
+            QComboBox:disabled {{
+                background-color: #a6a6a6;     /* same as Load button */
+                color: #f0f0f0;                /* same as Load button */
+                border: 2px solid #6e6e6e;     /* same as Load button */
+            }}
+            QComboBox::drop-down {{
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
                 width: 20px;
                 border-left: 1.5px solid #000000;
-            }
-            QComboBox QAbstractItemView {
-                border: 1.5px solid #000000;
-                selection-background-color: #3498db;
-                selection-color: white;
-            }
-        ''')
+            }}
+            QComboBox::down-arrow {{
+                image: url({arrow_path});
+                width: 12px;
+                height: 12px;
+            }}
+        """)
+        self.tabSwitcherDropdown.setEnabled(False)
 
         # Populate dropdown with tab names from tabWidgetM
         for i in range(self.ui.tabWidgetM.count()):
@@ -1165,7 +1207,7 @@ class MyMainWindow(QMainWindow):
         self.tabSwitcherDropdown.currentIndexChanged.connect(self.ondropdowntabchanged)
 
         print("✅ Tab switcher dropdown created and positioned after Filter button")
-                
+
         # Create the Hide/Show Table toggle button
         self.btnToggleTable = QPushButton("Hide Table", self)
         # ✅ Correct single connection
@@ -1180,29 +1222,31 @@ class MyMainWindow(QMainWindow):
 
         self.btnToggleTable.setToolTip("Toggle table visibility (Heatmap only)")
         self.btnToggleTable.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btnToggleTable.setStyleSheet('''
-        QPushButton {
-            background-color: #FFFFFF;
-            color: #000000;
-            border: 1.5px solid #000000;
-            border-radius: 6px;
-            padding: 4px 12px;
-            font-weight: 500;
-            min-width: 80px;
-        }
-        QPushButton:hover {
-            background-color: #d6d3ce;
-        }
-        QPushButton:pressed {
-            background-color: #111111;
-            color: white;
-        }
-        QPushButton:disabled {
-            background-color: #d3d3d3;
-            color: #888888;
-            border: 1.5px solid #a0a0a0;
-        }
-    ''')
+        self.btnToggleTable.setStyleSheet("""
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #000000;
+                border: 1.5px solid #000000;
+                border-radius: 6px;
+                padding: 4px 12px;
+                font-weight: 500;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #d6d3ce;
+            }
+            QPushButton:pressed {
+                background-color: #111111;
+                color: white;
+            }
+            QPushButton:disabled {
+                background-color: #a6a6a6;     /* same as Load button */
+                color: #f0f0f0;                /* same as Load button */
+                border: 2px solid #6e6e6e;     /* same as Load button */
+            }
+        """)
+        self.btnToggleTable.setEnabled(False)
+
         # Create the Stack/Side-by-side layout toggle button
         self.btnToggleHmLayout = QPushButton("Stack", self)
     #     self.btnToggleHmLayout.setStyleSheet("""
@@ -1226,28 +1270,30 @@ class MyMainWindow(QMainWindow):
         self.btnToggleHmLayout.setToolTip("Toggle dual-heatmap layout (side-by-side / stacked)")
         self.btnToggleHmLayout.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btnToggleHmLayout.setStyleSheet("""
-        QPushButton#hmLayoutBtn, QPushButton {
-            background-color: #FFFFFF;
-            color: #000000;
-            border: 1.5px solid #000000;
-            border-radius: 6px;
-            padding: 4px 10px;
-            font-weight: 500;
-            min-width: 80px;
-        }
-        QPushButton#hmLayoutBtn:hover:!disabled, QPushButton:hover:!disabled {
-            background-color: #d6d3ce;
-        }
-        QPushButton#hmLayoutBtn:pressed:!disabled, QPushButton:pressed:!disabled {
-            background-color: #111111;
-            color: white;
-        }
-        QPushButton#hmLayoutBtn:disabled, QPushButton:disabled {
-            background-color: #d3d3d3;
-            color: #888888;
-            border: 1.5px solid #a0a0a0;
-        }
-    """)
+            QPushButton {
+                background-color: #FFFFFF;
+                color: #000000;
+                border: 1.5px solid #000000;
+                border-radius: 6px;
+                padding: 4px 12px;
+                font-weight: 500;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #d6d3ce;
+            }
+            QPushButton:pressed {
+                background-color: #111111;
+                color: white;
+            }
+            QPushButton:disabled {
+                background-color: #a6a6a6;     /* same as Load button */
+                color: #f0f0f0;                /* same as Load button */
+                border: 2px solid #6e6e6e;     /* same as Load button */
+            }
+        """)
+        self.btnToggleHmLayout.setEnabled(False)
+
         # Add button right after the Toggle Table button
         # ✅ Put both buttons after the dropdown, in the order you want
         parent = self.ui.comboBoxPipe.parentWidget()
@@ -1392,7 +1438,7 @@ class MyMainWindow(QMainWindow):
         #     pass
 
         self._show_watermark()
-    
+
     def _reset_ui_to_start_state(self):
         # mark app state
         self.project_is_open = False
@@ -1465,7 +1511,7 @@ class MyMainWindow(QMainWindow):
 
 
 
-    
+
     # def _on_column_item_pressed(self, index):
     #     """Toggle the check state for a pressed item and keep the popup open."""
     #     m = self.columnFilter.model()
@@ -1537,6 +1583,31 @@ class MyMainWindow(QMainWindow):
                     self.splitter.setSizes([total - bot, bot])
 
             print("Table visibility toggled: Shown")
+            QTimer.singleShot(100, self._refresh_table_scrollbars)
+            QTimer.singleShot(300, self._reset_table_state)
+
+    def _sync_heatmap_range(self, target_view, payload):
+        """Synchronize zoom/pan between both heatmaps."""
+        if not isinstance(target_view, SyncPlotlyView):
+            return
+
+        clean_payload = {}
+        if "xaxis.range" in payload:
+            clean_payload["xaxis.range"] = payload["xaxis.range"]
+        if "yaxis.range" in payload:
+            clean_payload["yaxis.range"] = payload["yaxis.range"]
+
+        # Apply to the other view
+        target_view.apply_relayout(clean_payload)
+
+    def _refresh_table_scrollbars(self):
+        """Force scrollbar redraw for all tables."""
+        for tw in (getattr(self.ui, "tableWidgetDefect", None),
+                getattr(self.ui, "tableView", None)):
+            if tw:
+                hsb, vsb = tw.horizontalScrollBar(), tw.verticalScrollBar()
+                if hsb: hsb.update()
+                if vsb: vsb.update()
 
 
 
@@ -1563,28 +1634,6 @@ class MyMainWindow(QMainWindow):
                 out.add(it.text())
         return out
 
-    # def open_column_filter_dialog(self):
-    #     """Open the dialog, then sync results back into the dropdown model and apply."""
-    #     headers = self._current_headers_for_filter()
-    #     checked = self._currently_checked_in_dropdown()
-    #     locked = set(getattr(self, "BACKEND_LOCKED_COLS", set()))
-
-    #     # create + exec dialog
-    #     dlg = ColumnFilterDialog(headers=headers, checked=checked, locked=locked, parent=self)
-    #     if dlg.exec() != QDialog.DialogCode.Accepted:
-    #         return
-
-    #     # union with locked (locked never appears in the dialog)
-    #     selected = set(dlg.selected_names()) | locked
-
-    #     # sync back into the dropdown’s model, skipping locked (those are not in the dropdown)
-    #     for r in range(self._cf_model.rowCount()):
-    #         it = self._cf_model.item(r)
-    #         it.setCheckState(Qt.CheckState.Checked if it.text() in selected else Qt.CheckState.Unchecked)
-
-    #     # refresh the summary text and apply using your existing logic
-    #     self._update_column_summary()
-    #     self.apply_column_filter()
 
     def open_column_filter_dialog(self):
         """Open column selector dialog and apply the result."""
@@ -1765,97 +1814,8 @@ class MyMainWindow(QMainWindow):
         self._column_summary_text()
 
 
-    # def apply_column_filter(self):
-    #     """Re-render table with only selected columns."""
-    #     if self.curr_data is None:
-    #         return
-
-    #     m = self.columnFilter.model()
-    #     selected_cols = [
-    #         m.item(i).text()
-    #         for i in range(m.rowCount())
-    #         if m.item(i).checkState() == Qt.CheckState.Checked
-    #     ]
-
-    #     # Refresh summary text
-    #     self._column_summary_text()
-
-    #     # Show only selected columns (empty selection => show empty table, change if you prefer fallback)
-    #     filtered_df = self.curr_data[selected_cols] if selected_cols else self.curr_data
 
 
-    #     # Keep using proxy model path you already set up
-    #     self.df_model = PandasModel(filtered_df)
-    #     self.proxy_model.setSourceModel(self.df_model)
-    #     self.ui.tableView.setModel(self.proxy_model)
-
-    # def apply_column_filter(self):
-    #     """
-    #     Hide/show columns in the bottom defect table if present,
-    #     otherwise in the top tableView.
-    #     """
-    #     names_to_keep = []
-    #     for r in range(self._cf_model.rowCount()):
-    #         it = self._cf_model.item(r)
-    #         if it.checkState() == Qt.CheckState.Checked:
-    #             names_to_keep.append(it.text())
-
-    #     # Preferred target: bottom QTableWidget
-    #     if hasattr(self.ui, "tableWidgetDefect") and self.ui.tableWidgetDefect.columnCount() > 0:
-    #         header_map = {
-    #             c: (self.ui.tableWidgetDefect.horizontalHeaderItem(c).text()
-    #                 if self.ui.tableWidgetDefect.horizontalHeaderItem(c) else f"Col {c}")
-    #             for c in range(self.ui.tableWidgetDefect.columnCount())
-    #         }
-    #         for c, name in header_map.items():
-    #             self.ui.tableWidgetDefect.setColumnHidden(c, name not in names_to_keep)
-    #         QTimer.singleShot(0, self._refresh_table_scrollbars)
-    #         self._update_column_summary()
-    #         return
-
-    #     # Fallback: top QTableView
-    #     if hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
-    #         model = self.ui.tableView.model()
-    #         header_names = [str(model.headerData(c, Qt.Orientation.Horizontal)) for c in range(model.columnCount())]
-    #         for c, name in enumerate(header_names):
-    #             self.ui.tableView.setColumnHidden(c, name not in names_to_keep)
-    #     self._update_column_summary()
-    # def apply_column_filter(self):
-    #     names_to_keep = []
-    #     for r in range(self._cf_model.rowCount()):
-    #         it = self._cf_model.item(r)
-    #         if it.checkState() == Qt.CheckState.Checked:
-    #             names_to_keep.append(it.text())
-
-    #     # ← ensure locked columns are ALWAYS kept (even if they’re not in the dropdown)
-    #     names_to_keep = set(names_to_keep) | set(self.BACKEND_LOCKED_COLS)
-
-    #     if hasattr(self.ui, "tableWidgetDefect") and self.ui.tableWidgetDefect.columnCount() > 0:
-    #         header_map = {
-    #             c: (self.ui.tableWidgetDefect.horizontalHeaderItem(c).text()
-    #                 if self.ui.tableWidgetDefect.horizontalHeaderItem(c) else f"Col {c}")
-    #             for c in range(self.ui.tableWidgetDefect.columnCount())
-    #         }
-    #         for c, name in header_map.items():
-    #             hide = (name not in names_to_keep) and (name not in self.BACKEND_LOCKED_COLS)
-    #             self.ui.tableWidgetDefect.setColumnHidden(c, hide)
-    #         QTimer.singleShot(0, self._refresh_table_scrollbars)
-    #         self._update_column_summary()
-    #         return
-
-    #     if hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
-    #         model = self.ui.tableView.model()
-    #         header_names = [str(model.headerData(c, Qt.Orientation.Horizontal)) for c in range(model.columnCount())]
-    #         for c, name in enumerate(header_names):
-    #             hide = (name not in names_to_keep) and (name not in self.BACKEND_LOCKED_COLS)
-    #             self.ui.tableView.setColumnHidden(c, hide)
-
-    #     self._update_column_summary()
-
-
-
-
-    
     def _restore_all_columns(self):
         """Show all columns again (useful when closing a project)."""
         if hasattr(self.ui, "tableWidgetDefect"):
@@ -1894,7 +1854,7 @@ class MyMainWindow(QMainWindow):
 
 
 
-    
+
     def _update_column_summary(self):
         """Show 'All' / 'None' / 'N selected' in the combo line edit."""
         total = self._cf_model.rowCount()
@@ -1994,6 +1954,51 @@ class MyMainWindow(QMainWindow):
         except Exception as e:
             print(f"Error showing no defects message: {e}")
 
+    def _force_table_scroll_update(self):
+        """Force table to refresh layout and scroll range after re-showing."""
+        try:
+            tw = getattr(self.ui, "tableWidgetDefect", None)
+            if not tw:
+                return
+
+            tw.viewport().update()
+            tw.updateGeometry()
+            tw.resizeRowsToContents()
+
+            tw.horizontalScrollBar().setValue(0)
+            tw.verticalScrollBar().update()
+            tw.horizontalScrollBar().update()
+            print("[DEBUG] Table scroll recalculated.")
+        except Exception as e:
+            print(f"[ERROR] Scroll recalculation failed: {e}")
+
+    def _reset_table_state(self):
+        """Force reset of table state when re-entering a pipe."""
+        try:
+            tw = self.ui.tableWidgetDefect
+            if not tw:
+                return
+            # Reset batching state variables
+            self._is_filling_table = False
+            self._pending_close_loader = False
+            self._table_fill_df = None
+            self._table_fill_row = 0
+
+            # Force Qt to rebuild scroll region
+            tw.clearSelection()
+            tw.viewport().update()
+            tw.updateGeometry()
+            tw.verticalScrollBar().setValue(0)
+            tw.horizontalScrollBar().setValue(0)
+            tw.verticalScrollBar().update()
+            tw.horizontalScrollBar().update()
+            QTimer.singleShot(200, self._refresh_table_scrollbars)
+            print("[DEBUG] Table state reset and scrollbars refreshed.")
+        except Exception as e:
+            print(f"[ERROR] Table reset failed: {e}")
+
+
+
     def _show_defects_table(self):
         try:
             if hasattr(self, '_no_defects_container') and self._no_defects_container:
@@ -2008,6 +2013,11 @@ class MyMainWindow(QMainWindow):
 
             if hasattr(self, 'left_vscrollbar'):
                 self.left_vscrollbar.show()
+
+            QTimer.singleShot(150, self._refresh_table_scrollbars)
+            QTimer.singleShot(200, self._force_table_scroll_update)
+            QTimer.singleShot(250, self._reset_table_state)
+
 
 
             print("📊 Displaying defects table")
@@ -2080,7 +2090,7 @@ class MyMainWindow(QMainWindow):
         ]
         if hasattr(self.ui, "action_graphs"):
             self.ui.action_graphs.triggered.connect(self.open_graphs_window)
-            
+
         for aname, tab in action_map:
             act = getattr(a, aname, None)
             if isinstance(act, QAction):
@@ -2166,7 +2176,7 @@ class MyMainWindow(QMainWindow):
 
         parent_vbox.addWidget(row_frame)
         return bar
-    
+
     def _install_left_vbar(self, tw: QtWidgets.QTableWidget):
         """
         Place a custom vertical scrollbar inside the table's left margin and
@@ -2231,313 +2241,11 @@ class MyMainWindow(QMainWindow):
         except Exception:
             pass
 
-    
-    # def _build_splitter(self):
-    #     # Create main web view with scrollbar
-    #     self.main_web_page = QWidget()
-    #     main_web_layout = QVBoxLayout(self.main_web_page)
-    #     main_web_layout.setContentsMargins(0, 0, 0, 0)
-    #     main_web_layout.setSpacing(0)
-
-    #     # Main chart pane (heatmap / 3D / line main)
-    #     self.main_web_scroll_area = QScrollArea()
-    #     self.main_web_scroll_area.setWidgetResizable(False)
-    #     self.main_web_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-    #     self.main_web_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
-
-    #     self.web_view = QWebEngineView()
-    #     self.web_view.setFixedSize(2500, 650)
-    #     self.main_web_scroll_area.setWidget(self.web_view)
-
-    #     # 1) scrollable view
-    #     main_web_layout.addWidget(self.main_web_scroll_area)
-
-    #     # 2) tight top bar (MAIN)
-    #     self.main_top_scrollbar = self._make_topbar_row("mainTopBar", main_web_layout, bar_h=10, left_px=1300, right_px=570)
-
-    #     # Setup scrollbar sync for main web view
-    #     main_inner_hbar = self.main_web_scroll_area.horizontalScrollBar()
-    #     VIRTUAL_MAX = 2000
-
-    #     def _eff_main_bounds():
-    #         imin, imax = main_inner_hbar.minimum(), main_inner_hbar.maximum()
-    #         eff_max = max(imin, imax - self._right_margin_px)
-    #         return imin, eff_max
-
-    #     def _map_main_top_to_inner(v_top: int) -> int:
-    #         imin, eff_max = _eff_main_bounds()
-    #         rng = max(1, eff_max - imin)
-    #         return int(round(imin + (v_top / VIRTUAL_MAX) * rng))
-
-    #     def _map_main_inner_to_top(v_inner: int) -> int:
-    #         imin, eff_max = _eff_main_bounds()
-    #         rng = max(1, eff_max - imin)
-    #         return int(round(((v_inner - imin) / rng) * VIRTUAL_MAX))
-
-    #     def _apply_main_fixed_range():
-    #         self.main_top_scrollbar.blockSignals(True)
-    #         self.main_top_scrollbar.setRange(0, VIRTUAL_MAX)
-    #         self.main_top_scrollbar.setPageStep(100)
-    #         self.main_top_scrollbar.setSingleStep(10)
-    #         self.main_top_scrollbar.setValue(_map_main_inner_to_top(main_inner_hbar.value()))
-    #         self.main_top_scrollbar.blockSignals(False)
-
-    #     def _on_main_top_changed(v):
-    #         if not self._hscroll_ready_main:
-    #             return
-    #         main_inner_hbar.setValue(_map_main_top_to_inner(v))
-
-    #     def _on_main_inner_changed(v):
-    #         if not self._hscroll_ready_main:
-    #             return
-    #         self.main_top_scrollbar.blockSignals(True)
-    #         self.main_top_scrollbar.setValue(_map_main_inner_to_top(v))
-    #         self.main_top_scrollbar.blockSignals(False)
-
-    #     self.main_top_scrollbar.valueChanged.connect(_on_main_top_changed)
-    #     main_inner_hbar.valueChanged.connect(_on_main_inner_changed)
-
-    #     def _on_main_inner_range_changed(_min, _max):
-    #         if _max > _min:
-    #             self._hscroll_ready_main = True
-    #             _apply_main_fixed_range()
-
-    #     main_inner_hbar.rangeChanged.connect(_on_main_inner_range_changed)
-
-    #     # Bottom stack setup
-    #     self.bottom_stack = QStackedWidget()
-    #     self.bottom_stack.setContentsMargins(0, 0, 0, 0)
-    #     self.bottom_stack.currentChanged.connect(lambda idx: self._arm_topbar() if idx == 2 else None)
-
-    #     # ---------------------------
-    #     # Defect table page (bottom)
-    #     # ---------------------------
-    #     self.defect_table_page = QWidget()
-    #     defect_layout = QVBoxLayout(self.defect_table_page)
-    #     defect_layout.setContentsMargins(0, 0, 0, 0)
-    #     defect_layout.setSpacing(0)
-
-    #     # Re-parent table into this page
-    #     old_parent_def = self.ui.tableWidgetDefect.parentWidget()
-    #     if old_parent_def and old_parent_def.layout():
-    #         try:
-    #             old_parent_def.layout().removeWidget(self.ui.tableWidgetDefect)
-    #         except Exception:
-    #             pass
-    #     self.ui.tableWidgetDefect.setParent(self.defect_table_page)
-    #     self.ui.tableWidgetDefect.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-
-    #     # Tight top bar (TABLE)
-    #     self.table_scrollbar = self._make_topbar_row("tableTopBar", defect_layout, bar_h=10, left_px=1300, right_px=570)
-    #     self.table_scrollbar.hide()
-
-    #     # Table directly under the bar
-    #     defect_layout.addWidget(self.ui.tableWidgetDefect)
-
-    #     vh = self.ui.tableWidgetDefect.verticalHeader()
-    #     vh.setVisible(False)                     # hides the left row-number/header blocks
-    #     self.ui.tableWidgetDefect.setCornerButtonEnabled(False)
-    #     self._install_left_vbar(self.ui.tableWidgetDefect)
-    #     # Sync custom table bar with internal table hbar
-    #     self._setup_table_scrollbar_sync()
-
-    #     # ---------------------------
-    #     # Data table page (model view)
-    #     # ---------------------------
-    #     self.data_table_page = QWidget()
-    #     tl = QVBoxLayout(self.data_table_page)
-    #     tl.setContentsMargins(0, 0, 0, 0)
-    #     tl.setSpacing(0)
-    #     old_parent_data = self.ui.tableView.parentWidget()
-    #     if old_parent_data and old_parent_data.layout():
-    #         try:
-    #             old_parent_data.layout().removeWidget(self.ui.tableView)
-    #         except Exception:
-    #             pass
-    #     self.ui.tableView.setParent(None)
-    #     self.ui.tableView.setVisible(True)
-    #     tl.addWidget(self.ui.tableView)
-
-    #     # ---------------------------
-    #     # Proximity line chart page (bottom)
-    #     # ---------------------------
-    #     self.web_page = QWidget()
-    #     web_layout = QVBoxLayout(self.web_page)
-    #     web_layout.setContentsMargins(0, 0, 0, 0)
-    #     web_layout.setSpacing(0)
-
-    #     # Tight top bar (PROX)
-    #     self.top_scrollbar = self._make_topbar_row("proxTopBar", web_layout, bar_h=10, left_px=1300, right_px=570)
-
-    #     # Scroll area without bottom horizontal bar
-    #     self.web_scroll_area = QScrollArea()
-    #     self.web_scroll_area.setWidgetResizable(False)
-    #     self.web_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-    #     self.web_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
-
-    #     self.web_view2 = QWebEngineView()
-    #     self.web_view2.setFixedSize(2500, 600)
-    #     self.web_scroll_area.setWidget(self.web_view2)
-
-    #     web_layout.addWidget(self.web_scroll_area)
-
-    #     # Apply scrollbar theme to bars/areas
-    #     self._apply_scrollbar_theme("#6AA2FF")
-
-    #     # Sync top scrollbar with scroll area for proximity line chart
-    #     inner_hbar = self.web_scroll_area.horizontalScrollBar()
-
-    #     def _eff_prox_bounds():
-    #         imin, imax = inner_hbar.minimum(), inner_hbar.maximum()
-    #         eff_max = max(imin, imax - self._right_margin_px)
-    #         return imin, eff_max
-
-    #     def _map_top_to_inner(v_top: int) -> int:
-    #         imin, eff_max = _eff_prox_bounds()
-    #         rng = max(1, eff_max - imin)
-    #         return int(round(imin + (v_top / VIRTUAL_MAX) * rng))
-
-    #     def _map_inner_to_top(v_inner: int) -> int:
-    #         imin, eff_max = _eff_prox_bounds()
-    #         rng = max(1, eff_max - imin)
-    #         return int(round(((v_inner - imin) / rng) * VIRTUAL_MAX))
-
-    #     def _apply_fixed_range():
-    #         self.top_scrollbar.blockSignals(True)
-    #         self.top_scrollbar.setRange(0, VIRTUAL_MAX)
-    #         self.top_scrollbar.setPageStep(100)
-    #         self.top_scrollbar.setSingleStep(10)
-    #         self.top_scrollbar.setValue(_map_inner_to_top(inner_hbar.value()))
-    #         self.top_scrollbar.blockSignals(False)
-
-    #     def _on_top_changed(v):
-    #         if not self._hscroll_ready:
-    #             return
-    #         inner_hbar.setValue(_map_top_to_inner(v))
-
-    #     def _on_inner_changed(v):
-    #         if not self._hscroll_ready:
-    #             return
-    #         self.top_scrollbar.blockSignals(True)
-    #         self.top_scrollbar.setValue(_map_inner_to_top(v))
-    #         self.top_scrollbar.blockSignals(False)
-
-    #     self.top_scrollbar.valueChanged.connect(_on_top_changed)
-    #     inner_hbar.valueChanged.connect(_on_inner_changed)
-
-    #     def _on_inner_range_changed(_min, _max):
-    #         if _max > _min:
-    #             self._hscroll_ready = True
-    #             _apply_fixed_range()
-
-    #     inner_hbar.rangeChanged.connect(_on_inner_range_changed)
-
-    #     # nudge once to ensure a rangeChanged after layout
-    #     QTimer.singleShot(0, lambda: inner_hbar.setValue(inner_hbar.value()))
-    #     QTimer.singleShot(0, lambda: main_inner_hbar.setValue(main_inner_hbar.value()))
-
-    #     # Assemble bottom pages
-    #     self.bottom_stack.addWidget(self.defect_table_page)
-    #     self.bottom_stack.addWidget(self.data_table_page)
-    #     self.bottom_stack.addWidget(self.web_page)
-
-    #     # Splitter with mid tabbar
-    #     self.splitter = MidBarSplitter(self, tabbar=self.mid_tabbar)
-    #     self.splitter.addWidget(self.main_web_page)
-    #     self.splitter.addWidget(self.bottom_stack)
-    #     self.splitter.setChildrenCollapsible(False)
-    #     self.splitter.setHandleWidth(40)
-    #     self.splitter.setStretchFactor(0, 1)
-    #     self.splitter.setStretchFactor(1, 1)
-    #     self.splitter.setStyleSheet("""
-    #         QSplitter::handle#MidBarHandle { background: #16181c; }
-    #         #MidBarFrame { background: #16181c; }
-    #         QTabBar::tab { color: #d8d8d8; padding: 6px 14px; margin: 0px; border: 0; background: transparent; }
-    #         QTabBar::tab:selected { color: white; font-weight: 600; }
-    #     """)
-    #     self.ui.verticalLayoutGraph.addWidget(self.splitter)
-    #     # QTimer.singleShot(0, lambda: self.splitter.setSizes([self.height() // 2, self.height() // 2]))
-    #     # --- config variable ---
-    #     INIT_SPLIT_BOTTOM_RATIO = 0.45   # 65% bottom, 35% top
-
-    #     # later, in __init__ of your main window:
-    #     QTimer.singleShot(0, lambda: self.splitter.setSizes([
-    #         int(self.height() * (1 - INIT_SPLIT_BOTTOM_RATIO)),   # top
-    #         int(self.height() * INIT_SPLIT_BOTTOM_RATIO)          # bottom
-    #     ]))
-
-
-    #     def _constrain_splitter_sizes():
-    #         sizes = self.splitter.sizes()
-    #         if len(sizes) < 2:
-    #             return
-    #         total = sum(sizes)
-    #         top, bot = sizes[0], sizes[1]
-
-    #         min_top  = int(self._min_top_h or 0)
-    #         min_bot  = int(self._min_bottom_h or 0)
-
-    #         max_top_by_bot_min = max(0, total - min_bot)
-    #         hard_max_top = self._max_top_h if self._max_top_h is not None else max_top_by_bot_min
-    #         hard_max_top = min(hard_max_top, max_top_by_bot_min)
-
-    #         top = max(min_top, min(top, hard_max_top))
-    #         bot = total - top
-    #         if self._max_bottom_h is not None:
-    #             bot = min(bot, self._max_bottom_h)
-    #             top = total - bot
-
-    #         if bot < min_bot:
-    #             bot = min_bot
-    #             top = total - bot
-    #             top = max(min_top, top)
-
-    #         if [top, bot] != sizes[:2]:
-    #             self.splitter.blockSignals(True)
-    #             self.splitter.setSizes([top, bot])
-    #             self.splitter.blockSignals(False)
-
-    #     def _on_splitter_moved(*_):
-    #         _constrain_splitter_sizes()
-    #         if self._hscroll_ready:
-    #             _apply_fixed_range()
-    #         if self._hscroll_ready_main:
-    #             _apply_main_fixed_range()
-    #         QTimer.singleShot(10, self._refresh_table_scrollbars)
-
-    #     self.splitter.splitterMoved.connect(_on_splitter_moved)
-    
     def _build_splitter(self):
         # ---------- tiny local helpers so this method is self-contained ----------
         if not hasattr(self, "_hm_layout_mode"):
             self._hm_layout_mode = "vertical"  # persisted layout mode
 
-        # def _apply_heatmap_layout(force: str | None = None):
-        #     """Apply current (or forced) layout to the dual-heatmap splitter."""
-        #     mode = force or self._hm_layout_mode
-        #     if not hasattr(self, "top_hsplit") or self.top_hsplit is None:
-        #         return
-
-        #     want = Qt.Orientation.Horizontal if mode == "horizontal" else Qt.Orientation.Vertical
-        #     if self.top_hsplit.orientation() != want:
-        #         self.top_hsplit.setOrientation(want)
-
-        #     # update toggle label to show the *next* action
-        #     if hasattr(self, "btnToggleHmLayout") and self.btnToggleHmLayout:
-        #         self.btnToggleHmLayout.setText("⇅ Stack" if mode == "horizontal" else "⇆ Side-by-side")
-
-        #     # give both panes equal space after layout settles
-        #     def _sizes():
-        #         total = max(1, sum(self.top_hsplit.sizes()) or self.top_hsplit.size().height())
-        #         half = max(1, total // 2)
-        #         self.top_hsplit.setSizes([half, half])
-
-        #     QTimer.singleShot(0, _sizes)
-        #     QTimer.singleShot(150, _sizes)
-
-        # def _toggle_heatmap_layout():
-        #     self._hm_layout_mode = "vertical" if self._hm_layout_mode == "horizontal" else "horizontal"
-        #     _apply_heatmap_layout()
 
         # ---------- TOP: build a stack (single view + dual heatmaps) ----------
         self.main_web_page = QWidget()
@@ -2567,32 +2275,6 @@ class MyMainWindow(QMainWindow):
         dual_lay.setContentsMargins(0, 0, 0, 0)
         dual_lay.setSpacing(6)
 
-        # # --- tiny toolbar with the toggle button ---
-        # top_toolbar = QHBoxLayout()
-        # top_toolbar.setContentsMargins(8, 6, 8, 4)
-        # top_toolbar.setSpacing(8)
-
-        # self.btnToggleHmLayout = QPushButton("⇅ Stack" if self._hm_layout_mode == "horizontal" else "⇆ Side-by-side")
-        # self.btnToggleHmLayout.setToolTip("Toggle dual-heatmap layout: side-by-side / stacked")
-        # self.btnToggleHmLayout.setCursor(Qt.CursorShape.PointingHandCursor)
-        # self.btnToggleHmLayout.setFixedHeight(28)
-        # self.btnToggleHmLayout.setStyleSheet("""
-        #     QPushButton {
-        #         background:#ffffff; color:#000000;
-        #         border: 1.5px solid #000000;
-        #         border-radius: 6px; padding: 2px 10px; font-weight: 500;
-        #     }
-        #     QPushButton:hover  { background:#d6d3ce; }
-        #     QPushButton:pressed{ background:#111111; color:#ffffff; }
-        #     QPushButton:disabled {
-        #         background:#3a3a3a; color:#aaaaaa; border:1.5px solid #555555;
-        #     }
-        # """)
-        # self.btnToggleHmLayout.clicked.connect(_toggle_heatmap_layout)
-
-        # top_toolbar.addWidget(self.btnToggleHmLayout, 0)
-        # top_toolbar.addStretch(1)
-        # dual_lay.addLayout(top_toolbar)
 
 
                 # --- tiny toolbar with the toggle button + show/hide table ---
@@ -2600,38 +2282,7 @@ class MyMainWindow(QMainWindow):
         top_toolbar.setContentsMargins(8, 6, 8, 4)
         top_toolbar.setSpacing(8)
 
-        # self.btnToggleHmLayout = QPushButton("⇅ Stack" if self._hm_layout_mode == "horizontal" else "⇆ Side-by-side")
-        # self.btnToggleHmLayout.setToolTip("Toggle dual-heatmap layout: side-by-side / stacked")
-        # self.btnToggleHmLayout.setCursor(Qt.CursorShape.PointingHandCursor)
-        # self.btnToggleHmLayout.setFixedHeight(28)
-        # self.btnToggleHmLayout.setStyleSheet("""
-        #     QPushButton { background:#ffffff; color:#000000; border:1.5px solid #000000;
-        #                 border-radius:6px; padding:2px 10px; font-weight:500; }
-        #     QPushButton:hover  { background:#d6d3ce; }
-        #     QPushButton:pressed{ background:#111111; color:#ffffff; }
-        # """)
-        # # self.btnToggleHmLayout.clicked.connect(_toggle_heatmap_layout)
-        # self.btnToggleHmLayout.clicked.connect(lambda: self._apply_heatmap_layout(
-        #     "vertical" if self._hm_layout_mode == "horizontal" else "horizontal"
-        # ))
 
-
-
-        # # NEW: Show/Hide Table button (only meaningful on Heatmap tab)
-        # self.btnToggleHmTable = QPushButton("Show Table" if not self._hm_table_visible else "Hide Table")
-        # self.btnToggleHmTable.setToolTip("Show/Hide defects table for heatmap")
-        # self.btnToggleHmTable.setCursor(Qt.CursorShape.PointingHandCursor)
-        # self.btnToggleHmTable.setFixedHeight(28)
-        # self.btnToggleHmTable.setStyleSheet("""
-        #     QPushButton { background:#ffffff; color:#000000; border:1.5px solid #000000;
-        #                 border-radius:6px; padding:2px 10px; font-weight:500; }
-        #     QPushButton:hover  { background:#d6d3ce; }
-        #     QPushButton:pressed{ background:#111111; color:#ffffff; }
-        # """)
-        # self.btnToggleHmTable.clicked.connect(self._toggle_heatmap_table)
-
-        # top_toolbar.addWidget(self.btnToggleHmLayout, 0)
-        # top_toolbar.addWidget(self.btnToggleHmTable, 0)
         top_toolbar.addStretch(1)
         dual_lay.addLayout(top_toolbar)
 
@@ -2880,6 +2531,8 @@ class MyMainWindow(QMainWindow):
 
         # ---------- Splitter with mid tabbar ----------
         self.splitter = MidBarSplitter(self, tabbar=self.mid_tabbar)
+        self.splitter.setStretchFactor(0, 3)  # top area (heatmaps)
+        self.splitter.setStretchFactor(1, 1)  # bottom area (table)
         self.splitter.addWidget(self.main_web_page)
         self.splitter.addWidget(self.bottom_stack)
         self.splitter.setChildrenCollapsible(False)
@@ -2943,7 +2596,7 @@ class MyMainWindow(QMainWindow):
         self.splitter.splitterMoved.connect(_on_splitter_moved)
 
 
-    
+
 
     def _setup_left_vertical_scrollbar_sync(self):
         """Sync the custom left vertical scrollbar with tableWidgetDefect's internal vbar."""
@@ -3110,7 +2763,7 @@ class MyMainWindow(QMainWindow):
         self.statusBar().showMessage(f'           Status:      {self.current_message}')
         self.timer.stop()
         self._t0 = None
-        self.right_status_label.setText("0.0s    ")
+        self.right_status_label.setText("0.0s")
 
     def setup_actions(self):
         a = self.ui
@@ -3149,7 +2802,7 @@ class MyMainWindow(QMainWindow):
         idx = cb.currentIndex()
         if idx < cb.count() - 1:  # not last
             cb.setCurrentIndex(idx + 1)
-            self.load_selected_pipe()  # 👈 directly load
+            self.load_selected_pipe()
 
     def load_prev_pipe(self):
         """Go to previous pipe and load automatically"""
@@ -3157,86 +2810,8 @@ class MyMainWindow(QMainWindow):
         idx = cb.currentIndex()
         if idx > 0:  # not first
             cb.setCurrentIndex(idx - 1)
-            self.load_selected_pipe()  # 👈 directly load
+            self.load_selected_pipe()
 
-    # def open_project(self):
-    #     try:
-    #         dlg = QFileDialog(self)
-    #         dlg.setFileMode(QFileDialog.FileMode.Directory)
-    #         dlg.setOption(QFileDialog.Option.ShowDirsOnly)
-    #         dlg.setWindowTitle("Select Project Folder (PKLs + pipe_* folders)")
-    #         if dlg.exec() != QFileDialog.DialogCode.Accepted:
-    #             self.project_is_open = False
-    #             self._toggle_plot_ui(False)
-    #             self._show_watermark()
-    #             self._update_project_actions()
-    #             return
-    #
-    #         root = dlg.selectedFiles()[0]
-    #         self.project_root = root
-    #
-    #         self.pipe_tally = None
-    #         loaded_tally = self._auto_load_pipe_tally(root)
-    #         if not loaded_tally:
-    #             print("[pipe_tally] No tally file found in this project; graphs/reports will warn if needed.")
-    #
-    #         self.pkl_files = [
-    #             os.path.join(root, f)
-    #             for f in os.listdir(root)
-    #             if f.lower().endswith(".pkl")
-    #         ]
-    #
-    #         def nkey(path):
-    #             filename = os.path.basename(path)
-    #             return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", filename)]
-    #         self.pkl_files.sort(key=nkey)
-    #
-    #         cb = self.ui.comboBoxPipe
-    #         cb.blockSignals(True)
-    #         cb.clear()
-    #         names = [os.path.splitext(os.path.basename(f))[0] for f in self.pkl_files]
-    #         if names:
-    #             cb.addItems(names)
-    #             cb.setCurrentIndex(-1)
-    #         else:
-    #             cb.addItem("-Pipe-")
-    #             # 👈 nothing selected
-    #
-    #
-    #         cb.lineEdit().setPlaceholderText("Type pipe number...")
-    #         cb.completer().setCompletionMode(QtWidgets.QCompleter.CompletionMode.PopupCompletion)
-    #         cb.setInsertPolicy(QtWidgets.QComboBox.InsertPolicy.NoInsert)
-    #         cb.blockSignals(False)
-    #
-    #         try:
-    #             cb.lineEdit().returnPressed.disconnect()
-    #         except Exception:
-    #             pass
-    #         cb.lineEdit().returnPressed.connect(self.jump_to_number)
-    #
-    #         if self.pkl_files:
-    #             self.project_is_open = True
-    #             self._hide_create_project_message()
-    #             self._toggle_plot_ui(True)
-    #
-    #             # Show overlay instead of auto-loading
-    #             self._show_select_pipe_message()
-    #
-    #             # 👇 Force check so Load button activates if default pipe is already selected
-    #             self.update_load_button_state(self.ui.comboBoxPipe.currentIndex())
-    #         else:
-    #             self.project_is_open = False
-    #             self._toggle_plot_ui(False)
-    #             self._show_watermark()
-    #             QMessageBox.warning(self, "No PKLs", "No .pkl files found in the selected folder.")
-    #
-    #         self._update_project_actions()
-    #     except Exception as e:
-    #         self.project_is_open = False
-    #         self._toggle_plot_ui(False)
-    #         self._show_watermark()
-    #         self._update_project_actions()
-    #         self.open_Error(e)
 
     def _force_full_start_state(self):
         """Hard reset the UI to startup layout (Heatmap, table hidden, buttons off)."""
@@ -3394,6 +2969,7 @@ class MyMainWindow(QMainWindow):
                 self._create_proj_container.show()
 
             self.open_Error(e)
+        self.ui.action_Pipe_Sch.setEnabled(True)
 
     def _style_left_vertical_bar(self):
         # icon paths
@@ -3665,7 +3241,7 @@ class MyMainWindow(QMainWindow):
                 self.btnDigsheetAbs.setEnabled(False)
             if hasattr(self.ui, 'tableWidgetDefect'):
                 self.ui.tableWidgetDefect.clearSelection()
-            
+
             pkl_path = self.pkl_files[idx]
             name = os.path.splitext(os.path.basename(pkl_path))[0]
             pipe_idx = self._extract_index(name)
@@ -3758,7 +3334,7 @@ class MyMainWindow(QMainWindow):
         self.prox_linechart = assets.get("prox_linechart")
         self.hhmap = assets.get("hallsensor_heatmap")
         self.phmap = assets.get("proximity_heatmap")
-    
+
     def on_table_data_ready(self, df):
         """Handle processed table data"""
         self.curr_data = df  # 👈 make sure we keep a reference for filtering later
@@ -3812,6 +3388,11 @@ class MyMainWindow(QMainWindow):
             self.tabSwitcherDropdown.setCurrentIndex(0)
             self.tabSwitcherDropdown.blockSignals(False)
 
+        if hasattr(self, "btnOpenFilterDlg"):
+            self.btnOpenFilterDlg.setEnabled(True)
+
+        if hasattr(self, "tabSwitcherDropdown"):
+            self.tabSwitcherDropdown.setEnabled(True)
 
     @staticmethod
     def _extract_index(text: str) -> str:
@@ -3833,14 +3414,23 @@ class MyMainWindow(QMainWindow):
             self._show_no_defects_message()
             return
 
-        original_count = len(df)
-        if "Feature Type" in df.columns:
-            df = df[df["Feature Type"].astype(str).str.strip().str.lower() == "metal loss"]
+        # original_count = len(df)
+        # if "Feature Type" in df.columns:
+        #     df = df[df["Feature Type"].astype(str).str.strip().str.lower() == "metal loss"]
 
-        if df.empty:
-            print(f"⚠️ No Metal Loss defects found (filtered from {original_count} rows)")
-            self._show_no_defects_message()
-            return
+        # if df.empty:
+        #     print(f"⚠️ No Metal Loss defects found (filtered from {original_count} rows)")
+        #     self._show_no_defects_message()
+        #     return
+
+        # original_count = len(df)
+        # if "Feature Type" in df.columns:
+        #     df = df[df["Feature Type"].astype(str).str.strip().str.lower() == "metal loss"]
+
+        # if df.empty:
+        #     print(f"⚠️ No Metal Loss defects found (filtered from {original_count} rows)")
+        #     self._show_no_defects_message()
+        #     return
 
         # normalize column variants
         variants = {
@@ -3915,6 +3505,9 @@ class MyMainWindow(QMainWindow):
 
         self._show_defects_table()
         self._start_fill_qtablewidget_batched(view, chunk_size=300)
+
+        setup_table_scroll(self.ui.tableWidgetDefect)
+        QTimer.singleShot(150, self._refresh_table_scrollbars)
 
 
     def _start_fill_qtablewidget_batched(self, df: pd.DataFrame, *, chunk_size: int = 200):
@@ -4169,7 +3762,7 @@ class MyMainWindow(QMainWindow):
             return
 
         self._last_allowed_tab_index = index
-        
+
         # Get current tab name
         tab_text = self.ui.tabWidgetM.tabText(index).strip()
                 # Fix: Switch the upper frame content correctly
@@ -4201,7 +3794,7 @@ class MyMainWindow(QMainWindow):
             if hasattr(self, "btnToggleHmLayout"):
                 self.btnToggleHmLayout.setEnabled(True)
             QTimer.singleShot(100, lambda: self._reset_splitter_ratio(0.45))
-        
+
         self.tab_switcher2()
         self.update_digsheet_button_state()
 
@@ -4250,21 +3843,21 @@ class MyMainWindow(QMainWindow):
             # if tab == "Heatmap":
             #     # Set dual mode layout
             #     self._set_top_mode("dual")
-                
+
             #     # Load both heatmaps into the splitter
             #     if self.hhmap:
             #         self._load_scrollable_chart(self.web_view_left, self.hhmap, min_w=2200, min_h=1400)
             #     else:
             #         self.web_view_left.setUrl(QUrl())
-                
+
             #     if self.phmap:
             #         self._load_scrollable_chart(self.web_view_right, self.phmap, min_w=2200, min_h=1400)
             #     else:
             #         self.web_view_right.setUrl(QUrl())
-                
+
             #     # Apply the current layout mode (horizontal or vertical)
             #     self.apply_heatmap_layout(self.hm_layout_mode)
-                
+
             #     self.bottom_stack.setCurrentIndex(0)
             #     QTimer.singleShot(100, self._arm_main_topbar)
             if tab == "Heatmap":
@@ -4272,25 +3865,37 @@ class MyMainWindow(QMainWindow):
                 if not hasattr(self, 'top_stack'):
                     print("Warning: top_stack not yet initialized, skipping heatmap view")
                     return
-                
+
                 # Set dual mode layout
                 self._set_top_mode("dual")
-                
+
                 # Load both heatmaps into the splitter
                 if self.hhmap and hasattr(self, 'web_view_left'):
                     self._load_scrollable_chart(self.web_view_left, self.hhmap, min_w=2200, min_h=1400)
                 else:
                     if hasattr(self, 'web_view_left'):
                         self.web_view_left.setUrl(QUrl())
-                
+
                 if self.phmap and hasattr(self, 'web_view_right'):
                     self._load_scrollable_chart(self.web_view_right, self.phmap, min_w=2200, min_h=1400)
                 else:
                     if hasattr(self, 'web_view_right'):
                         self.web_view_right.setUrl(QUrl())
-                
+
                 # Apply the current layout mode
                 self._apply_heatmap_layout(self._hm_layout_mode)
+                # --- 🔄 Synchronize zoom/pan between both heatmaps ---
+                try:
+                    if hasattr(self, "web_view_left") and hasattr(self, "web_view_right"):
+                        self.web_view_left.relay.relayout_json.connect(
+                            lambda payload: self._sync_heatmap_range(self.web_view_right, payload)
+                        )
+                        self.web_view_right.relay.relayout_json.connect(
+                            lambda payload: self._sync_heatmap_range(self.web_view_left, payload)
+                        )
+                        print("✅ Heatmap synchronization connections established")
+                except Exception as sync_err:
+                    print(f"⚠️ Heatmap sync setup failed: {sync_err}")
 
                 left_pixel_offset = 120     # your desired vertical pixel scroll offset for left heatmap
                 right_pixel_offset = 120     # desired offset for right heatmap
@@ -4298,7 +3903,7 @@ class MyMainWindow(QMainWindow):
                 QTimer.singleShot(100, lambda: self.left_scroll.verticalScrollBar().setValue(left_pixel_offset))
                 QTimer.singleShot(100, lambda: self.right_scroll.verticalScrollBar().setValue(right_pixel_offset))
 
-                
+
                 self.bottom_stack.setCurrentIndex(0)
                 QTimer.singleShot(100, self._arm_main_topbar)
 
@@ -4337,7 +3942,7 @@ class MyMainWindow(QMainWindow):
             self.update_digsheet_button_state()
         except Exception as e:
             self.open_Error(e)
-    
+
 
     BACKEND_LOCKED_COLS = {"Empty"}  # for styling purpose this is takin extra ,DONT REMOVE IT FROM THE SET
 
@@ -4488,8 +4093,33 @@ class MyMainWindow(QMainWindow):
             v.setSpacing(10)
 
             header = QHBoxLayout()
-            back_btn = QPushButton("◀ Back")
+            back_btn = QPushButton("Back")
+            back_btn.setIcon(QIcon("ui/icons/arrow_left.svg"))  # replace with your arrow icon path
+            back_btn.setIconSize(QSize(16, 16))
             back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+
+            back_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #ffffff;
+                    color: #000000;
+                    border: 1.5px solid #000000;
+                    border-radius: 8px;
+                    padding: 5px 14px;
+                    font-size: 13px;
+                    font-weight: 500;
+                }
+                QPushButton:hover {
+                    background-color: #f2f2f2;
+                }
+                QPushButton:pressed {
+                    background-color: #e0e0e0;
+                }
+                QPushButton:disabled {
+                    background-color: #f9f9f9;
+                    color: #aaaaaa;
+                    border: 1.5px solid #cccccc;
+                }
+            """)
             back_btn.clicked.connect(self._close_graphs_view)
             title = QLabel("Graphs")
             title.setStyleSheet("font-weight: 600; font-size: 14pt;")
@@ -4512,6 +4142,7 @@ class MyMainWindow(QMainWindow):
             except Exception:
                 pass
             self.open_Error(f"Unable to open graphs inline: {e}")
+
 
     def _close_graphs_view(self):
         try:
@@ -4571,12 +4202,12 @@ class MyMainWindow(QMainWindow):
             print(f"[Warning] pipetally_main directory not found in {root}")
             self.pipe_tally = None
             return False
-        
+
         candidates = [
             os.path.join(pipetally_dir, "pipe_tally.xlsx"),
             os.path.join(pipetally_dir, "pipe_tally.csv"),
         ]
-        
+
         # Also scan for any tally-related files in the pipetally_main directory
         for f in os.listdir(pipetally_dir):
             name = f.lower()
@@ -4617,82 +4248,6 @@ class MyMainWindow(QMainWindow):
         self.pipe_tally = None
         return False
 
-    # def open_XYZ(self):
-    #     try:
-    #         if sys.platform == "win32":
-    #             path = r"C:\Program Files\Google\Google Earth Pro\client\googleearth.exe"
-    #         elif sys.platform == "darwin":
-    #             path = "/Applications/Google Earth Pro.app/Contents/MacOS/Google Earth Pro"
-    #         else:
-    #             path = "/usr/bin/google-earth-pro"
-    #         if os.path.exists(path):
-    #             subprocess.Popen([path])
-    #     except Exception:
-    #         pass
-
-    # def open_XYZ(self):
-    #     try:
-    #         # Define KML path for testing purposes
-    #         kml_path = r"C:\Users\anubh\Downloads\sample_locations2.kml"  # Replace with your actual KML file path
-            
-    #         # Determine Google Earth Pro path based on platform
-    #         if sys.platform == "win32":
-    #             earth_path = r"C:\Program Files\Google\Google Earth Pro\client\googleearth.exe"
-    #         elif sys.platform == "darwin":
-    #             earth_path = "/Applications/Google Earth Pro.app/Contents/MacOS/Google Earth Pro"
-    #         else:
-    #             earth_path = "/usr/bin/google-earth-pro"
-            
-    #         # Check if Google Earth Pro is installed
-    #         if not os.path.exists(earth_path):
-    #             # Show installation message
-    #             reply = QMessageBox.question(
-    #                 self, 
-    #                 "Google Earth Pro Not Found",
-    #                 "Google Earth Pro is not installed on your system.\n\n"
-    #                 "Would you like to download and install it?\n\n"
-    #                 "Click 'Yes' to open the download page, or 'No' to cancel.",
-    #                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-    #                 QMessageBox.StandardButton.Yes
-    #             )
-                
-    #             if reply == QMessageBox.StandardButton.Yes:
-    #                 # Open download page in default browser
-    #                 import webbrowser
-    #                 webbrowser.open("https://www.google.com/earth/versions/#earth-pro")
-    #             return
-            
-    #         # Check if KML file exists
-    #         if not os.path.exists(kml_path):
-    #             QMessageBox.warning(
-    #                 self,
-    #                 "KML File Not Found", 
-    #                 f"The KML file could not be found at:\n{kml_path}\n\n"
-    #                 "Please check the file path and try again."
-    #             )
-    #             return
-            
-    #         # Launch Google Earth Pro with the KML file
-    #         try:
-    #             subprocess.Popen([earth_path, kml_path])
-    #             # QMessageBox.information(
-    #             #     self,
-    #             #     "Success",
-    #             #     "Google Earth Pro has been launched with the KML file."
-    #             # )
-    #         except Exception as launch_error:
-    #             QMessageBox.critical(
-    #                 self,
-    #                 "Launch Error",
-    #                 f"Failed to launch Google Earth Pro:\n{str(launch_error)}"
-    #             )
-                
-    #     except Exception as e:
-    #         QMessageBox.critical(
-    #             self,
-    #             "Error",
-    #             f"An unexpected error occurred:\n{str(e)}"
-    #         )
 
     def open_XYZ(self):
         if not self.project_is_open:
@@ -4708,20 +4263,20 @@ class MyMainWindow(QMainWindow):
                     "Please open a project first to load KML files from the project folder."
                 )
                 return
-            
+
             # Search for KML files in the project folder
             kml_files = []
             project_path = Path(self.project_root)
-            
+
             # Search for KML files in project root and subdirectories
             kml_patterns = ["*.kml", "*.KML"]
             for pattern in kml_patterns:
                 kml_files.extend(project_path.glob(pattern))
                 kml_files.extend(project_path.glob(f"**/{pattern}"))  # Search subdirectories too
-            
+
             # Remove duplicates and convert to strings
             kml_files = list(set(str(f) for f in kml_files))
-            
+
             if not kml_files:
                 QMessageBox.information(
                     self,
@@ -4730,7 +4285,7 @@ class MyMainWindow(QMainWindow):
                     "Please ensure your KML files are placed in the project directory."
                 )
                 return
-            
+
             # If multiple KML files found, let user choose
             kml_path = None
             if len(kml_files) == 1:
@@ -4749,10 +4304,10 @@ class MyMainWindow(QMainWindow):
                 if ok and selected_file:
                     # Find the full path for the selected file
                     kml_path = next((f for f in kml_files if os.path.basename(f) == selected_file), None)
-            
+
             if not kml_path:
                 return
-            
+
             # Determine Google Earth Pro path based on platform
             if sys.platform == "win32":
                 earth_path = r"C:\Program Files\Google\Google Earth Pro\client\googleearth.exe"
@@ -4760,12 +4315,12 @@ class MyMainWindow(QMainWindow):
                 earth_path = "/Applications/Google Earth Pro.app/Contents/MacOS/Google Earth Pro"
             else:
                 earth_path = "/usr/bin/google-earth-pro"
-            
+
             # Check if Google Earth Pro is installed
             if not os.path.exists(earth_path):
                 # Show installation message
                 reply = QMessageBox.question(
-                    self, 
+                    self,
                     "Google Earth Pro Not Found",
                     "Google Earth Pro is not installed on your system.\n\n"
                     "Would you like to download and install it?\n\n"
@@ -4773,13 +4328,13 @@ class MyMainWindow(QMainWindow):
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                     QMessageBox.StandardButton.Yes
                 )
-                
+
                 if reply == QMessageBox.StandardButton.Yes:
                     # Open download page in default browser
                     import webbrowser
                     webbrowser.open("https://www.google.com/earth/versions/#earth-pro")
                 return
-            
+
             # Launch Google Earth Pro with the selected KML file
             try:
                 subprocess.Popen([earth_path, kml_path])
@@ -4794,7 +4349,7 @@ class MyMainWindow(QMainWindow):
                     "Launch Error",
                     f"Failed to launch Google Earth Pro with the KML file:\n{str(launch_error)}"
                 )
-                
+
         except Exception as e:
             QMessageBox.critical(
                 self,
@@ -4846,45 +4401,15 @@ class MyMainWindow(QMainWindow):
     def open_Assessment(self):
         Assess_Dialog().exec()
 
-    # def open_PipeHigh(self):
-    #     try:
-    #         # ✅ Check if pipe_tally is loaded and pass it to PipeHighlightApp
-    #         if hasattr(self, 'pipe_tally') and isinstance(self.pipe_tally, pd.DataFrame) and not self.pipe_tally.empty:
-    #             print(f"🔍 Opening Pipe Highlights with {len(self.pipe_tally)} rows of data")
-    #             print(f"📊 Available columns: {list(self.pipe_tally.columns)}")
-                
-    #             from pages.Pipe_Highlights import run_app
-                
-    #             # ✅ Pass the loaded pipe_tally DataFrame to the app
-    #             run_app(pipe_tally_df=self.pipe_tally)
-                
-    #         else:
-    #             # If no pipe tally loaded, show informative error
-    #             QMessageBox.warning(
-    #                 self, 
-    #                 "No Pipe Tally Data", 
-    #                 "Please load a project with pipe tally data first.\n\n"
-    #                 "Steps to load data:\n"
-    #                 "1. Go to File → Create Project\n"
-    #                 "2. Select a folder containing pipe tally files\n"
-    #                 "3. Wait for the data to load\n"
-    #                 "4. Try opening Pipe Highlights again"
-    #             )
-                
-    #     except ImportError as e:
-    #         self.open_Error(f"Could not import Pipe Highlights module:\n{e}\n\nPlease check if the Pipe_Highlights.py file exists in the pages folder.")
-    #     except Exception as e:
-    #         self.open_Error(f"Error running Pipe Highlight:\n{e}")
-
-
     def open_PipeHigh(self):
         """Open Pipeline Highlights embedded in the main window"""
         try:
             # Check if pipe_tally is loaded
-            if not hasattr(self, 'pipe_tally') or not isinstance(self.pipe_tally, pd.DataFrame) or self.pipe_tally.empty:
+            if not hasattr(self, 'pipe_tally') or not isinstance(self.pipe_tally,
+                                                                 pd.DataFrame) or self.pipe_tally.empty:
                 QMessageBox.warning(
-                    self, 
-                    "No Pipe Tally Data", 
+                    self,
+                    "No Pipe Tally Data",
                     "Please load a project with pipe tally data first.\n\n"
                     "Steps to load data:\n"
                     "1. Go to File → Create Project\n"
@@ -4897,17 +4422,17 @@ class MyMainWindow(QMainWindow):
             # Check if Pipeline Highlights is already open
             if hasattr(self, '_central_pipeline') and self.centralWidget() is self._central_pipeline:
                 return  # Already showing Pipeline Highlights
-                
+
             # Save the original central widget
             if not hasattr(self, '_central_original') or self._central_original is None:
                 self._central_original = self.centralWidget()
 
             print(f"🔍 Opening Pipeline Highlights with {len(self.pipe_tally)} rows of data")
             print(f"📊 Available columns: {list(self.pipe_tally.columns)}")
-            
+
             # Import the embedded version
             from pages.Pipe_Highlights_Embedded import PipeHighlightEmbedded
-            
+
             # Create container widget
             container = QWidget()
             layout = QVBoxLayout(container)
@@ -4916,36 +4441,63 @@ class MyMainWindow(QMainWindow):
 
             # Header with back button
             header_layout = QHBoxLayout()
-            back_btn = QPushButton("◀ Back")
+            back_btn = QPushButton("Back")
+            back_btn.setIcon(QIcon("ui/icons/arrow_left.svg"))  # replace with your arrow icon path
+            back_btn.setIconSize(QSize(16, 16))
             back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+
+            back_btn.setStyleSheet("""
+                   QPushButton {
+                       background-color: #ffffff;
+                       color: #000000;
+                       border: 1.5px solid #000000;
+                       border-radius: 8px;
+                       padding: 5px 14px;
+                       font-size: 13px;
+                       font-weight: 500;
+                   }
+                   QPushButton:hover {
+                       background-color: #f2f2f2;
+                   }
+                   QPushButton:pressed {
+                       background-color: #e0e0e0;
+                   }
+                   QPushButton:disabled {
+                       background-color: #f9f9f9;
+                       color: #aaaaaa;
+                       border: 1.5px solid #cccccc;
+                   }
+               """)
             back_btn.clicked.connect(self._close_pipeline_view)
-            
+
             title_label = QLabel("")
             title_label.setStyleSheet("font-weight: 600; font-size: 16pt; color: #2c3e50;")
-            
+
             header_layout.addWidget(back_btn)
             header_layout.addSpacing(20)
             header_layout.addWidget(title_label)
             header_layout.addStretch(1)
-            
+
             layout.addLayout(header_layout)
 
             # Create and add the Pipeline Highlights widget
-            self._pipeline_widget = PipeHighlightEmbedded(parent=container, pipe_tally_df=self.pipe_tally, project_root=self.project_root)
+            self._pipeline_widget = PipeHighlightEmbedded(parent=container, pipe_tally_df=self.pipe_tally,
+                                                          project_root=self.project_root)
             layout.addWidget(self._pipeline_widget, stretch=1)
 
             # Store reference and switch central widget
             self._central_pipeline = container
-            
+
             # Switch to Pipeline Highlights view
             if self._central_original is not None and self._central_original.parent() is self:
                 self.takeCentralWidget()
             self.setCentralWidget(container)
-            
+
             print("✅ Pipeline Highlights opened successfully in embedded mode")
-            
+
         except ImportError as e:
-            self.open_Error(f"Could not import Pipeline Highlights module:\n{e}\n\nPlease check if the Pipe_Highlights_Embedded.py file exists in the pages folder.")
+            self.open_Error(
+                f"Could not import Pipeline Highlights module:\n{e}\n\nPlease check if the Pipe_Highlights_Embedded.py file exists in the pages folder.")
         except Exception as e:
             self.open_Error(f"Error running Pipeline Highlights:\n{e}")
             # Restore original view on error
@@ -4978,45 +4530,27 @@ class MyMainWindow(QMainWindow):
                 self._pipeline_widget = None
             if hasattr(self, '_central_pipeline'):
                 self._central_pipeline = None
-                
+
             print("✅ Returned to main view from Pipeline Highlights")
-            
+
         except Exception as e:
             print(f"⚠️ Error closing Pipeline Highlights view: {e}")
 
-
-
-    # def open_PipeScheme(self):
-    #     try:
-    #         from pipeline_schema.pipeline_schema import run_app
-    #         run_app()
-    #     except Exception as e:
-    #         self.open_Error(f"Error running Pipeline Schema:\n{e}")
-
     def open_PipeScheme(self):
         try:
-            from pipeline_schema.pipeline_schema import run_app
-            run_app(pipe_tally= self.project_root)   # <-- use the path stored on your main app
+            import subprocess, sys, os
+            pipeline_path = os.path.join("pipeline_schema", "pipeline_schema.py")
+            subprocess.Popen([sys.executable, pipeline_path, self.project_root])
         except Exception as e:
             self.open_Error(f"Error running Pipeline Schema:\n{e}")
 
     # def open_PipeScheme(self):
     #     try:
-    #         from pipeline_schema.pipeline_schema import run_app
-
-    #         print("DEBUG pipe_tally type:", type(self.pipe_tally))
-    #         if isinstance(self.pipe_tally, pd.DataFrame):
-    #             print("DEBUG pipe_tally shape:", self.pipe_tally.shape)
-    #             print("DEBUG pipe_tally columns:", list(self.pipe_tally.columns)[:10])
-    #         else:
-    #             print("DEBUG pipe_tally value:", self.pipe_tally)
-
-    #         run_app(pipe_tally=self.pipe_tally)
-
+    #         import subprocess, sys, os
+    #         pipeline_path = os.path.join("pipeline_schema", "pipeline_schema.py")
+    #         subprocess.Popen([sys.executable, pipeline_path])
     #     except Exception as e:
     #         self.open_Error(f"Error running Pipeline Schema:\n{e}")
-
-
 
     def open_Report(self):
         cols = [r"Abs. Distance (m)", r"Depth %", r"Type", r"ERF (ASME B31G)", r"Orientation o' clock"]
@@ -5037,71 +4571,82 @@ class MyMainWindow(QMainWindow):
         )
         self.fr = Report(fil); self.fr.show()
 
+    # def open_ERF(self):
+    #     self.erf = ERF()
+    #     def update_result():
+    #         OD = self.erf.doubleSpinBox.value()
+    #         WT = self.erf.doubleSpinBox_3.value()
+    #         SMYS = self.erf.doubleSpinBox_2.value()
+    #         MAOP = self.erf.doubleSpinBox_4.value()
+    #         SF = self.erf.doubleSpinBox_5.value()
+    #         Axial_L = self.erf.doubleSpinBox_8.value()
+    #         Depth_P = self.erf.doubleSpinBox_9.value()
+    #         if OD == 0 or WT == 0 or SF == 0:
+    #             self.erf.lineEdit_2.setText("-"); self.erf.lineEdit_3.setText("-"); return
+    #         flow_stress = 1.1 * SMYS
+    #         z_factor = (Axial_L ** 2) / (OD * WT)
+    #         M = (1 + 0.8 * z_factor) ** 0.5
+    #         y = 1 - 2/3 * Depth_P / WT
+    #         z = 1 - 2/3 * Depth_P / WT / M
+    #         k = y / z
+    #         S = (flow_stress * k) if z_factor <= 20 else (flow_stress * (1 - Depth_P / WT))
+    #         EFP = (2 * S * WT) / OD
+    #         PSafe = EFP / SF if SF else 0
+    #         if PSafe == 0:
+    #             self.erf.lineEdit_2.setText("-"); self.erf.lineEdit_3.setText("-"); return
+    #         ERFv = MAOP / PSafe
+    #         self.erf.lineEdit_2.setText(f"{ERFv:.2f}")
+    #         self.erf.lineEdit_3.setText(f"{PSafe:.2f}")
+    #         import numpy as np
+    #         def calc_B(d_over_t):
+    #             if d_over_t >= 0.175:
+    #                 B = np.sqrt(((d_over_t / (1.1 * d_over_t - 0.15)) ** 2) - 1)
+    #                 return B if B <= 4 else 4
+    #             return 4
+    #         xs = np.linspace(0, 1, 100)
+    #         ys = [calc_B(x) for x in xs]
+    #         Xc = Axial_L / 300; Yc = Depth_P / 20
+    #         color = 'green' if Yc < calc_B(Xc) else 'red'
+    #         fig = go.Figure()
+    #         fig.add_trace(go.Scatter(x=xs, y=ys, mode='lines', name='ASME B31G'))
+    #         fig.add_trace(go.Scatter(x=[Xc], y=[Yc], mode='markers',
+    #                                  marker=dict(color=color, size=10),
+    #                                  name='Defect'))
+    #         fig.update_layout(xaxis_title='Axial Length (mm)', yaxis_title='Peak Depth', height=450, width=1000)
+    #         fp = resource_path('backend/files/ASME.html'); fig.write_html(fp)
+    #         self.erf.web_viewERF.setUrl(QUrl.fromLocalFile(fp))
+    #     for w in (self.erf.doubleSpinBox, self.erf.doubleSpinBox_3, self.erf.doubleSpinBox_2,
+    #               self.erf.doubleSpinBox_4, self.erf.doubleSpinBox_5,
+    #               self.erf.doubleSpinBox_8, self.erf.doubleSpinBox_9):
+    #         w.valueChanged.connect(update_result)
+    #     update_result()
+    #     self.erf.show()
+
     def open_ERF(self):
-        self.erf = ERF()
-        def update_result():
-            OD = self.erf.doubleSpinBox.value()
-            WT = self.erf.doubleSpinBox_3.value()
-            SMYS = self.erf.doubleSpinBox_2.value()
-            MAOP = self.erf.doubleSpinBox_4.value()
-            SF = self.erf.doubleSpinBox_5.value()
-            Axial_L = self.erf.doubleSpinBox_8.value()
-            Depth_P = self.erf.doubleSpinBox_9.value()
-            if OD == 0 or WT == 0 or SF == 0:
-                self.erf.lineEdit_2.setText("-"); self.erf.lineEdit_3.setText("-"); return
-            flow_stress = 1.1 * SMYS
-            z_factor = (Axial_L ** 2) / (OD * WT)
-            M = (1 + 0.8 * z_factor) ** 0.5
-            y = 1 - 2/3 * Depth_P / WT
-            z = 1 - 2/3 * Depth_P / WT / M
-            k = y / z
-            S = (flow_stress * k) if z_factor <= 20 else (flow_stress * (1 - Depth_P / WT))
-            EFP = (2 * S * WT) / OD
-            PSafe = EFP / SF if SF else 0
-            if PSafe == 0:
-                self.erf.lineEdit_2.setText("-"); self.erf.lineEdit_3.setText("-"); return
-            ERFv = MAOP / PSafe
-            self.erf.lineEdit_2.setText(f"{ERFv:.2f}")
-            self.erf.lineEdit_3.setText(f"{PSafe:.2f}")
-            import numpy as np
-            def calc_B(d_over_t):
-                if d_over_t >= 0.175:
-                    B = np.sqrt(((d_over_t / (1.1 * d_over_t - 0.15)) ** 2) - 1)
-                    return B if B <= 4 else 4
-                return 4
-            xs = np.linspace(0, 1, 100)
-            ys = [calc_B(x) for x in xs]
-            Xc = Axial_L / 300; Yc = Depth_P / 20
-            color = 'green' if Yc < calc_B(Xc) else 'red'
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=xs, y=ys, mode='lines', name='ASME B31G'))
-            fig.add_trace(go.Scatter(x=[Xc], y=[Yc], mode='markers',
-                                     marker=dict(color=color, size=10),
-                                     name='Defect'))
-            fig.update_layout(xaxis_title='Axial Length (mm)', yaxis_title='Peak Depth', height=450, width=1000)
-            fp = resource_path('backend/files/ASME.html'); fig.write_html(fp)
-            self.erf.web_viewERF.setUrl(QUrl.fromLocalFile(fp))
-        for w in (self.erf.doubleSpinBox, self.erf.doubleSpinBox_3, self.erf.doubleSpinBox_2,
-                  self.erf.doubleSpinBox_4, self.erf.doubleSpinBox_5,
-                  self.erf.doubleSpinBox_8, self.erf.doubleSpinBox_9):
-            w.valueChanged.connect(update_result)
-        update_result()
-        self.erf.show()
+        import threading
+
+        # Inner function - no self parameter
+        def run_erf():
+            erf_app = ERF(self.project_root)
+            erf_app.run()
+
+        # Start ERF calculator in a background thread
+        threading.Thread(target=run_erf, daemon=True).start()
 
     def open_Final_Report(self):
         # Check if a project is open
         if not self.project_is_open or not self.project_root:
             QMessageBox.warning(
                 self,
-                "No Project Open", 
+                "No Project Open",
                 "Please create/open a project first to access the Final Report."
             )
             return
-        
+
         # Look for Final_Report.pdf in the report folder within project root
         report_dir = os.path.join(self.project_root, "report")
         final_report_path = os.path.join(report_dir, "FR.pdf")
-        
+
         if not os.path.exists(final_report_path):
             QMessageBox.warning(
                 self,
@@ -5109,7 +4654,7 @@ class MyMainWindow(QMainWindow):
                 f"Could not find 'Final_Report.pdf' in the report directory:\n{report_dir}"
             )
             return
-        
+
         try:
             os.startfile(final_report_path)
         except Exception as e:
@@ -5129,11 +4674,11 @@ class MyMainWindow(QMainWindow):
                 "3. Then try accessing Preliminary Report again"
             )
             return
-        
+
         # Look for PR.pdf in the report folder within project root
         report_dir = os.path.join(self.project_root, "report")
         prelim_report_path = os.path.join(report_dir, "PR.pdf")
-        
+
         if not os.path.exists(prelim_report_path):
             QMessageBox.warning(
                 self,
@@ -5142,7 +4687,7 @@ class MyMainWindow(QMainWindow):
                 "Please ensure the report folder exists in your project and contains PR.pdf"
             )
             return
-        
+
         # Open the preliminary report
         try:
             os.startfile(prelim_report_path)
@@ -5163,7 +4708,7 @@ class MyMainWindow(QMainWindow):
                 "3. Then try accessing Pipe Tally again"
             )
             return
-            
+
         if not hasattr(self, 'pipe_tally') or self.pipe_tally is None:
             QMessageBox.warning(
                 self,
@@ -5171,16 +4716,16 @@ class MyMainWindow(QMainWindow):
                 "No pipe tally data is currently loaded from this project."
             )
             return
-        
+
         # Search for pipe tally files ONLY in the project root directory (not subdirectories)
         pipe_tally_files = []
         project_path = Path(self.project_root)
-        
+
         # Define pattern to match pipe tally related files (case-insensitive)
         # Matches: pipetally, pipe_tally, tally_pipe, pipe-tally, etc.
         import re
         tally_pattern = re.compile(r'.*(pipe.*tally|tally.*pipe|pipetally|pipe_tally|pipe-tally).*\.(xlsx?|csv)$', re.IGNORECASE)
-        
+
         # Search ONLY in project root (not subdirectories)
        # Search ONLY in pipetally_main subfolder
         pipetally_main_path = project_path / "pipetally_main"
@@ -5205,7 +4750,7 @@ class MyMainWindow(QMainWindow):
                 f"Error searching for pipe tally files:\n{e}"
             )
             return
-        
+
         if not pipe_tally_files:
             QMessageBox.warning(
                 self,
@@ -5216,7 +4761,7 @@ class MyMainWindow(QMainWindow):
                 "The pipe tally data is loaded in memory, but the source file could not be located."
             )
             return
-        
+
         # If multiple files found, let user choose
         pipe_tally_file = None
         if len(pipe_tally_files) == 1:
@@ -5235,7 +4780,7 @@ class MyMainWindow(QMainWindow):
             if ok and selected_file:
                 # Find the full path for the selected file
                 pipe_tally_file = next((f for f in pipe_tally_files if os.path.basename(f) == selected_file), None)
-        
+
         # Open the selected file
         if pipe_tally_file:
             try:
@@ -5488,7 +5033,7 @@ class MyMainWindow(QMainWindow):
         # ✅ Check if "no defects" message is showing
         if hasattr(self, '_no_defects_container') and self._no_defects_container and self._no_defects_container.isVisible():
             return False
-        
+
         abs_col = self._abs_col_index_silent()
         if abs_col is None:
             return False
@@ -5568,12 +5113,12 @@ class MyMainWindow(QMainWindow):
 
         except Exception as e:
             self.open_Error(f"Error opening ABS-distance digsheet:\n{e}")
-    
+
     def _update_generate_actions(self):
         """Update Generate menu buttons based on project and data status"""
         # Check if pipe tally data is available
         has_pipe_tally = isinstance(self.pipe_tally, pd.DataFrame) and not self.pipe_tally.empty
-        
+
         # Check if preliminary report exists
         has_prelim_report = False
         if self.project_is_open and self.project_root:
@@ -5591,18 +5136,18 @@ class MyMainWindow(QMainWindow):
         # Update BOTH Final Report actions ✅
         if hasattr(self.ui, 'action_Final_Report'):
             self.ui.action_Final_Report.setEnabled(self.project_is_open and has_final_report)
-            
+
         if hasattr(self.ui, 'Final_Report'):  # ← Add this block
             self.ui.Final_Report.setEnabled(self.project_is_open and has_final_report)
-        
+
         # Update Pipe Tally button/action
         if hasattr(self.ui, 'action__pipetally'):
             self.ui.action__pipetally.setEnabled(self.project_is_open and has_pipe_tally)
-        
+
         # Update Preliminary Report action
         if hasattr(self.ui, 'action_Preliminary_Report'):
             self.ui.action_Preliminary_Report.setEnabled(self.project_is_open and has_prelim_report)
-        
+
         # Update Digsheet actions (both standard and ABS-based)
         if hasattr(self.ui, 'actionStandard'):  # Standard digsheet
             self.ui.actionStandard.setEnabled(self.project_is_open and has_pipe_tally)
@@ -5610,185 +5155,6 @@ class MyMainWindow(QMainWindow):
 
 
 
-
-    # def close_project(self):
-    #     try:
-    #         # Stop graphs view and guard tab-change side effects
-    #         self._close_graphs_view()
-
-    #         tw = getattr(self.ui, "tabWidgetM", None)
-    #         if tw is not None:
-    #             tw.blockSignals(True)          # <<< prevent _on_middle_tab_changed from firing
-
-    #         # Flip the state and clear everything
-    #         self.project_is_open = False
-    #         self.project_root = None
-    #         self.pkl_files = []
-    #         if hasattr(self, 'btnDigsheetAbs'):
-    #             self.btnDigsheetAbs.setEnabled(False)
-    #         self.hmap = self.hmap_r = self.lplot = self.lplot_r = self.pipe3d = self.heatmap_box = self.hhmap = self.phmap = None
-
-    #         self.curr_data = None
-    #         self.header_list = []
-
-    #         cb = self.ui.comboBoxPipe
-    #         cb.blockSignals(True); cb.clear(); cb.addItem("-Pipe-"); cb.blockSignals(False)
-
-    #         self.model.clear()
-    #         self.ui.tableWidgetDefect.clear()
-
-    #         # ✅ Hide the "No Defects Found" message when closing project
-    #         if hasattr(self, '_no_defects_container') and self._no_defects_container:
-    #             self._no_defects_container.hide()
-
-
-    #         self._show_create_project_message()
-    #         self.web_view.setUrl(QUrl())
-    #         self.web_view2.setUrl(QUrl())
-    #         self.bottom_stack.setCurrentIndex(0)
-    #         self._show_watermark()
-    #         self._toggle_plot_ui(False)
-
-    #         # Reset the tab index quietly
-    #         if tw is not None:
-    #             try:
-    #                 tw.setCurrentIndex(0)       # no signal -> no popup
-    #             except Exception:
-    #                 pass
-
-    #         self.btnDigsheetAbs.setEnabled(False)
-    #         self._update_project_actions()
-    #         if hasattr(self, "_select_pipe_container") and self._select_pipe_container:
-    #             self._select_pipe_container.hide()
-
-    #         QMessageBox.information(self, "Project Closed", "The project has been successfully closed.")
-    #         if hasattr(self, "_create_proj_container") and self._create_proj_container:
-    #             self._create_proj_container.show()
-    #     except Exception as e:
-    #         self.open_Error(e)
-    #     finally:
-    #         # Re-enable signals
-    #         if tw is not None:
-    #             tw.blockSignals(False)
-
-
-
-    # def close_project(self):
-    #     try:
-    #         # 1) Stop any secondary views / background loaders
-    #         self._close_graphs_view()
-    #         try:
-    #             if getattr(self, "loader_worker", None) and self.loader_worker.isRunning():
-    #                 self.loader_worker.requestInterruption()
-    #                 self.loader_worker.quit()
-    #                 self.loader_worker.wait(1500)
-    #         except Exception:
-    #             pass
-    #         self.loader_worker = None
-
-    #         # 2) Block tab/dropdown signals while we reset widgets
-    #         tw = getattr(self.ui, "tabWidgetM", None)
-    #         if tw is not None:
-    #             tw.blockSignals(True)
-    #         if hasattr(self, "tabSwitcherDropdown"):
-    #             self.tabSwitcherDropdown.blockSignals(True)
-
-    #         # 3) Mark project closed + clear file lists/state
-    #         self.project_is_open = False
-    #         self.project_root = None
-    #         self.pkl_files = []
-    #         self.curr_data = None
-    #         self.header_list = []
-    #         self.hmap = self.hmap_r = self.lplot = self.lplot_r = self.pipe3d = self.heatmap_box = None
-    #         self.hhmap = self.phmap = None
-    #         self._selected_columns = set()
-
-    #         # 4) Reset combo + top controls
-    #         cb = self.ui.comboBoxPipe
-    #         cb.blockSignals(True)
-    #         cb.clear()
-    #         cb.addItem("-Pipe-")
-    #         cb.blockSignals(False)
-
-    #         if hasattr(self, "btnLoadPipe"):      self.btnLoadPipe.setEnabled(False)
-    #         if hasattr(self, "btnDigsheetAbs"):   self.btnDigsheetAbs.setEnabled(False)
-
-    #         # 5) Reset Heatmap-specific controls (buttons + layout mode)
-    #         self._hm_layout_mode = "vertical"               # default = stacked heatmaps
-    #         try:
-    #             self._apply_heatmap_layout("vertical")      # also refreshes toggle text if implemented that way
-    #         except Exception:
-    #             pass
-
-    #         self._table_hidden = True                       # default = table hidden until user shows it
-    #         if hasattr(self, "btnToggleTable"):
-    #             self.btnToggleTable.setEnabled(False)
-    #             self.btnToggleTable.setText("Show Table")   # default label
-    #         if hasattr(self, "btnToggleHmLayout"):
-    #             self.btnToggleHmLayout.setEnabled(False)    # disabled outside Heatmap
-
-    #         # 6) Clear/Hide bottom stack & tables
-    #         try:
-    #             self.ui.tableWidgetDefect.clear()
-    #             self.ui.tableWidgetDefect.setRowCount(0)
-    #             self.ui.tableWidgetDefect.setColumnCount(0)
-    #         except Exception:
-    #             pass
-
-    #         if hasattr(self, "_no_defects_container") and self._no_defects_container:
-    #             self._no_defects_container.hide()
-
-    #         if hasattr(self, "bottom_stack"):
-    #             self.bottom_stack.hide()
-    #             self.bottom_stack.setCurrentIndex(0)
-
-    #         # 7) Clear web views, show watermark, return to default top page
-    #         if hasattr(self, "web_view"):        self.web_view.setUrl(QUrl())
-    #         if hasattr(self, "web_view2"):       self.web_view2.setUrl(QUrl())
-    #         if hasattr(self, "web_view_left"):   self.web_view_left.setUrl(QUrl())
-    #         if hasattr(self, "web_view_right"):  self.web_view_right.setUrl(QUrl())
-
-    #         if hasattr(self, "top_stack"):
-    #             self.top_stack.setCurrentIndex(0)    # single chart page as neutral default
-
-    #         self._show_watermark()                   # also sets the main web view
-
-    #         # 8) Reset tabs to Heatmap everywhere (no signals fired while blocked)
-    #         if tw is not None:
-    #             tw.setCurrentIndex(0)                # Heatmap tab
-    #         if hasattr(self, "mid_tabbar"):
-    #             self.mid_tabbar.setCurrentIndex(0)
-    #         if hasattr(self, "tabSwitcherDropdown"):
-    #             self.tabSwitcherDropdown.setCurrentIndex(0)
-
-    #         # 9) Reset scroll-sync flags so new project starts fresh
-    #         self._hscroll_ready = False
-    #         self._hscroll_ready_main = False
-    #         self._hscroll_ready_table = False
-    #         self._reverting_tab = False
-    #         self._last_allowed_tab_index = 0
-
-    #         # 10) Disable all plotting actions and show the “Create project” card
-    #         self._toggle_plot_ui(False)
-    #         self._update_project_actions()
-    #         if hasattr(self, "_select_pipe_container") and self._select_pipe_container:
-    #             self._select_pipe_container.hide()
-    #         if hasattr(self, "_create_proj_container") and self._create_proj_container:
-    #             self._create_proj_container.show()
-
-    #         # Optional: if you have a helper that gates heatmap controls
-    #         if hasattr(self, "_enable_heatmap_controls"):
-    #             self._enable_heatmap_controls(False)
-
-    #         QMessageBox.information(self, "Project Closed", "The project has been successfully closed.")
-    #     except Exception as e:
-    #         self.open_Error(e)
-    #     finally:
-    #         # Re-enable signals
-    #         if tw is not None:
-    #             tw.blockSignals(False)
-    #         if hasattr(self, "tabSwitcherDropdown"):
-    #             self.tabSwitcherDropdown.blockSignals(False)
     def _force_heatmap_start(self):
         """Ensure middle view opens on Heatmap before the next load."""
         self._last_allowed_tab_index = 0
@@ -5902,7 +5268,11 @@ class MyMainWindow(QMainWindow):
                 self._no_defects_container.hide()
             if hasattr(self, "_create_proj_container") and self._create_proj_container:
                 self._create_proj_container.show()
-            
+            if hasattr(self, "btnOpenFilterDlg"):
+                self.btnOpenFilterDlg.setEnabled(False)
+            if hasattr(self, "tabSwitcherDropdown"):
+                self.tabSwitcherDropdown.setEnabled(False)
+
             self._force_full_start_state()
 
             self._update_project_actions()
@@ -5916,9 +5286,7 @@ class MyMainWindow(QMainWindow):
                 tw.blockSignals(False)
             if hasattr(self, "tabSwitcherDropdown"):
                 self.tabSwitcherDropdown.blockSignals(False)
-
-
-
+        self.ui.action_Pipe_Sch.setEnabled(False)
 
     def open_CMLD(self):
         selected_columns = [r"Abs. Distance (m)", r"Type", r"Orientation o' clock"]
@@ -5986,36 +5354,14 @@ class MyMainWindow(QMainWindow):
         except Exception as e:
             self.open_Error(e)
 
-    # def open_digs(self):
-    #     try:
-    #         if not self.project_is_open:
-    #             QMessageBox.warning(
-    #                 self, 
-    #                 "No Project Open", 
-    #                 "Please create/open a project first to generate digsheets."
-    #             )
-    #             return
-    #         if not isinstance(self.pipe_tally, pd.DataFrame):
-    #             QMessageBox.warning(self, "No Pipe Tally", "Load a pipe tally first."); return
-    #         tally_pkl = _dump_tally_to_temp(self.pipe_tally)
-    #         dig_py = resource_path(os.path.join("dig", "dig_sheet.py"))
-    #         if not os.path.exists(dig_py):
-    #             QMessageBox.critical(self, "Script not found", f"Missing: {dig_py}"); return
-
-    #         if getattr(sys, "frozen", False):
-    #             subprocess.Popen([sys.executable, "--run-digsheet", tally_pkl])
-    #         else:
-    #             subprocess.Popen([sys.executable, dig_py, tally_pkl])
-    #     except Exception as e:
-    #         self.open_Error(f"An error occurred: {e}")
 
 
     def open_digs(self):
         try:
             if not self.project_is_open:
                 QMessageBox.warning(
-                    self, 
-                    "No Project Open", 
+                    self,
+                    "No Project Open",
                     "Please create/open a project first to generate digsheets."
                 )
                 return
@@ -6042,18 +5388,18 @@ class MyMainWindow(QMainWindow):
             # Block signals to prevent infinite loop
             self.ui.tabWidgetM.blockSignals(True)
             self.mid_tabbar.blockSignals(True)
-            
+
             # Set the tab index
             self.ui.tabWidgetM.setCurrentIndex(index)
             self.mid_tabbar.setCurrentIndex(index)
-            
+
             # Unblock signals
             self.ui.tabWidgetM.blockSignals(False)
             self.mid_tabbar.blockSignals(False)
-            
+
             # Trigger the actual tab change logic
             self.onmiddletabchanged(index)
-            
+
         except Exception as e:
             print(f"Error in dropdown tab change: {e}")
 
@@ -6062,13 +5408,13 @@ class MyMainWindow(QMainWindow):
         try:
             # Block signals to prevent infinite loop
             self.tabSwitcherDropdown.blockSignals(True)
-            
+
             # Update dropdown selection
             self.tabSwitcherDropdown.setCurrentIndex(index)
-            
+
             # Unblock signals
             self.tabSwitcherDropdown.blockSignals(False)
-            
+
         except Exception as e:
             print(f"Error syncing dropdown: {e}")
 
@@ -6229,14 +5575,14 @@ class MyMainWindow(QMainWindow):
         if index >= 0:
             self.ui.tabWidgetM.blockSignals(True)
             self.mid_tabbar.blockSignals(True)
-            
+
             self.ui.tabWidgetM.setCurrentIndex(index)
             self.mid_tabbar.setCurrentIndex(index)
             self.tabSwitcherDropdown.setCurrentIndex(index)
-            
+
             self.ui.tabWidgetM.blockSignals(False)
             self.mid_tabbar.blockSignals(False)
-            
+
             self._on_middle_tab_changed(index)
 
     def syncdropdownwithtabs(self, index: int):
@@ -6248,36 +5594,39 @@ class MyMainWindow(QMainWindow):
                 self.tabSwitcherDropdown.blockSignals(False)
         except Exception as e:
             print(f"Error syncing dropdown: {e}")
-    
+
     def toggletablevisibility(self):
         """Toggle table visibility in heatmap view only"""
         # Only work in Heatmap tab
         current_tab = self.ui.tabWidgetM.tabText(self.ui.tabWidgetM.currentIndex()).strip()
         if current_tab != "Heatmap":
-            QMessageBox.information(self, "Heatmap Only", 
+            QMessageBox.information(self, "Heatmap Only",
                                 "Table toggle only works in Heatmap view.")
             return
-        
+
         # Toggle the flag
         self._table_hidden = not self._table_hidden
-        
+
         # Hide or show the bottom section (table area)
         if self._table_hidden:
             self.bottom_stack.hide()
             self.btnToggleTable.setText("Show Table")
         else:
             self.bottom_stack.show()
+            # self.ui.tableWidgetDefect.setMinimumHeight(250)
+            # self.bottom_stack.setMinimumHeight(250)
+
             self.btnToggleTable.setText("Hide Table")
-        
+
         print(f"Table visibility toggled: {'Hidden' if self._table_hidden else 'Shown'}")
 
     # def _apply_heatmap_layout(self, mode: str = None):
     #     """Apply horizontal (side-by-side) or vertical (stacked) layout for dual heatmaps"""
     #     if not hasattr(self, 'top_h_split'):
     #         return
-        
+
     #     self.hm_layout_mode = mode
-        
+
     #     # Change splitter orientation
     #     if mode == "horizontal":
     #         self.top_h_split.setOrientation(Qt.Orientation.Horizontal)
@@ -6295,7 +5644,7 @@ class MyMainWindow(QMainWindow):
     #         top = total // 2
     #         bottom = total - top
     #         self.top_h_split.setSizes([top, bottom])
-        
+
     #     print(f"Heatmap layout changed to: {mode}")
 
     def _apply_heatmap_layout(self, mode: str = None):
@@ -6303,14 +5652,14 @@ class MyMainWindow(QMainWindow):
         # Use provided mode or fall back to current mode
         if mode is None:
             mode = getattr(self, '_hm_layout_mode', 'horizontal')
-        
+
         # Safety checks
         if not hasattr(self, 'top_hsplit'):
             print("Warning: top_hsplit not found, skipping layout change")
             return
-        
+
         self._hm_layout_mode = mode
-        
+
         # Change splitter orientation
         if mode == "horizontal":
             self.top_hsplit.setOrientation(Qt.Orientation.Horizontal)
@@ -6330,7 +5679,7 @@ class MyMainWindow(QMainWindow):
             top = (total // 2) - 95
             bottom = total - top
             self.top_hsplit.setSizes([top, bottom])
-        
+
         print(f"Heatmap layout changed to: {mode}")
 
 

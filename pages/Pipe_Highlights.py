@@ -1188,7 +1188,7 @@ class PipeHighlightApp:
                     self.DEP_25 = len(depth_data[depth_data < 25])
                     self.DEP_25_50 = len(depth_data[(depth_data >= 25) & (depth_data < 50)])
                     self.DEP_50_80 = len(depth_data[(depth_data >= 50) & (depth_data < 80)])
-                    self.DEP_80_100 = len(depth_data[(depth_data >= 80) & (depth_data <= 100)])
+                    self.DEP_80_100 = 0
                     print(f"📊 Depth stats calculated from {len(depth_data)} valid values (using column: {depth_col})")
                 else:
                     self.DEP_25 = self.DEP_25_50 = self.DEP_50_80 = self.DEP_80_100 = 0
@@ -1407,8 +1407,9 @@ class PipeHighlightApp:
             axs[1].set_title('ERF Distribution', fontsize=16, fontweight='bold', pad=0)
 
             # Pie chart for Depths
-            labels_depth = ['Depth < 25%', '25% <= Depth < 50%', '50% <= Depth < 80%', '80% <= Depth <= 100%']
-            sizes_depth = [self.DEP_25, self.DEP_25_50, self.DEP_50_80, self.DEP_80_100]
+            labels_depth = ['Depth < 25%', '25% <= Depth < 50%', '50% <= Depth <= 80%']
+            sizes_depth = [self.DEP_25, self.DEP_25_50, self.DEP_50_80]
+
             colors_depth = ['purple', 'green', 'yellow', 'brown']
             
             if sum(sizes_depth) > 0:
@@ -1540,7 +1541,7 @@ def run_app_debug(pipe_tally_df=None):
     
     full_app_button = ttk.Button(main_frame, text="Launch Full App", command=launch_full_app)
     full_app_button.pack(pady=5)
-    
+
     print("🎯 Starting debug mainloop...")
     root.mainloop()
     print("✅ Debug app closed normally")
