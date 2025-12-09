@@ -1,3 +1,26 @@
+import sys, traceback
+from PyQt6.QtWidgets import QMessageBox
+
+def global_error_handler(exctype, value, tb):
+    # Format error
+    formatted = "".join(traceback.format_exception(exctype, value, tb))
+
+    # 🔥 Print to Pycharm terminal
+    print("\n" + "=" * 80)
+    print("🔥 ERROR OCCURRED:")
+    print(formatted)
+    print("=" * 80)
+
+    # 🔥 Show in Message Box
+    msg = QMessageBox()
+    msg.setWindowTitle("Application Error")
+    msg.setIcon(QMessageBox.Icon.Critical)
+    msg.setText("An error occurred!")
+    msg.setDetailedText(formatted)   # <-- opens on clicking "Show Details"
+    msg.exec()
+
+sys.excepthook = global_error_handler
+
 import os
 import re
 import sys
@@ -365,7 +388,7 @@ class PipelineApp:
     def _read_excel(self):
         # constants_file = os.path.join(self.project_root, "constants.xlsx")
         # default_path = os.path.join(self.pipe_tally, "pipetally_main", "Pipe_Tally_8inch.xlsx")
-        default_path = "D:\pickle_6\pipetally_main\Pipe_Tally_8inch.xlsx"
+        default_path = "C:\client_software\pickle9\pipetally_main\Pipe_Tally_8inch.xlsx"
         # if self.pipe_tally and os.path.isfile(self.pipe_tally):
         #     path = self.pipe_tally
         # else:
@@ -952,10 +975,18 @@ def main():
     root = create_window()
     root.mainloop()
 
-if __name__ == "__main__":
-    main()
-
 def run_app(pipe_tally=None):
     print(pipe_tally)
     root = create_window(pipe_tally=pipe_tally)        # <-- pass it in
     root.mainloop()
+
+
+if __name__ == "__main__":
+    run_app(r"C:\client_software\pickle9\pipetally_main\Pipe_Tally_8inch.xlsx")
+    # try:
+    #     print("starting main")
+    #     main()
+    # except Exception as e:
+    #     print(f" error with pipe scheeme {e}")
+
+#
