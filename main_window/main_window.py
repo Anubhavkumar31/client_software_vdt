@@ -14,13 +14,15 @@ from PyQt6.QtCore import Qt, QAbstractTableModel
 # --- Lightweight DataFrame model (no per-cell Qt items) ---
 from PyQt6.QtCore import QAbstractTableModel, QVariant
 
-from setup_ui.widgets.Load_btn import create_Load_btn
-from setup_ui.widgets.comboBoxpipe import comboBoxPipe_setup
-from setup_ui.widgets.digsheet_btn_main_ui import create_digsheet_btn
-from setup_ui.widgets.filter_column_btn import create_filter_column_btn
-from setup_ui.widgets.hide_show_table_btn import create_hide_show_table
-from setup_ui.widgets.stack_horizontal_view_btn import create_stack_H_btn
-from setup_ui.widgets.tab_switcher_dropdown import create_tabSwitcher_dropdown
+from main_window.components.create_buttons.buttons.Load_btn import create_Load_btn
+from main_window.components.create_buttons.buttons.comboBoxpipe import comboBoxPipe_setup
+from main_window.components.create_buttons.buttons.digsheet_btn_main_ui import create_digsheet_btn
+from main_window.components.create_buttons.buttons.filter_column_btn import create_filter_column_btn
+from main_window.components.create_buttons.buttons.hide_show_table_btn import create_hide_show_table
+from main_window.components.create_buttons.buttons.stack_horizontal_view_btn import create_stack_H_btn
+from main_window.components.create_buttons.buttons.tab_switcher_dropdown import create_tabSwitcher_dropdown
+from main_window.components.create_buttons.setup_buttons import setup_buttons
+from main_window.components.setup_ui.setup_ui import setup_ui
 
 try:
     from PyQt6.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
@@ -82,7 +84,6 @@ from ui.graphs_ui import GraphApp
 
 
 # from .widgets.setup_ui import setup_ui as setup_ui
-from setup_ui.setup_ui import setup_ui
 import tempfile, uuid, runpy
 import os
 
@@ -863,41 +864,6 @@ class MyMainWindow(QMainWindow):
 
 
         comboBoxPipe_setup(self)
-        # self.ui.comboBoxPipe.setEditable(True)
-        #
-        # arrow_path = os.path.join(os.path.dirname(__file__), "ui", "icons", "arrow_down.svg").replace("\\", "/")
-        #
-        # self.ui.comboBoxPipe.setStyleSheet(f"""
-        #     QComboBox {{
-        #         padding: 4px 8px;
-        #         border: 2px solid #000000;
-        #         border-radius: 6px;
-        #         background: white;
-        #     }}
-        #     QComboBox::drop-down {{
-        #         subcontrol-origin: padding;
-        #         subcontrol-position: top right;
-        #         width: 24px;
-        #         border-left: 2px solid #000000;
-        #     }}
-        #     QComboBox::down-arrow {{
-        #         image: url({arrow_path});
-        #         width: 12px;
-        #         height: 12px;
-        #     }}
-        #     QComboBox QAbstractItemView {{
-        #         border: 2px solid #000000;
-        #         selection-background-color: #3498db;
-        #         selection-color: white;
-        #     }}
-        # """)
-        # self.ui.comboBoxPipe.clear()
-        # self.ui.comboBoxPipe.addItem("-Pipe-")
-        # self.ui.comboBoxPipe.setMaxVisibleItems(12)
-        # self.ui.comboBoxPipe.completer().setCompletionMode(
-        #     QtWidgets.QCompleter.CompletionMode.PopupCompletion
-        # )
-        # self.ui.comboBoxPipe.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
 
         self.model = QStandardItemModel(self)
         self.proxy_model = QSortFilterProxyModel(self)
@@ -915,515 +881,243 @@ class MyMainWindow(QMainWindow):
             QtWidgets.QAbstractScrollArea.SizeAdjustPolicy.AdjustIgnored
         )
 
-        # Digsheet button (ABS-based)
-        # self.btnDigsheetAbs = QPushButton("Digsheet")
-        # self.btnDigsheetAbs.setToolTip("Select an Absolute Distance cell in the defect table (on Heatmap/3D) to enable.")
-        # self.btnDigsheetAbs.setEnabled(False)
-        # self.btnDigsheetAbs.setStyleSheet("""
-        #     QPushButton {
-        #         background: white;
-        #         border: 1px solid #3498db;
-        #         color: #3498db;
-        #         border-radius: 6px;
-        #         padding: 4px 12px;
-        #         font-weight: 500;
-        #     }
-        #     QPushButton:hover {
-        #         background: #ecf6fd;
-        #     }
-        #     QPushButton:pressed {
-        #         background: #d0e9fa;
-        #     }
-        #     QPushButton:disabled {
-        #         color: #a0a0a0;
-        #         background: #f5f5f5;
-        #         border: 2px solid #6e6e6e;
-        #     }
-        # """)
-        # try:
-        #     _parent = self.ui.comboBoxPipe.parentWidget()
-        #     _lay = _parent.layout()
-        #     if _lay is not None:
-        #         pos = _lay.indexOf(self.ui.comboBoxPipe)
-        #         if pos != -1:
-        #             _lay.insertWidget(pos + 1, self.btnDigsheetAbs)
-        #         else:
-        #             _lay.addWidget(self.btnDigsheetAbs)
-        #     else:
-        #         self.btnDigsheetAbs.setParent(_parent)
-        # except Exception:
-        #     self.statusBar().addPermanentWidget(self.btnDigsheetAbs)
 
-        #create digsheet button and connect it
-        self.btnDigsheetAbs = create_digsheet_btn(self)
-        self.btnDigsheetAbs.clicked.connect(self.open_digsheet_by_abs_from_selection)
-
-        # Add Load button next to comboBoxPipe
-        # self.btnLoadPipe = QPushButton("Load")
-        # self.btnLoadPipe.setEnabled(False)
-        # self.btnLoadPipe.setStyleSheet("""
-        #     QPushButton {
-        #         background-color: #3498db;
-        #         color: white;
-        #         border: 1px solid #2980b9;
-        #         border-radius: 6px;
-        #         padding: 4px 12px;
-        #         font-weight: 500;
-        #     }
-        #     QPushButton:hover {
-        #         background-color: #2980b9;
-        #     }
-        #     QPushButton:pressed {
-        #         background-color: #1f5f8a;
-        #     }
-        #     QPushButton:disabled {
-        #     background-color: #a6a6a6;
-        #     color: #f0f0f0;
-        #     border: 2px solid #6e6e6e;
-        # }
-        # """)
-        # _parent = self.ui.comboBoxPipe.parentWidget()
-        # _lay = _parent.layout()
-        # if _lay is not None:
-        #     pos = _lay.indexOf(self.ui.comboBoxPipe)
-        #     if pos != -1:
-        #         _lay.insertWidget(pos + 1, self.btnLoadPipe)
-        #     else:
-        #         _lay.addWidget(self.btnLoadPipe)
-        # else:
-        #     self.btnLoadPipe.setParent(_parent)
-
-        #create load button and connect it
-        self.btnLoadPipe = create_Load_btn(self)
-        self.btnLoadPipe.clicked.connect(self.load_selected_pipe)
-
-        # create the button (you already have this)
-        # self.btnOpenFilterDlg = QPushButton("Filter Columns", self)
-        # self.btnOpenFilterDlg.setEnabled(False)
+        # #create digsheet button and connect it
+        # self.btnDigsheetAbs = create_digsheet_btn(self)
+        # self.btnDigsheetAbs.clicked.connect(self.open_digsheet_by_abs_from_selection)
         #
-        # # attach icon
-        # filter_icon_path = resource_path("ui/icons/filter.svg")   # or .png
-        # self.btnOpenFilterDlg.setIcon(QIcon(filter_icon_path))
-        # self.btnOpenFilterDlg.setIconSize(QSize(16, 16))          # 16–18px works well for a 28px-high button
-        # self.btnOpenFilterDlg.setCursor(Qt.CursorShape.PointingHandCursor)
+        # #create load button and connect it
+        # self.btnLoadPipe = create_Load_btn(self)
+        # self.btnLoadPipe.clicked.connect(self.load_selected_pipe)
         #
-        # # optional: keep your outlined styling unchanged
-        # self.btnOpenFilterDlg.setStyleSheet("""
-        #     QPushButton {
-        #         background-color:#FFFFFF;
-        #         color: #000000;
-        #         border: 1.5px solid #000000;
-        #         border-radius: 6px;
-        #         padding: 4px 12px;  /* enough padding so icon+text breathe */
-        #         font-weight: 500;
-        #     }
-        #     QPushButton:hover { background-color: #d6d3ce; }
-        #     QPushButton:pressed { background-color: #111111; }
-        #     QPushButton:disabled {
-        #         background-color: #a6a6a6;
-        #         color: #f0f0f0;
-        #         border: 2px solid #6e6e6e;
-        #     }
-        # """)
-        # _parent = self.ui.comboBoxPipe.parentWidget()
-        # if _parent and _parent.layout():
-        #     pos = _parent.layout().indexOf(self.btnLoadPipe)
-        #     _parent.layout().insertWidget(pos + 2, self.btnOpenFilterDlg)
-        # else:
-        #     self.btnOpenFilterDlg.setParent(_parent)
-
-        #create filter column button and connect it
-        self.btnOpenFilterDlg = create_filter_column_btn(self)
-        self.btnOpenFilterDlg.clicked.connect(self.open_column_filter_dialog)
-
-
-
-        # Create the dropdown tab switcher
-        # self.tabSwitcherDropdown = QComboBox(self)
-        # self.tabSwitcherDropdown.setToolTip("Switch between chart tabs")
-        # self.tabSwitcherDropdown.setCursor(Qt.CursorShape.PointingHandCursor)
-        # self.tabSwitcherDropdown.setMinimumWidth(120)
-        # self.tabSwitcherDropdown.setMaximumWidth(150)
+        # #create filter column button and connect it
+        # self.btnOpenFilterDlg = create_filter_column_btn(self)
+        # self.btnOpenFilterDlg.clicked.connect(self.open_column_filter_dialog)
         #
-        # # Style the dropdown to match your other buttons
-        # arrow_path = os.path.join(os.path.dirname(__file__), "ui", "icons", "arrow_down.svg").replace("\\", "/")
+        # # create tabSwitcherDropdown and connect it
+        # self.tabSwitcherDropdown = create_tabSwitcher_dropdown(self)
+        # self.tabSwitcherDropdown.currentIndexChanged.connect(self.ondropdowntabchanged)
+        # print("✅ Tab switcher dropdown created and positioned after Filter button")
         #
-        # self.tabSwitcherDropdown.setStyleSheet(f"""
-        #     QComboBox {{
-        #         background-color: #FFFFFF;
-        #         color: #000000;
-        #         border: 1.5px solid #000000;
-        #         border-radius: 6px;
-        #         padding: 4px 12px;
-        #         font-weight: 500;
-        #     }}
-        #     QComboBox:hover {{
-        #         background-color: #d6d3ce;
-        #     }}
-        #     QComboBox:pressed {{
-        #         background-color: #111111;
-        #         color: white;
-        #     }}
-        #     QComboBox:disabled {{
-        #         background-color: #a6a6a6;     /* same as Load button */
-        #         color: #f0f0f0;                /* same as Load button */
-        #         border: 2px solid #6e6e6e;     /* same as Load button */
-        #     }}
-        #     QComboBox::drop-down {{
-        #         subcontrol-origin: padding;
-        #         subcontrol-position: top right;
-        #         width: 20px;
-        #         border-left: 1.5px solid #000000;
-        #     }}
-        #     QComboBox::down-arrow {{
-        #         image: url({arrow_path});
-        #         width: 12px;
-        #         height: 12px;
-        #     }}
-        # """)
-        # self.tabSwitcherDropdown.setEnabled(False)
+        # #create hide/show table button and connect it
+        # self.btnToggleTable = create_hide_show_table(self)
+        # self.btnToggleTable.clicked.connect(self._toggle_table_visibility)
+        # print("✅ Toggle Table button created")
         #
-        # # Populate dropdown with tab names from tabWidgetM
-        # for i in range(self.ui.tabWidgetM.count()):
-        #     tab_text = self.ui.tabWidgetM.tabText(i)
-        #     self.tabSwitcherDropdown.addItem(tab_text)
-        #
-        # self.tabSwitcherDropdown.setCurrentIndex(0)
-        #
-        # # Add the dropdown right after the filter button (pos + 3)
-        # _parent = self.ui.comboBoxPipe.parentWidget()
-        # if _parent and _parent.layout():
-        #     pos = _parent.layout().indexOf(self.btnOpenFilterDlg)
-        #     _parent.layout().insertWidget(pos + 1, self.tabSwitcherDropdown)
-        # else:
-        #     self.tabSwitcherDropdown.setParent(_parent)
-
-        # create tabSwitcherDropdown and connect it
-        self.tabSwitcherDropdown = create_tabSwitcher_dropdown(self)
-        self.tabSwitcherDropdown.currentIndexChanged.connect(self.ondropdowntabchanged)
-        print("✅ Tab switcher dropdown created and positioned after Filter button")
-
-
-        # # Create the Hide/Show Table toggle button
-        # self.btnToggleTable = QPushButton("Hide Table", self)
-        # # ✅ Correct single connection
-        # try:
-        #     self.btnToggleTable.clicked.disconnect()
-        # except Exception:
-        #     pass
-        #
-        # self._table_hidden = True
-        # self.btnToggleTable.setText("Show Table")
-        # # self.btnToggleTable.clicked.connect(self._toggle_table_visibility)
-        #
-        # self.btnToggleTable.setToolTip("Toggle table visibility (Heatmap only)")
-        # self.btnToggleTable.setCursor(Qt.CursorShape.PointingHandCursor)
-        # self.btnToggleTable.setStyleSheet("""
-        #     QPushButton {
-        #         background-color: #FFFFFF;
-        #         color: #000000;
-        #         border: 1.5px solid #000000;
-        #         border-radius: 6px;
-        #         padding: 4px 12px;
-        #         font-weight: 500;
-        #         min-width: 80px;
-        #     }
-        #     QPushButton:hover {
-        #         background-color: #d6d3ce;
-        #     }
-        #     QPushButton:pressed {
-        #         background-color: #111111;
-        #         color: white;
-        #     }
-        #     QPushButton:disabled {
-        #         background-color: #a6a6a6;     /* same as Load button */
-        #         color: #f0f0f0;                /* same as Load button */
-        #         border: 2px solid #6e6e6e;     /* same as Load button */
-        #     }
-        # """)
-        # self.btnToggleTable.setEnabled(False)
-        #
-        # # Create the Stack/Side-by-side layout toggle button
-        # self.btnToggleHmLayout = QPushButton("Stack", self)
-        # self.btnToggleHmLayout.setToolTip("Toggle dual-heatmap layout (side-by-side / stacked)")
-        # self.btnToggleHmLayout.setCursor(Qt.CursorShape.PointingHandCursor)
-        # self.btnToggleHmLayout.setStyleSheet("""
-        #     QPushButton {
-        #         background-color: #FFFFFF;
-        #         color: #000000;
-        #         border: 1.5px solid #000000;
-        #         border-radius: 6px;
-        #         padding: 4px 12px;
-        #         font-weight: 500;
-        #         min-width: 80px;
-        #     }
-        #     QPushButton:hover {
-        #         background-color: #d6d3ce;
-        #     }
-        #     QPushButton:pressed {
-        #         background-color: #111111;
-        #         color: white;
-        #     }
-        #     QPushButton:disabled {
-        #         background-color: #a6a6a6;     /* same as Load button */
-        #         color: #f0f0f0;                /* same as Load button */
-        #         border: 2px solid #6e6e6e;     /* same as Load button */
-        #     }
-        # """)
-        # self.btnToggleHmLayout.setEnabled(False)
-        #
-        # # Add button right after the Toggle Table button
-        # # ✅ Put both buttons after the dropdown, in the order you want
-        # parent = self.ui.comboBoxPipe.parentWidget()
-        # if parent and parent.layout():
-        #     row = parent.layout()
-        #     # make sure they’re not already sitting somewhere in the row
-        #     for w in (self.btnToggleTable, self.btnToggleHmLayout):
-        #         try:
-        #             row.removeWidget(w)
-        #         except Exception:
-        #             pass
-        #         w.setParent(parent)
-        #
-        #     pos = row.indexOf(self.tabSwitcherDropdown)
-        #     row.insertWidget(pos + 1, self.btnToggleTable)     # Hide/Show
-        #     row.insertWidget(pos + 2, self.btnToggleHmLayout)  # Stack (to the right)
-        # else:
-        #     self.btnToggleTable.setParent(parent)
-        #     self.btnToggleHmLayout.setParent(parent)
-        #
-        #
-        # # Connect the button
-        # self.btnToggleHmLayout.clicked.connect(lambda: self._apply_heatmap_layout(
-        #     "vertical" if self._hm_layout_mode == "horizontal" else "horizontal"
-        # ))
-        #
-        # print("✅ Toggle Heatmap Layout button created")
-        #
-        #
-        # # Add button right after the dropdown
-        # parent = self.ui.comboBoxPipe.parentWidget()
-        # if parent and parent.layout():
-        #     pos = parent.layout().indexOf(self.tabSwitcherDropdown)
-        #     parent.layout().insertWidget(pos + 1, self.btnToggleTable)
-        # else:
-        #     self.btnToggleTable.setParent(parent)
+        # #create toggle button for stack or horizontal view and connect it
+        # self.btnToggleHmLayout = create_stack_H_btn(self)
+        # self.btnToggleHmLayout.clicked.connect(
+        #     lambda: self._apply_heatmap_layout(
+        #         "vertical" if self._hm_layout_mode == "horizontal" else "horizontal"
+        #     )
+        # )
+        #setting up bottons --> digsheet(table selection), hide/show, load, stack/horizontal
+        setup_buttons(self)
 
         # ============================================================
-        # Create Hide/Show Table toggle button
-        # ============================================================
-
-        # self.btnToggleTable = QPushButton("Show Table", self)
-        # self._table_hidden = True  # table is hidden initially
-        # self.btnToggleTable.setEnabled(False)
-        #
-        # self.btnToggleTable.setToolTip("Toggle table visibility (Heatmap only)")
-        # self.btnToggleTable.setCursor(Qt.CursorShape.PointingHandCursor)
-        #
-        # self.btnToggleTable.setStyleSheet("""
-        #     QPushButton {
-        #         background-color: #FFFFFF;
-        #         color: #000000;
-        #         border: 1.5px solid #000000;
-        #         border-radius: 6px;
-        #         padding: 4px 12px;
-        #         font-weight: 500;
-        #         min-width: 80px;
-        #     }
-        #     QPushButton:hover {
-        #         background-color: #d6d3ce;
-        #     }
-        #     QPushButton:pressed {
-        #         background-color: #111111;
-        #         color: white;
-        #     }
-        #     QPushButton:disabled {
-        #         background-color: #a6a6a6;
-        #         color: #f0f0f0;
-        #         border: 2px solid #6e6e6e;
-        #     }
-        # """)
-        # parent = self.ui.comboBoxPipe.parentWidget()
-        # row = parent.layout()
-        #
-        # if row:
-        #     # --- Remove if already present (safe reload)
-        #     try:
-        #         row.removeWidget(self.btnToggleTable)
-        #     except Exception:
-        #         pass
-        #
-        #     self.btnToggleTable.setParent(parent)
-        #
-        #     # Insert right after tabSwitcherDropdown
-        #     dropdown_pos = row.indexOf(self.tabSwitcherDropdown)
-        #     row.insertWidget(dropdown_pos + 1, self.btnToggleTable)
-        #
-        # else:
-        #     self.btnToggleTable.setParent(parent)
-
-        #create hide/show table button and connect it
-        self.btnToggleTable = create_hide_show_table(self)
-        self.btnToggleTable.clicked.connect(self._toggle_table_visibility)
-        print("✅ Toggle Table button created")
+        # # 1) COMBOBOX → LOAD BUTTON STATE
+        # # ============================================================
+        # self.ui.comboBoxPipe.currentIndexChanged.connect(self.update_load_button_state)
 
         # ============================================================
-        # Create Stack / Side-by-Side layout toggle button
+        # 2) GLOBAL EVENT FILTER (for tab guarding + disabled buttons)
         # ============================================================
-
-        # self.btnToggleHmLayout = QPushButton("Stack", self)
-        # self.btnToggleHmLayout.setEnabled(False)
-        #
-        # self.btnToggleHmLayout.setToolTip("Toggle dual-heatmap layout (side-by-side / stacked)")
-        # self.btnToggleHmLayout.setCursor(Qt.CursorShape.PointingHandCursor)
-        #
-        # self.btnToggleHmLayout.setStyleSheet("""
-        #     QPushButton {
-        #         background-color: #FFFFFF;
-        #         color: #000000;
-        #         border: 1.5px solid #000000;
-        #         border-radius: 6px;
-        #         padding: 4px 12px;
-        #         font-weight: 500;
-        #         min-width: 80px;
-        #     }
-        #     QPushButton:hover {
-        #         background-color: #d6d3ce;
-        #     }
-        #     QPushButton:pressed {
-        #         background-color: #111111;
-        #         color: white;
-        #     }
-        #     QPushButton:disabled {
-        #         background-color: #a6a6a6;
-        #         color: #f0f0f0;
-        #         border: 2px solid #6e6e6e;
-        #     }
-        # """)
-        # parent = self.ui.comboBoxPipe.parentWidget()
-        # row = parent.layout()
-        # if row:
-        #     # --- Remove if already present
-        #     try:
-        #         row.removeWidget(self.btnToggleHmLayout)
-        #     except Exception:
-        #         pass
-        #
-        #     self.btnToggleHmLayout.setParent(parent)
-        #
-        #     # Insert after Show Table button
-        #     # (Show Table is at dropdown_pos + 1 → so Stack goes at +2)
-        #     dropdown_pos = row.indexOf(self.tabSwitcherDropdown)
-        #     row.insertWidget(dropdown_pos + 2, self.btnToggleHmLayout)
-        #
-        # else:
-        #     self.btnToggleHmLayout.setParent(parent)
-
-        #create toggle button for stack or horizontal view and connect it
-        self.btnToggleHmLayout = create_stack_H_btn(self)
-        self.btnToggleHmLayout.clicked.connect(
-            lambda: self._apply_heatmap_layout(
-                "vertical" if self._hm_layout_mode == "horizontal" else "horizontal"
-            )
-        )
-
-
-        self.ui.comboBoxPipe.currentIndexChanged.connect(self.update_load_button_state)
-
-        # Global event filter for disabled-button popups + tabbar clicks
         QtWidgets.QApplication.instance().installEventFilter(self)
 
-        # Resizable splitter with tabbar-handle
+        # ============================================================
+        # 3) CUSTOM TAB BAR (replaces tabWidget's default tabs)
+        # ============================================================
         self.mid_tabbar = QTabBar()
+        self.mid_tabbar.setExpanding(False)
+
         for i in range(self.ui.tabWidgetM.count()):
             self.mid_tabbar.addTab(self.ui.tabWidgetM.tabText(i))
-        self.mid_tabbar.setExpanding(False)
-        # self.mid_tabbar.currentChanged.connect(lambda i: self.ui.tabWidgetM.setCurrentIndex(i))
-        # self.ui.tabWidgetM.currentChanged.connect(lambda i: self.mid_tabbar.setCurrentIndex(i))
-        self.mid_tabbar.currentChanged.connect(lambda i: [
-            self.ui.tabWidgetM.setCurrentIndex(i),
-            self._sync_dropdown_with_tabs(i)
-        ][0])
-        self.ui.tabWidgetM.currentChanged.connect(lambda i: [
-            self.mid_tabbar.setCurrentIndex(i),
-            self._sync_dropdown_with_tabs(i)
-        ][0])
 
-        self.mid_tabbar.installEventFilter(self)  # intercept clicks on the mid tab bar
+        # Sync both ways
+        self.mid_tabbar.currentChanged.connect(
+            lambda i: [self.ui.tabWidgetM.setCurrentIndex(i), self._sync_dropdown_with_tabs(i)][0]
+        )
+        self.ui.tabWidgetM.currentChanged.connect(
+            lambda i: [self.mid_tabbar.setCurrentIndex(i), self._sync_dropdown_with_tabs(i)][0]
+        )
+
+        self.mid_tabbar.installEventFilter(self)
         self.ui.tabWidgetM.hide()
+
         self._build_splitter()
 
-        # --- hook table signals so the button can update when user selects a row ---
+        # ============================================================
+        # 4) TABLE SETUP (selection mode + digsheet button logic)
+        # ============================================================
         tw = self.ui.tableWidgetDefect
         tw.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         tw.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         setup_table_scroll(tw)
-        # update the button state whenever selection changes or a cell is clicked
+
         try:
             tw.itemSelectionChanged.disconnect()
-        except Exception:
+        except:
             pass
         tw.itemSelectionChanged.connect(self.update_digsheet_button_state)
 
         try:
             tw.cellClicked.disconnect()
-        except Exception:
+        except:
             pass
         tw.cellClicked.connect(lambda *_: self.update_digsheet_button_state())
 
-        # ✅ Setup "No Defects Found" label after table is configured
+        # ============================================================
+        # 5) UI LABELS / HINTS / TABLE STYLING
+        # ============================================================
         self._setup_no_defects_label()
         self._setup_select_pipe_label()
-
         self._setup_create_project_label()
         self._show_create_project_message()
-
         self._setup_table_styling()
 
-        self.canvas = PlotWindow(self, width=5, height=4, dpi=100)  # noqa
+        # ============================================================
+        # 6) MATPLOTLIB CANVAS
+        # ============================================================
+        self.canvas = PlotWindow(self, width=5, height=4, dpi=100)
 
+        # ============================================================
+        # 7) STATUS BAR + TIMER
+        # ============================================================
         self.setStatusBar(QStatusBar(self))
         self.current_message = 'App running'
         self.statusBar().showMessage(f'           Status:      {self.current_message}')
+
         right_container = QWidget()
-        rl = QHBoxLayout(right_container); rl.setContentsMargins(0, 0, 0, 0)
-        self.right_status_label = QLabel('0.0s    '); rl.addWidget(self.right_status_label)
+        rl = QHBoxLayout(right_container);
+        rl.setContentsMargins(0, 0, 0, 0)
+        self.right_status_label = QLabel('0.0s    ')
+        rl.addWidget(self.right_status_label)
         self.statusBar().addPermanentWidget(right_container)
-        self.timer = QTimer(); self.timer.timeout.connect(self._tick)
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self._tick)
         self._t0 = None
 
+        # ============================================================
+        # 8) MENU ACTIONS + GRAPH CONTROL CONNECTIONS
+        # ============================================================
         self.setup_actions()
         self._connect_guarded_graph_controls()
 
-        #self.ui.comboBoxPipe.currentIndexChanged.connect(self.on_combo_index_changed)
-
-        # replace direct tab switcher with guarded handler
+        # ============================================================
+        # 9) GUARDED TAB SWITCHING (prevent invalid tab switch)
+        # ============================================================
         try:
             self.ui.tabWidgetM.currentChanged.disconnect()
-        except Exception:
+        except:
             pass
+
         self.ui.tabWidgetM.currentChanged.connect(self._on_middle_tab_changed)
         self.ui.tabWidgetM.currentChanged.connect(self.syncdropdownwithtabs)
 
-
-        # initial UI state
+        # ============================================================
+        # 10) INITIAL UI STATE CONFIG (disable/enable relevant parts)
+        # ============================================================
         self._toggle_plot_ui(False)
-        self._update_project_actions()  # Create enabled, Close disabled
-
+        self._update_project_actions()
         self.setStyleSheet("QMainWindow { background-color: #FFFFFF; color: #000000; }")
         self.showMaximized()
 
-        # mark UI ready on next tick (prevents popup at startup)
+        # ============================================================
+        # 11) MARK UI READY (prevents popups on startup)
+        # ============================================================
         QTimer.singleShot(0, lambda: setattr(self, "_ui_ready", True))
 
+        # ============================================================
+        # 12) WATERMARK
+        # ============================================================
+        self._show_watermark()
+
+        # self.ui.comboBoxPipe.currentIndexChanged.connect(self.update_load_button_state)
+        #
+        # # Global event filter for disabled-button popups + tabbar clicks
+        # QtWidgets.QApplication.instance().installEventFilter(self)
+        #
+        # # Resizable splitter with tabbar-handle
+        # self.mid_tabbar = QTabBar()
+        # for i in range(self.ui.tabWidgetM.count()):
+        #     self.mid_tabbar.addTab(self.ui.tabWidgetM.tabText(i))
+        # self.mid_tabbar.setExpanding(False)
+        # self.mid_tabbar.currentChanged.connect(lambda i: [
+        #     self.ui.tabWidgetM.setCurrentIndex(i),
+        #     self._sync_dropdown_with_tabs(i)
+        # ][0])
+        # self.ui.tabWidgetM.currentChanged.connect(lambda i: [
+        #     self.mid_tabbar.setCurrentIndex(i),
+        #     self._sync_dropdown_with_tabs(i)
+        # ][0])
+        #
+        # self.mid_tabbar.installEventFilter(self)  # intercept clicks on the mid tab bar
+        # self.ui.tabWidgetM.hide()
+        # self._build_splitter()
+        #
+        # # --- hook table signals so the button can update when user selects a row ---
+        # tw = self.ui.tableWidgetDefect
+        # tw.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        # tw.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        # setup_table_scroll(tw)
+        # # update the button state whenever selection changes or a cell is clicked
         # try:
-        #     excel_path = resource_path("14inch Petrofac pipetally.xlsx")
-        #     if os.path.exists(excel_path) and self.pipe_tally is None:
-        #         self.pipe_tally = pd.read_excel(excel_path)
+        #     tw.itemSelectionChanged.disconnect()
         # except Exception:
         #     pass
-
-        self._show_watermark()
+        # tw.itemSelectionChanged.connect(self.update_digsheet_button_state)
+        #
+        # try:
+        #     tw.cellClicked.disconnect()
+        # except Exception:
+        #     pass
+        # tw.cellClicked.connect(lambda *_: self.update_digsheet_button_state())
+        #
+        # # ✅ Setup "No Defects Found" label after table is configured
+        # self._setup_no_defects_label()
+        # self._setup_select_pipe_label()
+        #
+        # self._setup_create_project_label()
+        # self._show_create_project_message()
+        #
+        # self._setup_table_styling()
+        #
+        # self.canvas = PlotWindow(self, width=5, height=4, dpi=100)  # noqa
+        #
+        # self.setStatusBar(QStatusBar(self))
+        # self.current_message = 'App running'
+        # self.statusBar().showMessage(f'           Status:      {self.current_message}')
+        # right_container = QWidget()
+        # rl = QHBoxLayout(right_container); rl.setContentsMargins(0, 0, 0, 0)
+        # self.right_status_label = QLabel('0.0s    '); rl.addWidget(self.right_status_label)
+        # self.statusBar().addPermanentWidget(right_container)
+        # self.timer = QTimer(); self.timer.timeout.connect(self._tick)
+        # self._t0 = None
+        #
+        # self.setup_actions()
+        # self._connect_guarded_graph_controls()
+        #
+        # # replace direct tab switcher with guarded handler
+        # try:
+        #     self.ui.tabWidgetM.currentChanged.disconnect()
+        # except Exception:
+        #     pass
+        # self.ui.tabWidgetM.currentChanged.connect(self._on_middle_tab_changed)
+        # self.ui.tabWidgetM.currentChanged.connect(self.syncdropdownwithtabs)
+        #
+        #
+        # # initial UI state
+        # self._toggle_plot_ui(False)
+        # self._update_project_actions()  # Create enabled, Close disabled
+        #
+        # self.setStyleSheet("QMainWindow { background-color: #FFFFFF; color: #000000; }")
+        # self.showMaximized()
+        #
+        # # mark UI ready on next tick (prevents popup at startup)
+        # QTimer.singleShot(0, lambda: setattr(self, "_ui_ready", True))
+        #
+        # self._show_watermark()
 
     def _reset_ui_to_start_state(self):
         # mark app state
