@@ -22,7 +22,13 @@ from main_window.components.create_buttons.buttons.hide_show_table_btn import cr
 from main_window.components.create_buttons.buttons.stack_horizontal_view_btn import create_stack_H_btn
 from main_window.components.create_buttons.buttons.tab_switcher_dropdown import create_tabSwitcher_dropdown
 from main_window.components.create_buttons.setup_buttons import setup_buttons
-from main_window.components.setup_ui.setup_ui import setup_ui
+
+from main_window.components.setup_canvas_and_statusbar import setup_canvas_and_statusbar
+from main_window.components.setup_initial_ui_state import setup_initial_ui_state
+from main_window.components.setup_menu_actions import setup_menu_actions
+from main_window.components.setup_table_system import setup_table_system
+from main_window.components.setup_tabsystem import setup_tab_system
+from main_window.components.setup_ui import setup_ui
 
 try:
     from PyQt6.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
@@ -914,6 +920,11 @@ class MyMainWindow(QMainWindow):
         #setting up bottons --> digsheet(table selection), hide/show, load, stack/horizontal
         setup_buttons(self)
 
+        setup_tab_system(self)
+        setup_table_system(self)
+        setup_canvas_and_statusbar(self)
+        setup_menu_actions(self)
+        setup_initial_ui_state(self)
         # ============================================================
         # # 1) COMBOBOX → LOAD BUTTON STATE
         # # ============================================================
@@ -922,116 +933,116 @@ class MyMainWindow(QMainWindow):
         # ============================================================
         # 2) GLOBAL EVENT FILTER (for tab guarding + disabled buttons)
         # ============================================================
-        QtWidgets.QApplication.instance().installEventFilter(self)
-
-        # ============================================================
-        # 3) CUSTOM TAB BAR (replaces tabWidget's default tabs)
-        # ============================================================
-        self.mid_tabbar = QTabBar()
-        self.mid_tabbar.setExpanding(False)
-
-        for i in range(self.ui.tabWidgetM.count()):
-            self.mid_tabbar.addTab(self.ui.tabWidgetM.tabText(i))
-
-        # Sync both ways
-        self.mid_tabbar.currentChanged.connect(
-            lambda i: [self.ui.tabWidgetM.setCurrentIndex(i), self._sync_dropdown_with_tabs(i)][0]
-        )
-        self.ui.tabWidgetM.currentChanged.connect(
-            lambda i: [self.mid_tabbar.setCurrentIndex(i), self._sync_dropdown_with_tabs(i)][0]
-        )
-
-        self.mid_tabbar.installEventFilter(self)
-        self.ui.tabWidgetM.hide()
-
-        self._build_splitter()
-
-        # ============================================================
-        # 4) TABLE SETUP (selection mode + digsheet button logic)
-        # ============================================================
-        tw = self.ui.tableWidgetDefect
-        tw.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        tw.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        setup_table_scroll(tw)
-
-        try:
-            tw.itemSelectionChanged.disconnect()
-        except:
-            pass
-        tw.itemSelectionChanged.connect(self.update_digsheet_button_state)
-
-        try:
-            tw.cellClicked.disconnect()
-        except:
-            pass
-        tw.cellClicked.connect(lambda *_: self.update_digsheet_button_state())
-
-        # ============================================================
-        # 5) UI LABELS / HINTS / TABLE STYLING
-        # ============================================================
-        self._setup_no_defects_label()
-        self._setup_select_pipe_label()
-        self._setup_create_project_label()
-        self._show_create_project_message()
-        self._setup_table_styling()
-
-        # ============================================================
-        # 6) MATPLOTLIB CANVAS
-        # ============================================================
-        self.canvas = PlotWindow(self, width=5, height=4, dpi=100)
-
-        # ============================================================
-        # 7) STATUS BAR + TIMER
-        # ============================================================
-        self.setStatusBar(QStatusBar(self))
-        self.current_message = 'App running'
-        self.statusBar().showMessage(f'           Status:      {self.current_message}')
-
-        right_container = QWidget()
-        rl = QHBoxLayout(right_container);
-        rl.setContentsMargins(0, 0, 0, 0)
-        self.right_status_label = QLabel('0.0s    ')
-        rl.addWidget(self.right_status_label)
-        self.statusBar().addPermanentWidget(right_container)
-
-        self.timer = QTimer()
-        self.timer.timeout.connect(self._tick)
-        self._t0 = None
-
-        # ============================================================
-        # 8) MENU ACTIONS + GRAPH CONTROL CONNECTIONS
-        # ============================================================
-        self.setup_actions()
-        self._connect_guarded_graph_controls()
-
-        # ============================================================
-        # 9) GUARDED TAB SWITCHING (prevent invalid tab switch)
-        # ============================================================
-        try:
-            self.ui.tabWidgetM.currentChanged.disconnect()
-        except:
-            pass
-
-        self.ui.tabWidgetM.currentChanged.connect(self._on_middle_tab_changed)
-        self.ui.tabWidgetM.currentChanged.connect(self.syncdropdownwithtabs)
-
-        # ============================================================
-        # 10) INITIAL UI STATE CONFIG (disable/enable relevant parts)
-        # ============================================================
-        self._toggle_plot_ui(False)
-        self._update_project_actions()
-        self.setStyleSheet("QMainWindow { background-color: #FFFFFF; color: #000000; }")
-        self.showMaximized()
-
-        # ============================================================
-        # 11) MARK UI READY (prevents popups on startup)
-        # ============================================================
-        QTimer.singleShot(0, lambda: setattr(self, "_ui_ready", True))
-
-        # ============================================================
-        # 12) WATERMARK
-        # ============================================================
-        self._show_watermark()
+        # QtWidgets.QApplication.instance().installEventFilter(self)
+        #
+        # # ============================================================
+        # # 3) CUSTOM TAB BAR (replaces tabWidget's default tabs)
+        # # ============================================================
+        # self.mid_tabbar = QTabBar()
+        # self.mid_tabbar.setExpanding(False)
+        #
+        # for i in range(self.ui.tabWidgetM.count()):
+        #     self.mid_tabbar.addTab(self.ui.tabWidgetM.tabText(i))
+        #
+        # # Sync both ways
+        # self.mid_tabbar.currentChanged.connect(
+        #     lambda i: [self.ui.tabWidgetM.setCurrentIndex(i), self._sync_dropdown_with_tabs(i)][0]
+        # )
+        # self.ui.tabWidgetM.currentChanged.connect(
+        #     lambda i: [self.mid_tabbar.setCurrentIndex(i), self._sync_dropdown_with_tabs(i)][0]
+        # )
+        #
+        # self.mid_tabbar.installEventFilter(self)
+        # self.ui.tabWidgetM.hide()
+        #
+        # self._build_splitter()
+        #
+        # # ============================================================
+        # # 4) TABLE SETUP (selection mode + digsheet button logic)
+        # # ============================================================
+        # tw = self.ui.tableWidgetDefect
+        # tw.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        # tw.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        # setup_table_scroll(tw)
+        #
+        # try:
+        #     tw.itemSelectionChanged.disconnect()
+        # except:
+        #     pass
+        # tw.itemSelectionChanged.connect(self.update_digsheet_button_state)
+        #
+        # try:
+        #     tw.cellClicked.disconnect()
+        # except:
+        #     pass
+        # tw.cellClicked.connect(lambda *_: self.update_digsheet_button_state())
+        #
+        # # ============================================================
+        # # 5) UI LABELS / HINTS / TABLE STYLING
+        # # ============================================================
+        # self._setup_no_defects_label()
+        # self._setup_select_pipe_label()
+        # self._setup_create_project_label()
+        # self._show_create_project_message()
+        # self._setup_table_styling()
+        #
+        # # ============================================================
+        # # 6) MATPLOTLIB CANVAS
+        # # ============================================================
+        # self.canvas = PlotWindow(self, width=5, height=4, dpi=100)
+        #
+        # # ============================================================
+        # # 7) STATUS BAR + TIMER
+        # # ============================================================
+        # self.setStatusBar(QStatusBar(self))
+        # self.current_message = 'App running'
+        # self.statusBar().showMessage(f'           Status:      {self.current_message}')
+        #
+        # right_container = QWidget()
+        # rl = QHBoxLayout(right_container);
+        # rl.setContentsMargins(0, 0, 0, 0)
+        # self.right_status_label = QLabel('0.0s    ')
+        # rl.addWidget(self.right_status_label)
+        # self.statusBar().addPermanentWidget(right_container)
+        #
+        # self.timer = QTimer()
+        # self.timer.timeout.connect(self._tick)
+        # self._t0 = None
+        #
+        # # ============================================================
+        # # 8) MENU ACTIONS + GRAPH CONTROL CONNECTIONS
+        # # ============================================================
+        # self.setup_actions()
+        # self._connect_guarded_graph_controls()
+        #
+        # # ============================================================
+        # # 9) GUARDED TAB SWITCHING (prevent invalid tab switch)
+        # # ============================================================
+        # try:
+        #     self.ui.tabWidgetM.currentChanged.disconnect()
+        # except:
+        #     pass
+        #
+        # self.ui.tabWidgetM.currentChanged.connect(self._on_middle_tab_changed)
+        # self.ui.tabWidgetM.currentChanged.connect(self.syncdropdownwithtabs)
+        #
+        # # ============================================================
+        # # 10) INITIAL UI STATE CONFIG (disable/enable relevant parts)
+        # # ============================================================
+        # self._toggle_plot_ui(False)
+        # self._update_project_actions()
+        # self.setStyleSheet("QMainWindow { background-color: #FFFFFF; color: #000000; }")
+        # self.showMaximized()
+        #
+        # # ============================================================
+        # # 11) MARK UI READY (prevents popups on startup)
+        # # ============================================================
+        # QTimer.singleShot(0, lambda: setattr(self, "_ui_ready", True))
+        #
+        # # ============================================================
+        # # 12) WATERMARK
+        # # ============================================================
+        # self._show_watermark()
 
         # self.ui.comboBoxPipe.currentIndexChanged.connect(self.update_load_button_state)
         #
@@ -1189,34 +1200,6 @@ class MyMainWindow(QMainWindow):
         self._hscroll_ready_main = False
         self._hscroll_ready_table = False
 
-
-
-
-    # def _on_column_item_pressed(self, index):
-    #     """Toggle the check state for a pressed item and keep the popup open."""
-    #     m = self.columnFilter.model()
-    #     item = m.itemFromIndex(index)
-    #     if not item:
-    #         return
-    #     item.setCheckState(
-    #         Qt.CheckState.Unchecked
-    #         if item.checkState() == Qt.CheckState.Checked
-    #         else Qt.CheckState.Checked
-    #     )
-    #     # Re-show popup so it doesn't close on each click
-    #     QTimer.singleShot(0, self.columnFilter.showPopup)
-    #     # Refresh summary text
-    #     self._column_summary_text()
-
-
-    # def _toggle_table_visibility(self):
-    #     self._table_hidden = not self._table_hidden
-    #     if self._table_hidden:
-    #         self.bottom_stack.hide()
-    #         self.btnToggleTable.setText("Show Table")
-    #     else:
-    #         self.bottom_stack.show()
-    #         self.btnToggleTable.setText("Hide Table")
 
     def _reset_splitter_ratio(self, top_ratio: float = 0.6):
         """Force consistent top/bottom height ratio for the stack layout."""
@@ -1478,6 +1461,7 @@ class MyMainWindow(QMainWindow):
                     min-width: 40px;
                 }
             """)
+
     def populate_column_filter(self, df: pd.DataFrame):
         """Fill dropdown with all DataFrame columns (checkable)."""
         model = self.columnFilter.model()
@@ -1492,8 +1476,6 @@ class MyMainWindow(QMainWindow):
 
         # Update summary (e.g., "12 selected")
         self._column_summary_text()
-
-
 
 
     def _restore_all_columns(self):
@@ -1530,8 +1512,6 @@ class MyMainWindow(QMainWindow):
             self._cf_model.appendRow(it)
 
         self._update_column_summary()
-
-
 
 
 
@@ -2445,36 +2425,36 @@ class MyMainWindow(QMainWindow):
         self._t0 = None
         self.right_status_label.setText("0.0s")
 
-    def setup_actions(self):
-        a = self.ui
-        a.action_Create_Proj.triggered.connect(self.open_project)
-        a.action_Close_Proj.triggered.connect(self.close_project)
-        a.action_Quit.triggered.connect(self.quit_app)
-        a.action_About.triggered.connect(self.open_About)
-        a.actionAdmin_Panel.triggered.connect(self.open_Admin)
-        a.action_ERF.triggered.connect(self.open_ERF)
-        a.action_XYZ.triggered.connect(self.open_XYZ)
-        # self.ui.action_Export_Table.triggered.connect(self.gen_data)
-        a.action_Final_Report.triggered.connect(self.open_Report)
-        a.action_graphs.triggered.connect(self.open_graphs)
-        a.action_Assessment.triggered.connect(self.open_Assessment)
-        a.action_Cluster.triggered.connect(self.open_Cluster)
-        a.action_Pipe_High.triggered.connect(self.open_PipeHigh)
-        a.action_Pipe_Sch.triggered.connect(self.open_PipeScheme)
-        a.actionMetal_Loss_Distribution_MLD.triggered.connect(self.open_CMLD)
-        a.actionDepth_Based_Anomalies_Distribution_DBAD.triggered.connect(self.open_DBAD)
-        a.actionERF_Based_Anomalies_Distribution_E_AD.triggered.connect(self.open_EAD)
-        a.action_Custom.triggered.connect(self.add_plot_custom)
-        a.action_Telemetry.triggered.connect(self.add_plot_tele)
-        a.actionAnomalies_Distribution.triggered.connect(self.add_plot_ad)
-        a.action_DefectDetect.triggered.connect(self.draw_boxes_v2)
-        if hasattr(a, "pushButtonNext"): a.pushButtonNext.clicked.connect(self.load_next_pipe)
-        if hasattr(a, "pushButtonPrev"): a.pushButtonPrev.clicked.connect(self.load_prev_pipe)
-        a.Final_Report.triggered.connect(self.open_Final_Report)
-        a.action_Preliminary_Report.triggered.connect(self.open_Preliminary_Report)
-        a.action__pipetally.triggered.connect(self.open_pipe_tally)
-        a.action_Manual.triggered.connect(self.open_manual)
-        a.actionStandard.triggered.connect(self.open_digs)  # original (by defect no.)
+    # def setup_actions(self):
+    #     a = self.ui
+    #     a.action_Create_Proj.triggered.connect(self.open_project)
+    #     a.action_Close_Proj.triggered.connect(self.close_project)
+    #     a.action_Quit.triggered.connect(self.quit_app)
+    #     a.action_About.triggered.connect(self.open_About)
+    #     a.actionAdmin_Panel.triggered.connect(self.open_Admin)
+    #     a.action_ERF.triggered.connect(self.open_ERF)
+    #     a.action_XYZ.triggered.connect(self.open_XYZ)
+    #     # self.ui.action_Export_Table.triggered.connect(self.gen_data)
+    #     a.action_Final_Report.triggered.connect(self.open_Report)
+    #     a.action_graphs.triggered.connect(self.open_graphs)
+    #     a.action_Assessment.triggered.connect(self.open_Assessment)
+    #     a.action_Cluster.triggered.connect(self.open_Cluster)
+    #     a.action_Pipe_High.triggered.connect(self.open_PipeHigh)
+    #     a.action_Pipe_Sch.triggered.connect(self.open_PipeScheme)
+    #     a.actionMetal_Loss_Distribution_MLD.triggered.connect(self.open_CMLD)
+    #     a.actionDepth_Based_Anomalies_Distribution_DBAD.triggered.connect(self.open_DBAD)
+    #     a.actionERF_Based_Anomalies_Distribution_E_AD.triggered.connect(self.open_EAD)
+    #     a.action_Custom.triggered.connect(self.add_plot_custom)
+    #     a.action_Telemetry.triggered.connect(self.add_plot_tele)
+    #     a.actionAnomalies_Distribution.triggered.connect(self.add_plot_ad)
+    #     a.action_DefectDetect.triggered.connect(self.draw_boxes_v2)
+    #     if hasattr(a, "pushButtonNext"): a.pushButtonNext.clicked.connect(self.load_next_pipe)
+    #     if hasattr(a, "pushButtonPrev"): a.pushButtonPrev.clicked.connect(self.load_prev_pipe)
+    #     a.Final_Report.triggered.connect(self.open_Final_Report)
+    #     a.action_Preliminary_Report.triggered.connect(self.open_Preliminary_Report)
+    #     a.action__pipetally.triggered.connect(self.open_pipe_tally)
+    #     a.action_Manual.triggered.connect(self.open_manual)
+    #     a.actionStandard.triggered.connect(self.open_digs)  # original (by defect no.)
 
     def load_next_pipe(self):
         """Go to next pipe and load automatically"""
