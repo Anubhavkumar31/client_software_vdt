@@ -2519,117 +2519,117 @@ class MyMainWindow(QMainWindow):
         self._show_watermark()
 
 
-    def open_project(self):
-        try:
-            # hide overlay immediately when trying to open
-            if hasattr(self, "_create_proj_container") and self._create_proj_container:
-                self._create_proj_container.hide()
-
-            dlg = QFileDialog(self)
-            dlg.setFileMode(QFileDialog.FileMode.Directory)
-            dlg.setOption(QFileDialog.Option.ShowDirsOnly)
-            dlg.setWindowTitle("Select Project Folder (PKLs + pipe_* folders)")
-            if dlg.exec() != QFileDialog.DialogCode.Accepted:
-                self.project_is_open = False
-                self._toggle_plot_ui(False)
-                self._show_watermark()
-                self._update_project_actions()
-
-                # show overlay back if user cancelled
-                if hasattr(self, "_create_proj_container") and self._create_proj_container:
-                    self._create_proj_container.show()
-                return
-
-            root = dlg.selectedFiles()[0]
-            self.project_root = root
-            self._force_full_start_state()
-
-            self.pipe_tally = None
-            loaded_tally = self._auto_load_pipe_tally(root)
-            if not loaded_tally:
-                print("[pipe_tally] No tally file found in this project; graphs/reports will warn if needed.")
-
-            pickle_data_dir = os.path.join(root, "pickle_data")
-            if os.path.isdir(pickle_data_dir):
-                self.pkl_files = [
-                    os.path.join(pickle_data_dir, f)
-                    for f in os.listdir(pickle_data_dir)
-                    if f.lower().endswith(".pkl")
-                ]
-            else:
-                self.pkl_files = []
-                print(f"[Warning] pickle_data directory not found in {root}")
-
-            def nkey(path):
-                filename = os.path.basename(path)
-                return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", filename)]
-
-            self.pkl_files.sort(key=nkey)
-
-            cb = self.ui.comboBoxPipe
-            cb.blockSignals(True)
-            cb.clear()
-            names = [os.path.splitext(os.path.basename(f))[0] for f in self.pkl_files]
-            if names:
-                cb.addItems(names)
-                cb.setCurrentIndex(-1)
-            else:
-                cb.addItem("-Pipe-")  # 👈 nothing selected
-
-            cb.lineEdit().setPlaceholderText("Type pipe number...")
-            cb.completer().setCompletionMode(QtWidgets.QCompleter.CompletionMode.PopupCompletion)
-            cb.setInsertPolicy(QtWidgets.QComboBox.InsertPolicy.NoInsert)
-            cb.blockSignals(False)
-
-            try:
-                cb.lineEdit().returnPressed.disconnect()
-            except Exception:
-                pass
-            cb.lineEdit().returnPressed.connect(self.jump_to_number)
-
-            if self.pkl_files:
-                self.project_is_open = True
-                self._hide_create_project_message()
-                self._toggle_plot_ui(True)
-                self._force_heatmap_start()
-                    # 🔹 Force-enable Heatmap control buttons since Heatmap is the first visible tab
-                if hasattr(self, "btnToggleTable"):
-                    self.btnToggleTable.setEnabled(True)
-                    self.btnToggleTable.setText("Show Table")
-                if hasattr(self, "btnToggleHmLayout"):
-                    self.btnToggleHmLayout.setEnabled(True)
-                    self.btnToggleHmLayout.setText("Side-by-side")
-
-
-
-                # Show overlay instead of auto-loading
-                self._show_select_pipe_message()
-
-                # 👇 Force check so Load button activates if default pipe is already selected
-                self.update_load_button_state(self.ui.comboBoxPipe.currentIndex())
-            else:
-                self.project_is_open = False
-                self._toggle_plot_ui(False)
-                self._show_watermark()
-                QMessageBox.warning(self, "No PKLs", "No .pkl files found in the selected folder.")
-
-                # show overlay back if no valid files
-                if hasattr(self, "_create_proj_container") and self._create_proj_container:
-                    self._create_proj_container.show()
-
-            self._update_project_actions()
-        except Exception as e:
-            self.project_is_open = False
-            self._toggle_plot_ui(False)
-            self._show_watermark()
-            self._update_project_actions()
-
-            # show overlay back on error
-            if hasattr(self, "_create_proj_container") and self._create_proj_container:
-                self._create_proj_container.show()
-
-            self.open_Error(e)
-        self.ui.action_Pipe_Sch.setEnabled(True)
+    # def open_project(self):
+    #     try:
+    #         # hide overlay immediately when trying to open
+    #         if hasattr(self, "_create_proj_container") and self._create_proj_container:
+    #             self._create_proj_container.hide()
+    #
+    #         dlg = QFileDialog(self)
+    #         dlg.setFileMode(QFileDialog.FileMode.Directory)
+    #         dlg.setOption(QFileDialog.Option.ShowDirsOnly)
+    #         dlg.setWindowTitle("Select Project Folder (PKLs + pipe_* folders)")
+    #         if dlg.exec() != QFileDialog.DialogCode.Accepted:
+    #             self.project_is_open = False
+    #             self._toggle_plot_ui(False)
+    #             self._show_watermark()
+    #             self._update_project_actions()
+    #
+    #             # show overlay back if user cancelled
+    #             if hasattr(self, "_create_proj_container") and self._create_proj_container:
+    #                 self._create_proj_container.show()
+    #             return
+    #
+    #         root = dlg.selectedFiles()[0]
+    #         self.project_root = root
+    #         self._force_full_start_state()
+    #
+    #         self.pipe_tally = None
+    #         loaded_tally = self._auto_load_pipe_tally(root)
+    #         if not loaded_tally:
+    #             print("[pipe_tally] No tally file found in this project; graphs/reports will warn if needed.")
+    #
+    #         pickle_data_dir = os.path.join(root, "pickle_data")
+    #         if os.path.isdir(pickle_data_dir):
+    #             self.pkl_files = [
+    #                 os.path.join(pickle_data_dir, f)
+    #                 for f in os.listdir(pickle_data_dir)
+    #                 if f.lower().endswith(".pkl")
+    #             ]
+    #         else:
+    #             self.pkl_files = []
+    #             print(f"[Warning] pickle_data directory not found in {root}")
+    #
+    #         def nkey(path):
+    #             filename = os.path.basename(path)
+    #             return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", filename)]
+    #
+    #         self.pkl_files.sort(key=nkey)
+    #
+    #         cb = self.ui.comboBoxPipe
+    #         cb.blockSignals(True)
+    #         cb.clear()
+    #         names = [os.path.splitext(os.path.basename(f))[0] for f in self.pkl_files]
+    #         if names:
+    #             cb.addItems(names)
+    #             cb.setCurrentIndex(-1)
+    #         else:
+    #             cb.addItem("-Pipe-")  # 👈 nothing selected
+    #
+    #         cb.lineEdit().setPlaceholderText("Type pipe number...")
+    #         cb.completer().setCompletionMode(QtWidgets.QCompleter.CompletionMode.PopupCompletion)
+    #         cb.setInsertPolicy(QtWidgets.QComboBox.InsertPolicy.NoInsert)
+    #         cb.blockSignals(False)
+    #
+    #         try:
+    #             cb.lineEdit().returnPressed.disconnect()
+    #         except Exception:
+    #             pass
+    #         cb.lineEdit().returnPressed.connect(self.jump_to_number)
+    #
+    #         if self.pkl_files:
+    #             self.project_is_open = True
+    #             self._hide_create_project_message()
+    #             self._toggle_plot_ui(True)
+    #             self._force_heatmap_start()
+    #                 # 🔹 Force-enable Heatmap control buttons since Heatmap is the first visible tab
+    #             if hasattr(self, "btnToggleTable"):
+    #                 self.btnToggleTable.setEnabled(True)
+    #                 self.btnToggleTable.setText("Show Table")
+    #             if hasattr(self, "btnToggleHmLayout"):
+    #                 self.btnToggleHmLayout.setEnabled(True)
+    #                 self.btnToggleHmLayout.setText("Side-by-side")
+    #
+    #
+    #
+    #             # Show overlay instead of auto-loading
+    #             self._show_select_pipe_message()
+    #
+    #             # 👇 Force check so Load button activates if default pipe is already selected
+    #             self.update_load_button_state(self.ui.comboBoxPipe.currentIndex())
+    #         else:
+    #             self.project_is_open = False
+    #             self._toggle_plot_ui(False)
+    #             self._show_watermark()
+    #             QMessageBox.warning(self, "No PKLs", "No .pkl files found in the selected folder.")
+    #
+    #             # show overlay back if no valid files
+    #             if hasattr(self, "_create_proj_container") and self._create_proj_container:
+    #                 self._create_proj_container.show()
+    #
+    #         self._update_project_actions()
+    #     except Exception as e:
+    #         self.project_is_open = False
+    #         self._toggle_plot_ui(False)
+    #         self._show_watermark()
+    #         self._update_project_actions()
+    #
+    #         # show overlay back on error
+    #         if hasattr(self, "_create_proj_container") and self._create_proj_container:
+    #             self._create_proj_container.show()
+    #
+    #         self.open_Error(e)
+    #     self.ui.action_Pipe_Sch.setEnabled(True)
 
     def _style_left_vertical_bar(self):
         # icon paths
@@ -3727,81 +3727,81 @@ class MyMainWindow(QMainWindow):
     def maximize_tabs(self):
         self.ui.tabWidgetM.show()
 
-    def open_graphs(self):
-        try:
-            if self.pipe_tally is None:
-                self.open_Error("Pipe tally not loaded yet.")
-                return
-            if self._central_graphs is not None and self.centralWidget() is self._central_graphs:
-                return
-            if self._central_original is None:
-                self._central_original = self.centralWidget()
-
-            ui_file_path = resource_path(os.path.join("ui", "graphs_ui.py"))
-            if not os.path.exists(ui_file_path):
-                self.open_Error(f"Graphs UI file not found at:\n{ui_file_path}")
-                return
-
-            import importlib.util
-            spec = importlib.util.spec_from_file_location("graphs_ui", ui_file_path)
-            graphs_ui = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(graphs_ui)
-
-            container = QWidget()
-            v = QVBoxLayout(container)
-            v.setContentsMargins(12, 12, 12, 12)
-            v.setSpacing(10)
-
-            header = QHBoxLayout()
-            back_btn = QPushButton("Back")
-            back_btn.setIcon(QIcon("ui/icons/arrow_left.svg"))  # replace with your arrow icon path
-            back_btn.setIconSize(QSize(16, 16))
-            back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-
-            back_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #ffffff;
-                    color: #000000;
-                    border: 1.5px solid #000000;
-                    border-radius: 8px;
-                    padding: 5px 14px;
-                    font-size: 13px;
-                    font-weight: 500;
-                }
-                QPushButton:hover {
-                    background-color: #f2f2f2;
-                }
-                QPushButton:pressed {
-                    background-color: #e0e0e0;
-                }
-                QPushButton:disabled {
-                    background-color: #f9f9f9;
-                    color: #aaaaaa;
-                    border: 1.5px solid #cccccc;
-                }
-            """)
-            back_btn.clicked.connect(self._close_graphs_view)
-            title = QLabel("Graphs")
-            title.setStyleSheet("font-weight: 600; font-size: 14pt;")
-            header.addWidget(back_btn); header.addSpacing(12); header.addWidget(title); header.addStretch(1)
-            v.addLayout(header)
-
-            graphs_widget = graphs_ui.GraphApp(dataframe=self.pipe_tally, project_root=self.project_root)
-            v.addWidget(graphs_widget, stretch=1)
-
-            self._graphs_widget = graphs_widget
-            self._central_graphs = container
-
-            if self._central_original is not None and self._central_original.parent() is self:
-                self.takeCentralWidget()
-            self.setCentralWidget(container)
-        except Exception as e:
-            try:
-                if self.centralWidget() is None and self._central_original is not None:
-                    self.setCentralWidget(self._central_original)
-            except Exception:
-                pass
-            self.open_Error(f"Unable to open graphs inline: {e}")
+    # def open_graphs(self):
+    #     try:
+    #         if self.pipe_tally is None:
+    #             self.open_Error("Pipe tally not loaded yet.")
+    #             return
+    #         if self._central_graphs is not None and self.centralWidget() is self._central_graphs:
+    #             return
+    #         if self._central_original is None:
+    #             self._central_original = self.centralWidget()
+    #
+    #         ui_file_path = resource_path(os.path.join("ui", "graphs_ui.py"))
+    #         if not os.path.exists(ui_file_path):
+    #             self.open_Error(f"Graphs UI file not found at:\n{ui_file_path}")
+    #             return
+    #
+    #         import importlib.util
+    #         spec = importlib.util.spec_from_file_location("graphs_ui", ui_file_path)
+    #         graphs_ui = importlib.util.module_from_spec(spec)
+    #         spec.loader.exec_module(graphs_ui)
+    #
+    #         container = QWidget()
+    #         v = QVBoxLayout(container)
+    #         v.setContentsMargins(12, 12, 12, 12)
+    #         v.setSpacing(10)
+    #
+    #         header = QHBoxLayout()
+    #         back_btn = QPushButton("Back")
+    #         back_btn.setIcon(QIcon("ui/icons/arrow_left.svg"))  # replace with your arrow icon path
+    #         back_btn.setIconSize(QSize(16, 16))
+    #         back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    #
+    #         back_btn.setStyleSheet("""
+    #             QPushButton {
+    #                 background-color: #ffffff;
+    #                 color: #000000;
+    #                 border: 1.5px solid #000000;
+    #                 border-radius: 8px;
+    #                 padding: 5px 14px;
+    #                 font-size: 13px;
+    #                 font-weight: 500;
+    #             }
+    #             QPushButton:hover {
+    #                 background-color: #f2f2f2;
+    #             }
+    #             QPushButton:pressed {
+    #                 background-color: #e0e0e0;
+    #             }
+    #             QPushButton:disabled {
+    #                 background-color: #f9f9f9;
+    #                 color: #aaaaaa;
+    #                 border: 1.5px solid #cccccc;
+    #             }
+    #         """)
+    #         back_btn.clicked.connect(self._close_graphs_view)
+    #         title = QLabel("Graphs")
+    #         title.setStyleSheet("font-weight: 600; font-size: 14pt;")
+    #         header.addWidget(back_btn); header.addSpacing(12); header.addWidget(title); header.addStretch(1)
+    #         v.addLayout(header)
+    #
+    #         graphs_widget = graphs_ui.GraphApp(dataframe=self.pipe_tally, project_root=self.project_root)
+    #         v.addWidget(graphs_widget, stretch=1)
+    #
+    #         self._graphs_widget = graphs_widget
+    #         self._central_graphs = container
+    #
+    #         if self._central_original is not None and self._central_original.parent() is self:
+    #             self.takeCentralWidget()
+    #         self.setCentralWidget(container)
+    #     except Exception as e:
+    #         try:
+    #             if self.centralWidget() is None and self._central_original is not None:
+    #                 self.setCentralWidget(self._central_original)
+    #         except Exception:
+    #             pass
+    #         self.open_Error(f"Unable to open graphs inline: {e}")
 
 
     def _close_graphs_view(self):
@@ -4061,112 +4061,112 @@ class MyMainWindow(QMainWindow):
     def open_Assessment(self):
         Assess_Dialog().exec()
 
-    def open_PipeHigh(self):
-        """Open Pipeline Highlights embedded in the main window"""
-        try:
-            # Check if pipe_tally is loaded
-            if not hasattr(self, 'pipe_tally') or not isinstance(self.pipe_tally,
-                                                                 pd.DataFrame) or self.pipe_tally.empty:
-                QMessageBox.warning(
-                    self,
-                    "No Pipe Tally Data",
-                    "Please load a project with pipe tally data first.\n\n"
-                    "Steps to load data:\n"
-                    "1. Go to File → Create Project\n"
-                    "2. Select a folder containing pipe tally files\n"
-                    "3. Wait for the data to load\n"
-                    "4. Try opening Pipe Highlights again"
-                )
-                return
-
-            # Check if Pipeline Highlights is already open
-            if hasattr(self, '_central_pipeline') and self.centralWidget() is self._central_pipeline:
-                return  # Already showing Pipeline Highlights
-
-            # Save the original central widget
-            if not hasattr(self, '_central_original') or self._central_original is None:
-                self._central_original = self.centralWidget()
-
-            print(f"🔍 Opening Pipeline Highlights with {len(self.pipe_tally)} rows of data")
-            print(f"📊 Available columns: {list(self.pipe_tally.columns)}")
-
-            # Import the embedded version
-            from pages.Pipe_Highlights_Embedded import PipeHighlightEmbedded
-
-            # Create container widget
-            container = QWidget()
-            layout = QVBoxLayout(container)
-            layout.setContentsMargins(12, 12, 12, 12)
-            layout.setSpacing(10)
-
-            # Header with back button
-            header_layout = QHBoxLayout()
-            back_btn = QPushButton("Back")
-            back_btn.setIcon(QIcon("ui/icons/arrow_left.svg"))  # replace with your arrow icon path
-            back_btn.setIconSize(QSize(16, 16))
-            back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-
-            back_btn.setStyleSheet("""
-                   QPushButton {
-                       background-color: #ffffff;
-                       color: #000000;
-                       border: 1.5px solid #000000;
-                       border-radius: 8px;
-                       padding: 5px 14px;
-                       font-size: 13px;
-                       font-weight: 500;
-                   }
-                   QPushButton:hover {
-                       background-color: #f2f2f2;
-                   }
-                   QPushButton:pressed {
-                       background-color: #e0e0e0;
-                   }
-                   QPushButton:disabled {
-                       background-color: #f9f9f9;
-                       color: #aaaaaa;
-                       border: 1.5px solid #cccccc;
-                   }
-               """)
-            back_btn.clicked.connect(self._close_pipeline_view)
-
-            title_label = QLabel("")
-            title_label.setStyleSheet("font-weight: 600; font-size: 16pt; color: #2c3e50;")
-
-            header_layout.addWidget(back_btn)
-            header_layout.addSpacing(20)
-            header_layout.addWidget(title_label)
-            header_layout.addStretch(1)
-
-            layout.addLayout(header_layout)
-
-            # Create and add the Pipeline Highlights widget
-            self._pipeline_widget = PipeHighlightEmbedded(parent=container, pipe_tally_df=self.pipe_tally,
-                                                          project_root=self.project_root)
-            layout.addWidget(self._pipeline_widget, stretch=1)
-
-            # Store reference and switch central widget
-            self._central_pipeline = container
-
-            # Switch to Pipeline Highlights view
-            if self._central_original is not None and self._central_original.parent() is self:
-                self.takeCentralWidget()
-            self.setCentralWidget(container)
-
-            print("✅ Pipeline Highlights opened successfully in embedded mode")
-
-        except ImportError as e:
-            self.open_Error(
-                f"Could not import Pipeline Highlights module:\n{e}\n\nPlease check if the Pipe_Highlights_Embedded.py file exists in the pages folder.")
-        except Exception as e:
-            self.open_Error(f"Error running Pipeline Highlights:\n{e}")
-            # Restore original view on error
-            try:
-                if hasattr(self, '_central_original') and self._central_original is not None:
-                    if self.centralWidget() is not self._central_original:
-                        self.setCentralWidget(self._central_original)
-            except Exception:
-                pass
+    # def open_PipeHigh(self):
+    #     """Open Pipeline Highlights embedded in the main window"""
+    #     try:
+    #         # Check if pipe_tally is loaded
+    #         if not hasattr(self, 'pipe_tally') or not isinstance(self.pipe_tally,
+    #                                                              pd.DataFrame) or self.pipe_tally.empty:
+    #             QMessageBox.warning(
+    #                 self,
+    #                 "No Pipe Tally Data",
+    #                 "Please load a project with pipe tally data first.\n\n"
+    #                 "Steps to load data:\n"
+    #                 "1. Go to File → Create Project\n"
+    #                 "2. Select a folder containing pipe tally files\n"
+    #                 "3. Wait for the data to load\n"
+    #                 "4. Try opening Pipe Highlights again"
+    #             )
+    #             return
+    #
+    #         # Check if Pipeline Highlights is already open
+    #         if hasattr(self, '_central_pipeline') and self.centralWidget() is self._central_pipeline:
+    #             return  # Already showing Pipeline Highlights
+    #
+    #         # Save the original central widget
+    #         if not hasattr(self, '_central_original') or self._central_original is None:
+    #             self._central_original = self.centralWidget()
+    #
+    #         print(f"🔍 Opening Pipeline Highlights with {len(self.pipe_tally)} rows of data")
+    #         print(f"📊 Available columns: {list(self.pipe_tally.columns)}")
+    #
+    #         # Import the embedded version
+    #         from pages.Pipe_Highlights_Embedded import PipeHighlightEmbedded
+    #
+    #         # Create container widget
+    #         container = QWidget()
+    #         layout = QVBoxLayout(container)
+    #         layout.setContentsMargins(12, 12, 12, 12)
+    #         layout.setSpacing(10)
+    #
+    #         # Header with back button
+    #         header_layout = QHBoxLayout()
+    #         back_btn = QPushButton("Back")
+    #         back_btn.setIcon(QIcon("ui/icons/arrow_left.svg"))  # replace with your arrow icon path
+    #         back_btn.setIconSize(QSize(16, 16))
+    #         back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    #
+    #         back_btn.setStyleSheet("""
+    #                QPushButton {
+    #                    background-color: #ffffff;
+    #                    color: #000000;
+    #                    border: 1.5px solid #000000;
+    #                    border-radius: 8px;
+    #                    padding: 5px 14px;
+    #                    font-size: 13px;
+    #                    font-weight: 500;
+    #                }
+    #                QPushButton:hover {
+    #                    background-color: #f2f2f2;
+    #                }
+    #                QPushButton:pressed {
+    #                    background-color: #e0e0e0;
+    #                }
+    #                QPushButton:disabled {
+    #                    background-color: #f9f9f9;
+    #                    color: #aaaaaa;
+    #                    border: 1.5px solid #cccccc;
+    #                }
+    #            """)
+    #         back_btn.clicked.connect(self._close_pipeline_view)
+    #
+    #         title_label = QLabel("")
+    #         title_label.setStyleSheet("font-weight: 600; font-size: 16pt; color: #2c3e50;")
+    #
+    #         header_layout.addWidget(back_btn)
+    #         header_layout.addSpacing(20)
+    #         header_layout.addWidget(title_label)
+    #         header_layout.addStretch(1)
+    #
+    #         layout.addLayout(header_layout)
+    #
+    #         # Create and add the Pipeline Highlights widget
+    #         self._pipeline_widget = PipeHighlightEmbedded(parent=container, pipe_tally_df=self.pipe_tally,
+    #                                                       project_root=self.project_root)
+    #         layout.addWidget(self._pipeline_widget, stretch=1)
+    #
+    #         # Store reference and switch central widget
+    #         self._central_pipeline = container
+    #
+    #         # Switch to Pipeline Highlights view
+    #         if self._central_original is not None and self._central_original.parent() is self:
+    #             self.takeCentralWidget()
+    #         self.setCentralWidget(container)
+    #
+    #         print("✅ Pipeline Highlights opened successfully in embedded mode")
+    #
+    #     except ImportError as e:
+    #         self.open_Error(
+    #             f"Could not import Pipeline Highlights module:\n{e}\n\nPlease check if the Pipe_Highlights_Embedded.py file exists in the pages folder.")
+    #     except Exception as e:
+    #         self.open_Error(f"Error running Pipeline Highlights:\n{e}")
+    #         # Restore original view on error
+    #         try:
+    #             if hasattr(self, '_central_original') and self._central_original is not None:
+    #                 if self.centralWidget() is not self._central_original:
+    #                     self.setCentralWidget(self._central_original)
+    #         except Exception:
+    #             pass
 
     def _close_pipeline_view(self):
         """Close Pipeline Highlights and return to main view"""
@@ -4196,13 +4196,13 @@ class MyMainWindow(QMainWindow):
         except Exception as e:
             print(f"⚠️ Error closing Pipeline Highlights view: {e}")
 
-    def open_PipeScheme(self):
-        try:
-            import subprocess, sys, os
-            pipeline_path = os.path.join("pipeline_schema", "pipeline_schema.py")
-            subprocess.Popen([sys.executable, pipeline_path, self.project_root])
-        except Exception as e:
-            self.open_Error(f"Error running Pipeline Schema:\n{e}")
+    # def open_PipeScheme(self):
+    #     try:
+    #         import subprocess, sys, os
+    #         pipeline_path = os.path.join("pipeline_schema", "pipeline_schema.py")
+    #         subprocess.Popen([sys.executable, pipeline_path, self.project_root])
+    #     except Exception as e:
+    #         self.open_Error(f"Error running Pipeline Schema:\n{e}")
 
     # def open_PipeScheme(self):
     #     try:
@@ -4282,173 +4282,173 @@ class MyMainWindow(QMainWindow):
     #     update_result()
     #     self.erf.show()
 
-    def open_ERF(self):
-        import threading
+    # def open_ERF(self):
+    #     import threading
+    #
+    #     # Inner function - no self parameter
+    #     def run_erf():
+    #         erf_app = ERF(self.project_root)
+    #         erf_app.run()
+    #
+    #     # Start ERF calculator in a background thread
+    #     threading.Thread(target=run_erf, daemon=True).start()
 
-        # Inner function - no self parameter
-        def run_erf():
-            erf_app = ERF(self.project_root)
-            erf_app.run()
-
-        # Start ERF calculator in a background thread
-        threading.Thread(target=run_erf, daemon=True).start()
-
-    def open_Final_Report(self):
-        # Check if a project is open
-        if not self.project_is_open or not self.project_root:
-            QMessageBox.warning(
-                self,
-                "No Project Open",
-                "Please create/open a project first to access the Final Report."
-            )
-            return
-
-        # Look for Final_Report.pdf in the report folder within project root
-        report_dir = os.path.join(self.project_root, "report")
-        final_report_path = os.path.join(report_dir, "FR.pdf")
-
-        if not os.path.exists(final_report_path):
-            QMessageBox.warning(
-                self,
-                "Final Report Not Found",
-                f"Could not find 'Final_Report.pdf' in the report directory:\n{report_dir}"
-            )
-            return
-
-        try:
-            os.startfile(final_report_path)
-        except Exception as e:
-            self.open_Error(f"Failed to open Final Report:\n{e}")
-
-
-    def open_Preliminary_Report(self):
-        # Check if a project is open
-        if not self.project_is_open or not self.project_root:
-            QMessageBox.warning(
-                self,
-                "No Project Open",
-                "Please create/open a project first to access the Preliminary Report.\n\n"
-                "Steps:\n"
-                "1. Go to File → Create Project\n"
-                "2. Select a project folder\n"
-                "3. Then try accessing Preliminary Report again"
-            )
-            return
-
-        # Look for PR.pdf in the report folder within project root
-        report_dir = os.path.join(self.project_root, "report")
-        prelim_report_path = os.path.join(report_dir, "PR.pdf")
-
-        if not os.path.exists(prelim_report_path):
-            QMessageBox.warning(
-                self,
-                "Preliminary Report Not Found",
-                f"Could not find 'PR.pdf' in the report directory:\n{report_dir}\n\n"
-                "Please ensure the report folder exists in your project and contains PR.pdf"
-            )
-            return
-
-        # Open the preliminary report
-        try:
-            os.startfile(prelim_report_path)
-        except Exception as e:
-            self.open_Error(f"Failed to open Preliminary Report:\n{e}")
+    # def open_Final_Report(self):
+    #     # Check if a project is open
+    #     if not self.project_is_open or not self.project_root:
+    #         QMessageBox.warning(
+    #             self,
+    #             "No Project Open",
+    #             "Please create/open a project first to access the Final Report."
+    #         )
+    #         return
+    #
+    #     # Look for Final_Report.pdf in the report folder within project root
+    #     report_dir = os.path.join(self.project_root, "report")
+    #     final_report_path = os.path.join(report_dir, "FR.pdf")
+    #
+    #     if not os.path.exists(final_report_path):
+    #         QMessageBox.warning(
+    #             self,
+    #             "Final Report Not Found",
+    #             f"Could not find 'Final_Report.pdf' in the report directory:\n{report_dir}"
+    #         )
+    #         return
+    #
+    #     try:
+    #         os.startfile(final_report_path)
+    #     except Exception as e:
+    #         self.open_Error(f"Failed to open Final Report:\n{e}")
 
 
-    def open_pipe_tally(self):
-        # Check if a project is open
-        if not self.project_is_open or not self.project_root:
-            QMessageBox.warning(
-                self,
-                "No Project Open",
-                "Please create/open a project first to access the pipe tally file.\n\n"
-                "Steps:\n"
-                "1. Go to File → Create Project\n"
-                "2. Select a project folder\n"
-                "3. Then try accessing Pipe Tally again"
-            )
-            return
+    # def open_Preliminary_Report(self):
+    #     # Check if a project is open
+    #     if not self.project_is_open or not self.project_root:
+    #         QMessageBox.warning(
+    #             self,
+    #             "No Project Open",
+    #             "Please create/open a project first to access the Preliminary Report.\n\n"
+    #             "Steps:\n"
+    #             "1. Go to File → Create Project\n"
+    #             "2. Select a project folder\n"
+    #             "3. Then try accessing Preliminary Report again"
+    #         )
+    #         return
+    #
+    #     # Look for PR.pdf in the report folder within project root
+    #     report_dir = os.path.join(self.project_root, "report")
+    #     prelim_report_path = os.path.join(report_dir, "PR.pdf")
+    #
+    #     if not os.path.exists(prelim_report_path):
+    #         QMessageBox.warning(
+    #             self,
+    #             "Preliminary Report Not Found",
+    #             f"Could not find 'PR.pdf' in the report directory:\n{report_dir}\n\n"
+    #             "Please ensure the report folder exists in your project and contains PR.pdf"
+    #         )
+    #         return
+    #
+    #     # Open the preliminary report
+    #     try:
+    #         os.startfile(prelim_report_path)
+    #     except Exception as e:
+    #         self.open_Error(f"Failed to open Preliminary Report:\n{e}")
 
-        if not hasattr(self, 'pipe_tally') or self.pipe_tally is None:
-            QMessageBox.warning(
-                self,
-                "No Pipe Tally Loaded",
-                "No pipe tally data is currently loaded from this project."
-            )
-            return
 
-        # Search for pipe tally files ONLY in the project root directory (not subdirectories)
-        pipe_tally_files = []
-        project_path = Path(self.project_root)
-
-        # Define pattern to match pipe tally related files (case-insensitive)
-        # Matches: pipetally, pipe_tally, tally_pipe, pipe-tally, etc.
-        import re
-        tally_pattern = re.compile(r'.*(pipe.*tally|tally.*pipe|pipetally|pipe_tally|pipe-tally).*\.(xlsx?|csv)$', re.IGNORECASE)
-
-        # Search ONLY in project root (not subdirectories)
-       # Search ONLY in pipetally_main subfolder
-        pipetally_main_path = project_path / "pipetally_main"
-        if not pipetally_main_path.is_dir():
-            QMessageBox.warning(
-                self,
-                "Pipetally Directory Not Found",
-                f"Could not find 'pipetally_main' folder in the project directory:\n{self.project_root}\n\n"
-                "Please ensure the pipetally_main folder exists in your project."
-            )
-            return
-
-        try:
-            for file_path in pipetally_main_path.iterdir():  # Only direct children of pipetally_main
-                if file_path.is_file() and tally_pattern.match(file_path.name):
-                    pipe_tally_files.append(str(file_path))
-
-        except Exception as e:
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"Error searching for pipe tally files:\n{e}"
-            )
-            return
-
-        if not pipe_tally_files:
-            QMessageBox.warning(
-                self,
-                "Pipe Tally File Not Found",
-                f"Could not find any pipe tally files in the project root directory:\n{self.project_root}\n\n"
-                "Looking for files containing: 'pipetally', 'pipe_tally', 'tally_pipe', etc.\n"
-                "Note: Only searching in the root folder, not inside pipe subdirectories.\n\n"
-                "The pipe tally data is loaded in memory, but the source file could not be located."
-            )
-            return
-
-        # If multiple files found, let user choose
-        pipe_tally_file = None
-        if len(pipe_tally_files) == 1:
-            pipe_tally_file = pipe_tally_files[0]
-        else:
-            # Show selection dialog for multiple pipe tally files
-            file_names = [os.path.basename(f) for f in pipe_tally_files]
-            selected_file, ok = QInputDialog.getItem(
-                self,
-                "Select Pipe Tally File",
-                f"Found {len(pipe_tally_files)} pipe tally files in the root directory. Please select one to open:",
-                file_names,
-                0,
-                False
-            )
-            if ok and selected_file:
-                # Find the full path for the selected file
-                pipe_tally_file = next((f for f in pipe_tally_files if os.path.basename(f) == selected_file), None)
-
-        # Open the selected file
-        if pipe_tally_file:
-            try:
-                os.startfile(pipe_tally_file)
-            except Exception as e:
-                self.open_Error(f"Failed to open pipe tally file:\n{e}")
-        else:
-            QMessageBox.information(self, "No Selection", "No file was selected.")
+    # def open_pipe_tally(self):
+    #     # Check if a project is open
+    #     if not self.project_is_open or not self.project_root:
+    #         QMessageBox.warning(
+    #             self,
+    #             "No Project Open",
+    #             "Please create/open a project first to access the pipe tally file.\n\n"
+    #             "Steps:\n"
+    #             "1. Go to File → Create Project\n"
+    #             "2. Select a project folder\n"
+    #             "3. Then try accessing Pipe Tally again"
+    #         )
+    #         return
+    #
+    #     if not hasattr(self, 'pipe_tally') or self.pipe_tally is None:
+    #         QMessageBox.warning(
+    #             self,
+    #             "No Pipe Tally Loaded",
+    #             "No pipe tally data is currently loaded from this project."
+    #         )
+    #         return
+    #
+    #     # Search for pipe tally files ONLY in the project root directory (not subdirectories)
+    #     pipe_tally_files = []
+    #     project_path = Path(self.project_root)
+    #
+    #     # Define pattern to match pipe tally related files (case-insensitive)
+    #     # Matches: pipetally, pipe_tally, tally_pipe, pipe-tally, etc.
+    #     import re
+    #     tally_pattern = re.compile(r'.*(pipe.*tally|tally.*pipe|pipetally|pipe_tally|pipe-tally).*\.(xlsx?|csv)$', re.IGNORECASE)
+    #
+    #     # Search ONLY in project root (not subdirectories)
+    #    # Search ONLY in pipetally_main subfolder
+    #     pipetally_main_path = project_path / "pipetally_main"
+    #     if not pipetally_main_path.is_dir():
+    #         QMessageBox.warning(
+    #             self,
+    #             "Pipetally Directory Not Found",
+    #             f"Could not find 'pipetally_main' folder in the project directory:\n{self.project_root}\n\n"
+    #             "Please ensure the pipetally_main folder exists in your project."
+    #         )
+    #         return
+    #
+    #     try:
+    #         for file_path in pipetally_main_path.iterdir():  # Only direct children of pipetally_main
+    #             if file_path.is_file() and tally_pattern.match(file_path.name):
+    #                 pipe_tally_files.append(str(file_path))
+    #
+    #     except Exception as e:
+    #         QMessageBox.critical(
+    #             self,
+    #             "Error",
+    #             f"Error searching for pipe tally files:\n{e}"
+    #         )
+    #         return
+    #
+    #     if not pipe_tally_files:
+    #         QMessageBox.warning(
+    #             self,
+    #             "Pipe Tally File Not Found",
+    #             f"Could not find any pipe tally files in the project root directory:\n{self.project_root}\n\n"
+    #             "Looking for files containing: 'pipetally', 'pipe_tally', 'tally_pipe', etc.\n"
+    #             "Note: Only searching in the root folder, not inside pipe subdirectories.\n\n"
+    #             "The pipe tally data is loaded in memory, but the source file could not be located."
+    #         )
+    #         return
+    #
+    #     # If multiple files found, let user choose
+    #     pipe_tally_file = None
+    #     if len(pipe_tally_files) == 1:
+    #         pipe_tally_file = pipe_tally_files[0]
+    #     else:
+    #         # Show selection dialog for multiple pipe tally files
+    #         file_names = [os.path.basename(f) for f in pipe_tally_files]
+    #         selected_file, ok = QInputDialog.getItem(
+    #             self,
+    #             "Select Pipe Tally File",
+    #             f"Found {len(pipe_tally_files)} pipe tally files in the root directory. Please select one to open:",
+    #             file_names,
+    #             0,
+    #             False
+    #         )
+    #         if ok and selected_file:
+    #             # Find the full path for the selected file
+    #             pipe_tally_file = next((f for f in pipe_tally_files if os.path.basename(f) == selected_file), None)
+    #
+    #     # Open the selected file
+    #     if pipe_tally_file:
+    #         try:
+    #             os.startfile(pipe_tally_file)
+    #         except Exception as e:
+    #             self.open_Error(f"Failed to open pipe tally file:\n{e}")
+    #     else:
+    #         QMessageBox.information(self, "No Selection", "No file was selected.")
 
 
     def open_manual(self):
@@ -4830,123 +4830,123 @@ class MyMainWindow(QMainWindow):
             self.tabSwitcherDropdown.blockSignals(False)
 
 
-    def close_project(self):
-        try:
-            # 1) Stop any secondary views / background loaders
-            self._close_graphs_view()
-            try:
-                if getattr(self, "loader_worker", None) and self.loader_worker.isRunning():
-                    self.loader_worker.requestInterruption()
-                    self.loader_worker.quit()
-                    self.loader_worker.wait(1500)
-            except Exception:
-                pass
-            self.loader_worker = None
-
-            # 2) Block tab/dropdown signals while we reset widgets
-            tw = getattr(self.ui, "tabWidgetM", None)
-            if tw is not None:
-                tw.blockSignals(True)
-            if hasattr(self, "tabSwitcherDropdown"):
-                self.tabSwitcherDropdown.blockSignals(True)
-
-            # 3) Mark project closed + clear file lists/state
-            self.project_is_open = False
-            self.project_root = None
-            self.pkl_files = []
-            self.pipe_tally = None
-            self.curr_data = None
-            self.header_list = []
-            self.hmap = self.hmap_r = self.lplot = self.lplot_r = self.pipe3d = self.heatmap_box = None
-            self.hhmap = self.phmap = None
-            self._selected_columns = set()
-
-            # 4) Reset the "allowed tab" & guard flags so next project starts on Heatmap
-            self._reverting_tab = False
-            self._last_allowed_tab_index = 0  # 0 == Heatmap tab (middle stack)
-
-            # 5) Reset combo + top controls
-            cb = self.ui.comboBoxPipe
-            cb.blockSignals(True)
-            cb.clear()
-            cb.addItem("-Pipe-")
-            cb.blockSignals(False)
-
-            if hasattr(self, "btnLoadPipe"):    self.btnLoadPipe.setEnabled(False)
-            if hasattr(self, "btnDigsheetAbs"): self.btnDigsheetAbs.setEnabled(False)
-
-            # 6) Heatmap-specific UI back to defaults
-            self._hm_layout_mode = "vertical"            # default = stacked
-            try:
-                self._apply_heatmap_layout("vertical")
-            except Exception:
-                pass
-
-            self._table_hidden = True                    # default label = "Show Table"
-            if hasattr(self, "btnToggleTable"):
-                self.btnToggleTable.setEnabled(False)
-                self.btnToggleTable.setText("Show Table")
-            if hasattr(self, "btnToggleHmLayout"):
-                self.btnToggleHmLayout.setEnabled(False)
-                # optional: set text according to your toggling semantics
-                # self.btnToggleHmLayout.setText("Side-by-side")
-
-            # 7) Tables and models
-            try:
-                self.model.clear()
-            except Exception:
-                pass
-            if hasattr(self.ui, "tableWidgetDefect"):
-                self.ui.tableWidgetDefect.clear()
-                self.ui.tableWidgetDefect.hide()
-            if hasattr(self, "table_scrollbar") and self.table_scrollbar:
-                self.table_scrollbar.hide()
-
-            # 8) Middle tab + dropdown back to Heatmap
-            if tw is not None:
-                try:
-                    tw.setCurrentIndex(0)  # Heatmap
-                except Exception:
-                    pass
-            if hasattr(self, "tabSwitcherDropdown"):
-                self.tabSwitcherDropdown.setCurrentIndex(0)
-
-            # 9) Web views / stacks / overlays
-            try:
-                self.web_view.setUrl(QUrl("about:blank"))
-                self.web_view2.setUrl(QUrl("about:blank"))
-            except Exception:
-                pass
-            if hasattr(self, "bottom_stack"):
-                self.bottom_stack.setCurrentIndex(0)  # hide table pane
-            self._show_watermark()
-            self._toggle_plot_ui(False)
-
-            if hasattr(self, "_select_pipe_container") and self._select_pipe_container:
-                self._select_pipe_container.hide()
-            if hasattr(self, "_no_defects_container") and self._no_defects_container:
-                self._no_defects_container.hide()
-            if hasattr(self, "_create_proj_container") and self._create_proj_container:
-                self._create_proj_container.show()
-            if hasattr(self, "btnOpenFilterDlg"):
-                self.btnOpenFilterDlg.setEnabled(False)
-            if hasattr(self, "tabSwitcherDropdown"):
-                self.tabSwitcherDropdown.setEnabled(False)
-
-            self._force_full_start_state()
-
-            self._update_project_actions()
-            QMessageBox.information(self, "Project Closed", "The project has been successfully closed.")
-
-        except Exception as e:
-            self.open_Error(e)
-        finally:
-            # Re-enable signals
-            if tw is not None:
-                tw.blockSignals(False)
-            if hasattr(self, "tabSwitcherDropdown"):
-                self.tabSwitcherDropdown.blockSignals(False)
-        self.ui.action_Pipe_Sch.setEnabled(False)
+    # def close_project(self):
+    #     try:
+    #         # 1) Stop any secondary views / background loaders
+    #         self._close_graphs_view()
+    #         try:
+    #             if getattr(self, "loader_worker", None) and self.loader_worker.isRunning():
+    #                 self.loader_worker.requestInterruption()
+    #                 self.loader_worker.quit()
+    #                 self.loader_worker.wait(1500)
+    #         except Exception:
+    #             pass
+    #         self.loader_worker = None
+    #
+    #         # 2) Block tab/dropdown signals while we reset widgets
+    #         tw = getattr(self.ui, "tabWidgetM", None)
+    #         if tw is not None:
+    #             tw.blockSignals(True)
+    #         if hasattr(self, "tabSwitcherDropdown"):
+    #             self.tabSwitcherDropdown.blockSignals(True)
+    #
+    #         # 3) Mark project closed + clear file lists/state
+    #         self.project_is_open = False
+    #         self.project_root = None
+    #         self.pkl_files = []
+    #         self.pipe_tally = None
+    #         self.curr_data = None
+    #         self.header_list = []
+    #         self.hmap = self.hmap_r = self.lplot = self.lplot_r = self.pipe3d = self.heatmap_box = None
+    #         self.hhmap = self.phmap = None
+    #         self._selected_columns = set()
+    #
+    #         # 4) Reset the "allowed tab" & guard flags so next project starts on Heatmap
+    #         self._reverting_tab = False
+    #         self._last_allowed_tab_index = 0  # 0 == Heatmap tab (middle stack)
+    #
+    #         # 5) Reset combo + top controls
+    #         cb = self.ui.comboBoxPipe
+    #         cb.blockSignals(True)
+    #         cb.clear()
+    #         cb.addItem("-Pipe-")
+    #         cb.blockSignals(False)
+    #
+    #         if hasattr(self, "btnLoadPipe"):    self.btnLoadPipe.setEnabled(False)
+    #         if hasattr(self, "btnDigsheetAbs"): self.btnDigsheetAbs.setEnabled(False)
+    #
+    #         # 6) Heatmap-specific UI back to defaults
+    #         self._hm_layout_mode = "vertical"            # default = stacked
+    #         try:
+    #             self._apply_heatmap_layout("vertical")
+    #         except Exception:
+    #             pass
+    #
+    #         self._table_hidden = True                    # default label = "Show Table"
+    #         if hasattr(self, "btnToggleTable"):
+    #             self.btnToggleTable.setEnabled(False)
+    #             self.btnToggleTable.setText("Show Table")
+    #         if hasattr(self, "btnToggleHmLayout"):
+    #             self.btnToggleHmLayout.setEnabled(False)
+    #             # optional: set text according to your toggling semantics
+    #             # self.btnToggleHmLayout.setText("Side-by-side")
+    #
+    #         # 7) Tables and models
+    #         try:
+    #             self.model.clear()
+    #         except Exception:
+    #             pass
+    #         if hasattr(self.ui, "tableWidgetDefect"):
+    #             self.ui.tableWidgetDefect.clear()
+    #             self.ui.tableWidgetDefect.hide()
+    #         if hasattr(self, "table_scrollbar") and self.table_scrollbar:
+    #             self.table_scrollbar.hide()
+    #
+    #         # 8) Middle tab + dropdown back to Heatmap
+    #         if tw is not None:
+    #             try:
+    #                 tw.setCurrentIndex(0)  # Heatmap
+    #             except Exception:
+    #                 pass
+    #         if hasattr(self, "tabSwitcherDropdown"):
+    #             self.tabSwitcherDropdown.setCurrentIndex(0)
+    #
+    #         # 9) Web views / stacks / overlays
+    #         try:
+    #             self.web_view.setUrl(QUrl("about:blank"))
+    #             self.web_view2.setUrl(QUrl("about:blank"))
+    #         except Exception:
+    #             pass
+    #         if hasattr(self, "bottom_stack"):
+    #             self.bottom_stack.setCurrentIndex(0)  # hide table pane
+    #         self._show_watermark()
+    #         self._toggle_plot_ui(False)
+    #
+    #         if hasattr(self, "_select_pipe_container") and self._select_pipe_container:
+    #             self._select_pipe_container.hide()
+    #         if hasattr(self, "_no_defects_container") and self._no_defects_container:
+    #             self._no_defects_container.hide()
+    #         if hasattr(self, "_create_proj_container") and self._create_proj_container:
+    #             self._create_proj_container.show()
+    #         if hasattr(self, "btnOpenFilterDlg"):
+    #             self.btnOpenFilterDlg.setEnabled(False)
+    #         if hasattr(self, "tabSwitcherDropdown"):
+    #             self.tabSwitcherDropdown.setEnabled(False)
+    #
+    #         self._force_full_start_state()
+    #
+    #         self._update_project_actions()
+    #         QMessageBox.information(self, "Project Closed", "The project has been successfully closed.")
+    #
+    #     except Exception as e:
+    #         self.open_Error(e)
+    #     finally:
+    #         # Re-enable signals
+    #         if tw is not None:
+    #             tw.blockSignals(False)
+    #         if hasattr(self, "tabSwitcherDropdown"):
+    #             self.tabSwitcherDropdown.blockSignals(False)
+    #     self.ui.action_Pipe_Sch.setEnabled(False)
 
     def open_CMLD(self):
         selected_columns = [r"Abs. Distance (m)", r"Type", r"Orientation o' clock"]
@@ -5016,31 +5016,31 @@ class MyMainWindow(QMainWindow):
 
 
 
-    def open_digs(self):
-        try:
-            if not self.project_is_open:
-                QMessageBox.warning(
-                    self,
-                    "No Project Open",
-                    "Please create/open a project first to generate digsheets."
-                )
-                return
-            if not isinstance(self.pipe_tally, pd.DataFrame):
-                QMessageBox.warning(self, "No Pipe Tally", "Load a pipe tally first.")
-                return
-
-            tally_pkl = _dump_tally_to_temp(self.pipe_tally)
-            dig_py = resource_path(os.path.join("dig", "dig_sheet.py"))
-            if not os.path.exists(dig_py):
-                QMessageBox.critical(self, "Script not found", f"Missing: {dig_py}")
-                return
-
-            if getattr(sys, "frozen", False):
-                subprocess.Popen([sys.executable, "--run-digsheet", tally_pkl, self.project_root])
-            else:
-                subprocess.Popen([sys.executable, dig_py, tally_pkl, self.project_root])
-        except Exception as e:
-            self.open_Error(f"An error occurred: {e}")
+    # def open_digs(self):
+    #     try:
+    #         if not self.project_is_open:
+    #             QMessageBox.warning(
+    #                 self,
+    #                 "No Project Open",
+    #                 "Please create/open a project first to generate digsheets."
+    #             )
+    #             return
+    #         if not isinstance(self.pipe_tally, pd.DataFrame):
+    #             QMessageBox.warning(self, "No Pipe Tally", "Load a pipe tally first.")
+    #             return
+    #
+    #         tally_pkl = _dump_tally_to_temp(self.pipe_tally)
+    #         dig_py = resource_path(os.path.join("dig", "dig_sheet.py"))
+    #         if not os.path.exists(dig_py):
+    #             QMessageBox.critical(self, "Script not found", f"Missing: {dig_py}")
+    #             return
+    #
+    #         if getattr(sys, "frozen", False):
+    #             subprocess.Popen([sys.executable, "--run-digsheet", tally_pkl, self.project_root])
+    #         else:
+    #             subprocess.Popen([sys.executable, dig_py, tally_pkl, self.project_root])
+    #     except Exception as e:
+    #         self.open_Error(f"An error occurred: {e}")
 
     def _on_dropdown_tab_changed(self, index: int):
         """Handle tab change from dropdown"""
@@ -5227,8 +5227,8 @@ class MyMainWindow(QMainWindow):
         except Exception as err:
             print("Error dialog failed:", err)
 
-    def quit_app(self):
-        QApplication.quit()
+    # def quit_app(self):
+    #     QApplication.quit()
 
     def ondropdowntabchanged(self, index: int):
         """Handle tab changes from dropdown switcher"""
@@ -5280,32 +5280,6 @@ class MyMainWindow(QMainWindow):
 
         print(f"Table visibility toggled: {'Hidden' if self._table_hidden else 'Shown'}")
 
-    # def _apply_heatmap_layout(self, mode: str = None):
-    #     """Apply horizontal (side-by-side) or vertical (stacked) layout for dual heatmaps"""
-    #     if not hasattr(self, 'top_h_split'):
-    #         return
-
-    #     self.hm_layout_mode = mode
-
-    #     # Change splitter orientation
-    #     if mode == "horizontal":
-    #         self.top_h_split.setOrientation(Qt.Orientation.Horizontal)
-    #         self.btnToggleHmLayout.setText("Stack")
-    #         # Apply 50-50 split
-    #         total = self.top_h_split.width()
-    #         left = int(total * self.hm_left_ratio)
-    #         right = total - left
-    #         self.top_h_split.setSizes([left, right])
-    #     else:  # vertical
-    #         self.top_h_split.setOrientation(Qt.Orientation.Vertical)
-    #         self.btnToggleHmLayout.setText("Side-by-side")
-    #         # Apply 50-50 split
-    #         total = self.top_h_split.height()
-    #         top = total // 2
-    #         bottom = total - top
-    #         self.top_h_split.setSizes([top, bottom])
-
-    #     print(f"Heatmap layout changed to: {mode}")
 
     def _apply_heatmap_layout(self, mode: str = None):
         """Apply horizontal (side-by-side) or vertical (stacked) layout for dual heatmaps"""
