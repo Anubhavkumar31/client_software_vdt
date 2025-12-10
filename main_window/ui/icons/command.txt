@@ -1,0 +1,26 @@
+pyinstaller --noconfirm --clean --onefile -w main.py ^
+  --add-data "ui;ui" ^
+  --add-data "dig;dig" ^
+  --add-data "pages;pages" ^
+  --add-data "backend;backend" ^
+  --add-data "pipeline_schema;pipeline_schema" ^
+  --add-data "ui/icons/close.png;ui/icons" ^
+  --hidden-import=PyQt6.QtWebEngineWidgets ^
+  --hidden-import=matplotlib
+
+
+
+pyinstaller --noconfirm --clean --onefile -w main.py ^
+  --add-data "ui;ui" ^
+  --add-data "dig;dig" ^
+  --add-data "pages;pages" ^
+  --add-data "backend;backend" ^
+  --add-data "backend/files;backend/files" ^
+  --add-data "backend/files/datalog/ptal.xlsx;backend/files/datalog" ^
+  --add-data "14inch Petrofac pipetally.xlsx;." ^
+  --hidden-import=PyQt6.QtWebEngineWidgets ^
+  --hidden-import=matplotlib ^
+  --hidden-import=pages.Pipe_Highlights
+
+
+

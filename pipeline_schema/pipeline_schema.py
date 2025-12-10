@@ -1,6 +1,5 @@
 import os
 import re
-import sys
 import hashlib
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -365,7 +364,7 @@ class PipelineApp:
     def _read_excel(self):
         # constants_file = os.path.join(self.project_root, "constants.xlsx")
         # default_path = os.path.join(self.pipe_tally, "pipetally_main", "Pipe_Tally_8inch.xlsx")
-        default_path = "D:\pickle_6\pipetally_main\Pipe_Tally_8inch.xlsx"
+        default_path = r"C:\Users\admin\Downloads\Pipe_Tally_8inch (1).xlsx"
         # if self.pipe_tally and os.path.isfile(self.pipe_tally):
         #     path = self.pipe_tally
         # else:
@@ -952,10 +951,13 @@ def main():
     root = create_window()
     root.mainloop()
 
-if __name__ == "__main__":
-    main()
-
 def run_app(pipe_tally=None):
-    print(pipe_tally)
+    # print(pipe_tally)
     root = create_window(pipe_tally=pipe_tally)        # <-- pass it in
     root.mainloop()
+if __name__ == "__main__":
+    run_app(r"C:\Users\admin\Downloads\Pipe_Tally_8inch (1).xlsx")
+    # main()
+
+
+
