@@ -14,6 +14,7 @@ from PyQt6.QtCore import Qt, QAbstractTableModel
 # --- Lightweight DataFrame model (no per-cell Qt items) ---
 from PyQt6.QtCore import QAbstractTableModel, QVariant
 
+from main_section_view.build_main_section import _build_main_section, SyncPlotlyView, MidBarSplitter
 from main_window.components.create_buttons.buttons.Load_btn import create_Load_btn
 from main_window.components.create_buttons.buttons.comboBoxpipe import comboBoxPipe_setup
 from main_window.components.create_buttons.buttons.digsheet_btn_main_ui import create_digsheet_btn
@@ -495,180 +496,180 @@ class ModernLoadingDialog(QDialog):
         super().closeEvent(event)
 
 
-class MidBarHandle(QSplitterHandle):
-    def __init__(self, orientation, parent, tabbar: QTabBar):
-        super().__init__(orientation, parent)
-        self.setObjectName("MidBarHandle")
-        self.setCursor(Qt.CursorShape.SplitVCursor)
+# class MidBarHandle(QSplitterHandle):
+#     def __init__(self, orientation, parent, tabbar: QTabBar):
+#         super().__init__(orientation, parent)
+#         self.setObjectName("MidBarHandle")
+#         self.setCursor(Qt.CursorShape.SplitVCursor)
+#
+#         self.frame = QFrame(self)
+#         self.frame.setObjectName("MidBarFrame")
+#         self.frame.setFrameShape(QFrame.Shape.NoFrame)
+#         self.frame.setCursor(Qt.CursorShape.SplitVCursor)
+#
+#         self.tabbar = tabbar
+#         self.tabbar.setParent(self.frame)
+#         self.tabbar.setDrawBase(False)
+#         self.tabbar.setCursor(Qt.CursorShape.ArrowCursor)
+#
+#         self.tabbar.setMouseTracking(True)
+#         self.tabbar.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
+#
+#         lay = _QHBoxLayout(self.frame)
+#         lay.setContentsMargins(8, 4, 8, 4)
+#         lay.addWidget(self.tabbar)
+#
+#         self.tabbar.installEventFilter(self)
+#
+#     def resizeEvent(self, ev):
+#         super().resizeEvent(ev)
+#         self.frame.setGeometry(0, 0, self.width(), self.height())
+#
+#     def eventFilter(self, obj, ev):
+#         if obj is self.tabbar:
+#             t = ev.type()
+#             p = None
+#             if t in (QEvent.Type.MouseMove, QEvent.Type.HoverMove):
+#                 if hasattr(ev, "position"):
+#                     p = ev.position().toPoint()
+#                 elif hasattr(ev, "pos"):
+#                     p = ev.pos()
+#             elif t in (QEvent.Type.Enter, QEvent.Type.HoverEnter):
+#                 p = self.tabbar.mapFromGlobal(QCursor.pos())
+#             elif t in (QEvent.Type.Leave, QEvent.Type.HoverLeave):
+#                 self.tabbar.setCursor(Qt.CursorShape.ArrowCursor)
+#                 return False
+#
+#             if p is not None:
+#                 idx = self.tabbar.tabAt(p)
+#                 if idx != -1 and self.tabbar.isTabEnabled(idx):
+#                     self.tabbar.setCursor(Qt.CursorShape.PointingHandCursor)
+#                 else:
+#                     self.tabbar.setCursor(Qt.CursorShape.ArrowCursor)
+#             return False
+#
+#         return QSplitterHandle.eventFilter(self, obj, ev)
 
-        self.frame = QFrame(self)
-        self.frame.setObjectName("MidBarFrame")
-        self.frame.setFrameShape(QFrame.Shape.NoFrame)
-        self.frame.setCursor(Qt.CursorShape.SplitVCursor)
+# class ConsoleRelayPage(QWebEnginePage):
+#     """Catches JS console messages to ferry Plotly relayout/hover to Python."""
+#     relayout_json = pyqtSignal(dict)    # emits on plotly_relayout
+#     hover_json    = pyqtSignal(dict)    # (optional) emits on plotly_hover
+#
+#     def javaScriptConsoleMessage(self, level, msg, line, source):
+#         if msg.startswith("RANGE:"):
+#             import json
+#             try:
+#                 payload = json.loads(msg[6:])
+#                 self.relayout_json.emit(payload)
+#             except Exception:
+#                 pass
+#         elif msg.startswith("HOVER:"):
+#             import json
+#             try:
+#                 payload = json.loads(msg[6:])
+#                 self.hover_json.emit(payload)
+#             except Exception:
+#                 pass
+#         # still let base handle logging
+#         return super().javaScriptConsoleMessage(level, msg, line, source)
 
-        self.tabbar = tabbar
-        self.tabbar.setParent(self.frame)
-        self.tabbar.setDrawBase(False)
-        self.tabbar.setCursor(Qt.CursorShape.ArrowCursor)
-
-        self.tabbar.setMouseTracking(True)
-        self.tabbar.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
-
-        lay = _QHBoxLayout(self.frame)
-        lay.setContentsMargins(8, 4, 8, 4)
-        lay.addWidget(self.tabbar)
-
-        self.tabbar.installEventFilter(self)
-
-    def resizeEvent(self, ev):
-        super().resizeEvent(ev)
-        self.frame.setGeometry(0, 0, self.width(), self.height())
-
-    def eventFilter(self, obj, ev):
-        if obj is self.tabbar:
-            t = ev.type()
-            p = None
-            if t in (QEvent.Type.MouseMove, QEvent.Type.HoverMove):
-                if hasattr(ev, "position"):
-                    p = ev.position().toPoint()
-                elif hasattr(ev, "pos"):
-                    p = ev.pos()
-            elif t in (QEvent.Type.Enter, QEvent.Type.HoverEnter):
-                p = self.tabbar.mapFromGlobal(QCursor.pos())
-            elif t in (QEvent.Type.Leave, QEvent.Type.HoverLeave):
-                self.tabbar.setCursor(Qt.CursorShape.ArrowCursor)
-                return False
-
-            if p is not None:
-                idx = self.tabbar.tabAt(p)
-                if idx != -1 and self.tabbar.isTabEnabled(idx):
-                    self.tabbar.setCursor(Qt.CursorShape.PointingHandCursor)
-                else:
-                    self.tabbar.setCursor(Qt.CursorShape.ArrowCursor)
-            return False
-
-        return QSplitterHandle.eventFilter(self, obj, ev)
-
-class ConsoleRelayPage(QWebEnginePage):
-    """Catches JS console messages to ferry Plotly relayout/hover to Python."""
-    relayout_json = pyqtSignal(dict)    # emits on plotly_relayout
-    hover_json    = pyqtSignal(dict)    # (optional) emits on plotly_hover
-
-    def javaScriptConsoleMessage(self, level, msg, line, source):
-        if msg.startswith("RANGE:"):
-            import json
-            try:
-                payload = json.loads(msg[6:])
-                self.relayout_json.emit(payload)
-            except Exception:
-                pass
-        elif msg.startswith("HOVER:"):
-            import json
-            try:
-                payload = json.loads(msg[6:])
-                self.hover_json.emit(payload)
-            except Exception:
-                pass
-        # still let base handle logging
-        return super().javaScriptConsoleMessage(level, msg, line, source)
-
-class SyncPlotlyView(QWebEngineView):
-    """
-    A webview that, after the Plotly HTML loads, injects small JS hooks that:
-      - listen for plotly_relayout and emit to Python
-      - expose a JS function to apply ranges from Python
-    """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._page = ConsoleRelayPage(self)
-        self.setPage(self._page)
-        self._installed = False
-        self._busy = False
-        self.loadFinished.connect(self._install_hooks_if_needed)
-
-    @property
-    def relay(self) -> ConsoleRelayPage:
-        return self._page
-
-    def _install_hooks_if_needed(self, ok: bool):
-        if not ok or self._installed:
-            return
-
-        js = r"""
-        (function(){
-          if (window.__pie_hooks_installed) return;
-          window.__pie_hooks_installed = true;
-
-          function getGraph(){
-            let g = document.querySelector('.js-plotly-plot');
-            if (!g) g = document.querySelector('div[data-plotly]');
-            if (!g) {
-              const cand = Array.from(document.querySelectorAll('div'));
-              g = cand.find(d => d && d._fullLayout);
-            }
-            return g;
-          }
-
-          function emitRange(){
-            const g = getGraph();
-            if (!g || !window.Plotly) return;
-            const x = g.layout?.xaxis?.range;
-            const y = g.layout?.yaxis?.range;
-            if (x && y) {
-              try {
-                console.log('RANGE:' + JSON.stringify({'xaxis.range':x, 'yaxis.range':y}));
-              } catch(e){}
-            }
-          }
-
-          function install(){
-            const g = getGraph();
-            if (!g || !window.Plotly) { setTimeout(install, 200); return; }
-
-            // Catch all interactions that change zoom/pan
-            g.on('plotly_relayout', emitRange);
-            g.on('plotly_doubleclick', emitRange);
-            g.on('plotly_afterplot', emitRange);
-            g.on('plotly_redraw', emitRange);
-            g.on('plotly_autosize', emitRange);
-            g.on('plotly_restyle', emitRange);
-
-            //  Support mouse wheel zoom
-            g.addEventListener('wheel', () => setTimeout(emitRange, 200));
-
-            // 🔹 Support laptop touchpad pinch / scroll gestures
-            g.addEventListener('gesturechange', () => setTimeout(emitRange, 200));
-            g.addEventListener('touchmove', () => setTimeout(emitRange, 200));
-
-            // 🔹 Function called from Python to apply the other heatmap's range
-            window.__pie_applyRelayout = function(payload){
-              try {
-                const g2 = getGraph();
-                if (g2 && window.Plotly) Plotly.relayout(g2, payload);
-              } catch(err){}
-            };
-          }
-
-          install();
-        })();
-        """
-        self.page().runJavaScript(js)
-        self._installed = True
-
-
-    def apply_relayout(self, payload: dict):
-        """Apply ranges from the other view (with a feedback guard)."""
-        if self._busy:
-            return
-        self._busy = True
-        self.page().runJavaScript(
-            f"window.__pie_applyRelayout({payload!r});",
-            lambda _=None: self._clear_busy()
-        )
-
-    def _clear_busy(self):
-        from PyQt6.QtCore import QTimer
-        QTimer.singleShot(0, lambda: setattr(self, "_busy", False))
+# class SyncPlotlyView(QWebEngineView):
+#     """
+#     A webview that, after the Plotly HTML loads, injects small JS hooks that:
+#       - listen for plotly_relayout and emit to Python
+#       - expose a JS function to apply ranges from Python
+#     """
+#     def __init__(self, parent=None):
+#         super().__init__(parent)
+#         self._page = ConsoleRelayPage(self)
+#         self.setPage(self._page)
+#         self._installed = False
+#         self._busy = False
+#         self.loadFinished.connect(self._install_hooks_if_needed)
+#
+#     @property
+#     def relay(self) -> ConsoleRelayPage:
+#         return self._page
+#
+#     def _install_hooks_if_needed(self, ok: bool):
+#         if not ok or self._installed:
+#             return
+#
+#         js = r"""
+#         (function(){
+#           if (window.__pie_hooks_installed) return;
+#           window.__pie_hooks_installed = true;
+#
+#           function getGraph(){
+#             let g = document.querySelector('.js-plotly-plot');
+#             if (!g) g = document.querySelector('div[data-plotly]');
+#             if (!g) {
+#               const cand = Array.from(document.querySelectorAll('div'));
+#               g = cand.find(d => d && d._fullLayout);
+#             }
+#             return g;
+#           }
+#
+#           function emitRange(){
+#             const g = getGraph();
+#             if (!g || !window.Plotly) return;
+#             const x = g.layout?.xaxis?.range;
+#             const y = g.layout?.yaxis?.range;
+#             if (x && y) {
+#               try {
+#                 console.log('RANGE:' + JSON.stringify({'xaxis.range':x, 'yaxis.range':y}));
+#               } catch(e){}
+#             }
+#           }
+#
+#           function install(){
+#             const g = getGraph();
+#             if (!g || !window.Plotly) { setTimeout(install, 200); return; }
+#
+#             // Catch all interactions that change zoom/pan
+#             g.on('plotly_relayout', emitRange);
+#             g.on('plotly_doubleclick', emitRange);
+#             g.on('plotly_afterplot', emitRange);
+#             g.on('plotly_redraw', emitRange);
+#             g.on('plotly_autosize', emitRange);
+#             g.on('plotly_restyle', emitRange);
+#
+#             //  Support mouse wheel zoom
+#             g.addEventListener('wheel', () => setTimeout(emitRange, 200));
+#
+#             // 🔹 Support laptop touchpad pinch / scroll gestures
+#             g.addEventListener('gesturechange', () => setTimeout(emitRange, 200));
+#             g.addEventListener('touchmove', () => setTimeout(emitRange, 200));
+#
+#             // 🔹 Function called from Python to apply the other heatmap's range
+#             window.__pie_applyRelayout = function(payload){
+#               try {
+#                 const g2 = getGraph();
+#                 if (g2 && window.Plotly) Plotly.relayout(g2, payload);
+#               } catch(err){}
+#             };
+#           }
+#
+#           install();
+#         })();
+#         """
+#         self.page().runJavaScript(js)
+#         self._installed = True
+#
+#
+#     def apply_relayout(self, payload: dict):
+#         """Apply ranges from the other view (with a feedback guard)."""
+#         if self._busy:
+#             return
+#         self._busy = True
+#         self.page().runJavaScript(
+#             f"window.__pie_applyRelayout({payload!r});",
+#             lambda _=None: self._clear_busy()
+#         )
+#
+#     def _clear_busy(self):
+#         from PyQt6.QtCore import QTimer
+#         QTimer.singleShot(0, lambda: setattr(self, "_busy", False))
 
 class ColumnFilterDialog(QDialog):
     def __init__(self, *, headers: list[str], checked: set[str], locked: set[str], parent=None):
@@ -761,13 +762,13 @@ class ColumnFilterDialog(QDialog):
                 out.add(it.text())
         return out
 
-class MidBarSplitter(QSplitter):
-    def __init__(self, parent=None, tabbar: Optional[QTabBar] = None):
-        super().__init__(Qt.Orientation.Vertical, parent)
-        self._tabbar = tabbar
-
-    def createHandle(self):
-        return MidBarHandle(self.orientation(), self, self._tabbar)
+# class MidBarSplitter(QSplitter):
+#     def __init__(self, parent=None, tabbar: Optional[QTabBar] = None):
+#         super().__init__(Qt.Orientation.Vertical, parent)
+#         self._tabbar = tabbar
+#
+#     def createHandle(self):
+#         return MidBarHandle(self.orientation(), self, self._tabbar)
 
 class MyMainWindow(QMainWindow):
     REQUIRED_TALLY_COLS = [
@@ -919,8 +920,8 @@ class MyMainWindow(QMainWindow):
         # )
         #setting up bottons --> digsheet(table selection), hide/show, load, stack/horizontal
         setup_buttons(self)
-
         setup_tab_system(self)
+        _build_main_section(self)
         setup_table_system(self)
         setup_canvas_and_statusbar(self)
         setup_menu_actions(self)
@@ -1129,6 +1130,8 @@ class MyMainWindow(QMainWindow):
         # QTimer.singleShot(0, lambda: setattr(self, "_ui_ready", True))
         #
         # self._show_watermark()
+
+
 
     def _reset_ui_to_start_state(self):
         # mark app state
@@ -4052,8 +4055,8 @@ class MyMainWindow(QMainWindow):
         except Exception as e:
             self.open_Error(f"Jump error: {e}")
 
-    def open_About(self):
-        About_Dialog().exec()
+    # def open_About(self):
+    #     About_Dialog().exec()
 
     def open_Admin(self):
         self.ap = Admin_Panel(); self.ap.show()
@@ -4451,10 +4454,10 @@ class MyMainWindow(QMainWindow):
     #         QMessageBox.information(self, "No Selection", "No file was selected.")
 
 
-    def open_manual(self):
-        p = resource_path(os.path.join("manual", "user_manual.pdf"))
-        if os.path.exists(p): os.startfile(p)
-        else: self.open_Error("User manual is not found.")
+    # def open_manual(self):
+    #     p = resource_path(os.path.join("manual", "user_manual.pdf"))
+    #     if os.path.exists(p): os.startfile(p)
+    #     else: self.open_Error("User manual is not found.")
 
     def add_plot_custom(self):
         try:

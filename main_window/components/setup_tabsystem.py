@@ -1,6 +1,8 @@
 from PyQt6 import QtWidgets
 from PyQt6.QtWidgets import QTabBar
 
+from main_section_view.build_main_section import _build_main_section
+
 
 def setup_tab_system(self):
     """
@@ -38,4 +40,5 @@ def setup_tab_system(self):
     self.mid_tabbar.installEventFilter(self)
     self.ui.tabWidgetM.hide()
 
-    self._build_splitter()
+    # self._build_splitter()
+    # _build_main_section(self)

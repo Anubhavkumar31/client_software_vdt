@@ -1,6 +1,8 @@
 from menubar.File_menu.close_project import close_project
 from menubar.File_menu.open_project import open_project
 from menubar.File_menu.quit_app import quit_app
+from menubar.help_menu.open_about import open_About
+from menubar.help_menu.open_manual import open_manual
 from menubar.report_menu.generate.digsheet import open_digs
 from menubar.report_menu.generate.final_report import open_Final_Report
 from menubar.report_menu.generate.pipetally import open_pipe_tally
@@ -41,22 +43,37 @@ def open_graphs(self):
 
 def setup_actions(self):
     a = self.ui
+    #File menu section
     a.action_Create_Proj.triggered.connect(lambda: open_project(self))
     a.action_Close_Proj.triggered.connect(lambda: close_project(self))
     a.action_Quit.triggered.connect(lambda: quit_app(self))
 
-    a.action_About.triggered.connect(self.open_About)
-    a.actionAdmin_Panel.triggered.connect(self.open_Admin)
 
+
+    #View section
     a.action_ERF.triggered.connect(lambda: open_ERF(self))
     a.action_XYZ.triggered.connect(lambda: open_XYZ(self))
     a.action_graphs.triggered.connect(lambda: open_graphs(self))
     # self.ui.action_Export_Table.triggered.connect(self.gen_data)
+
+    #report section
+    a.action_Pipe_High.triggered.connect(lambda: open_PipeHigh(self))
+    a.action_Pipe_Sch.triggered.connect(lambda: open_PipeScheme(self))
+    a.Final_Report.triggered.connect(lambda: open_Final_Report(self))
+    a.action_Preliminary_Report.triggered.connect(lambda: open_Preliminary_Report(self))
+    a.actionStandard.triggered.connect(lambda: open_digs(self))  # original (by defect no.)
+    a.action__pipetally.triggered.connect(lambda: open_pipe_tally(self))
+
+    #help section
+    a.action_Manual.triggered.connect(lambda: open_manual(self))
+    a.action_About.triggered.connect(lambda: open_About(self))
+
+
+
+    #extra
     a.action_Final_Report.triggered.connect(self.open_Report)
     a.action_Assessment.triggered.connect(self.open_Assessment)
     a.action_Cluster.triggered.connect(self.open_Cluster)
-    a.action_Pipe_High.triggered.connect(lambda: open_PipeHigh(self))
-    a.action_Pipe_Sch.triggered.connect(lambda: open_PipeScheme(self))
     a.actionMetal_Loss_Distribution_MLD.triggered.connect(self.open_CMLD)
     a.actionDepth_Based_Anomalies_Distribution_DBAD.triggered.connect(self.open_DBAD)
     a.actionERF_Based_Anomalies_Distribution_E_AD.triggered.connect(self.open_EAD)
@@ -66,8 +83,7 @@ def setup_actions(self):
     a.action_DefectDetect.triggered.connect(self.draw_boxes_v2)
     if hasattr(a, "pushButtonNext"): a.pushButtonNext.clicked.connect(self.load_next_pipe)
     if hasattr(a, "pushButtonPrev"): a.pushButtonPrev.clicked.connect(self.load_prev_pipe)
-    a.Final_Report.triggered.connect(lambda: open_Final_Report(self))
-    a.action_Preliminary_Report.triggered.connect(lambda: open_Preliminary_Report(self))
-    a.action__pipetally.triggered.connect(lambda: open_pipe_tally(self))
-    a.action_Manual.triggered.connect(self.open_manual)
-    a.actionStandard.triggered.connect(lambda: open_digs(self))  # original (by defect no.)
+    a.actionAdmin_Panel.triggered.connect(self.open_Admin)
+
+
+
