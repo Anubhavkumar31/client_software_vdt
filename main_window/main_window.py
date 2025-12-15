@@ -2851,17 +2851,7 @@ class MyMainWindow(QMainWindow):
         self.web_scroll_area.verticalScrollBar().setStyleSheet(v_style)
         self.main_web_scroll_area.verticalScrollBar().setStyleSheet(v_style)
 
-    def gen_data(self):
-        try:
-            if 'genData' not in self.child_windows or not self.child_windows['genData'].isVisible():
-                self.script_runner_window = ScriptRunnerApp()
-                self.script_runner_window.show()
-                self.child_windows['genData'] = self.script_runner_window
-            else:
-                self.child_windows['genData'].raise_()
-                self.child_windows['genData'].activateWindow()
-        except Exception as e:
-            self.open_Error(e)
+
 
     def _toggle_plot_ui(self, enabled: bool):
         tab_names = {"Heatmap", "LineChart", "Line Chart", "Line Plot", "3D Graph", "3D"}
@@ -3713,16 +3703,7 @@ class MyMainWindow(QMainWindow):
         base = QUrl.fromLocalFile(os.path.dirname(html_path) + os.sep)
         view.setHtml(wrapper, base)
 
-    def draw_boxes_v2(self):
-        if not self.project_is_open:
-            return
-        try:
-            if self.heatmap_box and os.path.exists(self.heatmap_box):
-                self.web_view.setUrl(QUrl.fromLocalFile(self.heatmap_box))
-            else:
-                self.open_Error("Boxed heatmap not found for the selected pipe.")
-        except Exception as e:
-            self.open_Error(e)
+
 
     def minimize_tabs(self):
         self.ui.tabWidgetM.hide()
@@ -3912,120 +3893,119 @@ class MyMainWindow(QMainWindow):
         return False
 
 
-    def open_XYZ(self):
-        if not self.project_is_open:
-            if self._ui_ready:
-                self._project_required_popup()
-            return
-        try:
-            # First check if a project is open
-            if not self.project_is_open or not self.project_root:
-                QMessageBox.warning(
-                    self,
-                    "No Project Open",
-                    "Please open a project first to load KML files from the project folder."
-                )
-                return
-
-            # Search for KML files in the project folder
-            kml_files = []
-            project_path = Path(self.project_root)
-
-            # Search for KML files in project root and subdirectories
-            kml_patterns = ["*.kml", "*.KML"]
-            for pattern in kml_patterns:
-                kml_files.extend(project_path.glob(pattern))
-                kml_files.extend(project_path.glob(f"**/{pattern}"))  # Search subdirectories too
-
-            # Remove duplicates and convert to strings
-            kml_files = list(set(str(f) for f in kml_files))
-
-            if not kml_files:
-                QMessageBox.information(
-                    self,
-                    "No KML Files Found",
-                    f"No KML files were found in the project folder:\n{self.project_root}\n\n"
-                    "Please ensure your KML files are placed in the project directory."
-                )
-                return
-
-            # If multiple KML files found, let user choose
-            kml_path = None
-            if len(kml_files) == 1:
-                kml_path = kml_files[0]
-            else:
-                # Show selection dialog for multiple KML files
-                file_names = [os.path.basename(f) for f in kml_files]
-                selected_file, ok = QInputDialog.getItem(
-                    self,
-                    "Select KML File",
-                    f"Found {len(kml_files)} KML files. Please select one to open:",
-                    file_names,
-                    0,
-                    False
-                )
-                if ok and selected_file:
-                    # Find the full path for the selected file
-                    kml_path = next((f for f in kml_files if os.path.basename(f) == selected_file), None)
-
-            if not kml_path:
-                return
-
-            # Determine Google Earth Pro path based on platform
-            if sys.platform == "win32":
-                earth_path = r"C:\Program Files\Google\Google Earth Pro\client\googleearth.exe"
-            elif sys.platform == "darwin":
-                earth_path = "/Applications/Google Earth Pro.app/Contents/MacOS/Google Earth Pro"
-            else:
-                earth_path = "/usr/bin/google-earth-pro"
-
-            # Check if Google Earth Pro is installed
-            if not os.path.exists(earth_path):
-                # Show installation message
-                reply = QMessageBox.question(
-                    self,
-                    "Google Earth Pro Not Found",
-                    "Google Earth Pro is not installed on your system.\n\n"
-                    "Would you like to download and install it?\n\n"
-                    "Click 'Yes' to open the download page, or 'No' to cancel.",
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    QMessageBox.StandardButton.Yes
-                )
-
-                if reply == QMessageBox.StandardButton.Yes:
-                    # Open download page in default browser
-                    import webbrowser
-                    webbrowser.open("https://www.google.com/earth/versions/#earth-pro")
-                return
-
-            # Launch Google Earth Pro with the selected KML file
-            try:
-                subprocess.Popen([earth_path, kml_path])
-                # QMessageBox.information(
-                #     self,
-                #     "Success",
-                #     f"Google Earth Pro has been launched with:\n{os.path.basename(kml_path)}"
-                # )
-            except Exception as launch_error:
-                QMessageBox.critical(
-                    self,
-                    "Launch Error",
-                    f"Failed to launch Google Earth Pro with the KML file:\n{str(launch_error)}"
-                )
-
-        except Exception as e:
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"An unexpected error occurred while searching for KML files:\n{str(e)}"
-            )
-
-
+    # def open_XYZ(self):
+    #     if not self.project_is_open:
+    #         if self._ui_ready:
+    #             self._project_required_popup()
+    #         return
+    #     try:
+    #         # First check if a project is open
+    #         if not self.project_is_open or not self.project_root:
+    #             QMessageBox.warning(
+    #                 self,
+    #                 "No Project Open",
+    #                 "Please open a project first to load KML files from the project folder."
+    #             )
+    #             return
+    #
+    #         # Search for KML files in the project folder
+    #         kml_files = []
+    #         project_path = Path(self.project_root)
+    #
+    #         # Search for KML files in project root and subdirectories
+    #         kml_patterns = ["*.kml", "*.KML"]
+    #         for pattern in kml_patterns:
+    #             kml_files.extend(project_path.glob(pattern))
+    #             kml_files.extend(project_path.glob(f"**/{pattern}"))  # Search subdirectories too
+    #
+    #         # Remove duplicates and convert to strings
+    #         kml_files = list(set(str(f) for f in kml_files))
+    #
+    #         if not kml_files:
+    #             QMessageBox.information(
+    #                 self,
+    #                 "No KML Files Found",
+    #                 f"No KML files were found in the project folder:\n{self.project_root}\n\n"
+    #                 "Please ensure your KML files are placed in the project directory."
+    #             )
+    #             return
+    #
+    #         # If multiple KML files found, let user choose
+    #         kml_path = None
+    #         if len(kml_files) == 1:
+    #             kml_path = kml_files[0]
+    #         else:
+    #             # Show selection dialog for multiple KML files
+    #             file_names = [os.path.basename(f) for f in kml_files]
+    #             selected_file, ok = QInputDialog.getItem(
+    #                 self,
+    #                 "Select KML File",
+    #                 f"Found {len(kml_files)} KML files. Please select one to open:",
+    #                 file_names,
+    #                 0,
+    #                 False
+    #             )
+    #             if ok and selected_file:
+    #                 # Find the full path for the selected file
+    #                 kml_path = next((f for f in kml_files if os.path.basename(f) == selected_file), None)
+    #
+    #         if not kml_path:
+    #             return
+    #
+    #         # Determine Google Earth Pro path based on platform
+    #         if sys.platform == "win32":
+    #             earth_path = r"C:\Program Files\Google\Google Earth Pro\client\googleearth.exe"
+    #         elif sys.platform == "darwin":
+    #             earth_path = "/Applications/Google Earth Pro.app/Contents/MacOS/Google Earth Pro"
+    #         else:
+    #             earth_path = "/usr/bin/google-earth-pro"
+    #
+    #         # Check if Google Earth Pro is installed
+    #         if not os.path.exists(earth_path):
+    #             # Show installation message
+    #             reply = QMessageBox.question(
+    #                 self,
+    #                 "Google Earth Pro Not Found",
+    #                 "Google Earth Pro is not installed on your system.\n\n"
+    #                 "Would you like to download and install it?\n\n"
+    #                 "Click 'Yes' to open the download page, or 'No' to cancel.",
+    #                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+    #                 QMessageBox.StandardButton.Yes
+    #             )
+    #
+    #             if reply == QMessageBox.StandardButton.Yes:
+    #                 # Open download page in default browser
+    #                 import webbrowser
+    #                 webbrowser.open("https://www.google.com/earth/versions/#earth-pro")
+    #             return
+    #
+    #         # Launch Google Earth Pro with the selected KML file
+    #         try:
+    #             subprocess.Popen([earth_path, kml_path])
+    #             # QMessageBox.information(
+    #             #     self,
+    #             #     "Success",
+    #             #     f"Google Earth Pro has been launched with:\n{os.path.basename(kml_path)}"
+    #             # )
+    #         except Exception as launch_error:
+    #             QMessageBox.critical(
+    #                 self,
+    #                 "Launch Error",
+    #                 f"Failed to launch Google Earth Pro with the KML file:\n{str(launch_error)}"
+    #             )
+    #
+    #     except Exception as e:
+    #         QMessageBox.critical(
+    #             self,
+    #             "Error",
+    #             f"An unexpected error occurred while searching for KML files:\n{str(e)}"
+    #         )
 
 
 
-    def open_Cluster(self):
-        Cluster_Dialog().exec()
+
+
+
 
     def open_Ptal(self):
         try:
@@ -4058,11 +4038,9 @@ class MyMainWindow(QMainWindow):
     # def open_About(self):
     #     About_Dialog().exec()
 
-    def open_Admin(self):
-        self.ap = Admin_Panel(); self.ap.show()
 
-    def open_Assessment(self):
-        Assess_Dialog().exec()
+
+
 
     # def open_PipeHigh(self):
     #     """Open Pipeline Highlights embedded in the main window"""
@@ -4215,24 +4193,7 @@ class MyMainWindow(QMainWindow):
     #     except Exception as e:
     #         self.open_Error(f"Error running Pipeline Schema:\n{e}")
 
-    def open_Report(self):
-        cols = [r"Abs. Distance (m)", r"Depth %", r"Type", r"ERF (ASME B31G)", r"Orientation o' clock"]
-        if not isinstance(self.pipe_tally, pd.DataFrame):
-            QMessageBox.critical(self, "Error", "Pipe tally data is missing or not loaded."); return
-        for c in cols:
-            if c not in self.pipe_tally.columns:
-                QMessageBox.critical(self, "Error", f"Missing column: {c}"); return
-        fil = self.pipe_tally[cols].copy()
-        fil = fil.dropna(subset=["Abs. Distance (m)"])
-        fil["Abs. Distance (m)"] = fil["Abs. Distance (m)"].astype(int)
-        fil["Depth %"] = pd.to_numeric(fil["Depth %"], errors='coerce')
-        fil["Type"] = fil["Type"].astype(str)
-        fil["ERF (ASME B31G)"] = pd.to_numeric(fil["ERF (ASME B31G)"], errors='coerce')
-        fil[r"Orientation o' clock"] = fil[r"Orientation o' clock"].astype(str)
-        fil["Surface Location"] = fil["Type"].apply(
-            lambda x: "Internal" if "Internal" in x else ("External" if "External" in x else "Unknown")
-        )
-        self.fr = Report(fil); self.fr.show()
+
 
     # def open_ERF(self):
     #     self.erf = ERF()
@@ -4459,50 +4420,11 @@ class MyMainWindow(QMainWindow):
     #     if os.path.exists(p): os.startfile(p)
     #     else: self.open_Error("User manual is not found.")
 
-    def add_plot_custom(self):
-        try:
-            self.cplot_widget = customPlot(self.header_list)
-            self.ui.graphLayout.addWidget(self.cplot_widget)
-            self.cplot_widget.closeCustom.clicked.connect(self.cplot_widget.close_window)
-            self.cplot_widget.comboBox.currentIndexChanged.connect(self.plot_c)
-        except Exception as e:
-            self.open_Error(e)
 
-    def plot_c(self):
-        try:
-            y_label = self.cplot_widget.comboBox.currentText()
-            x_label = self.cplot_widget.comboBox_2.currentText()
-            if x_label not in self.curr_data or y_label not in self.curr_data:
-                raise ValueError("Selected labels are not in the current data.")
-            x_data = self.curr_data[x_label]; y_data = self.curr_data[y_label]
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=x_data, y=y_data, mode='lines', name=y_label))
-            fig.update_layout(title=f'{y_label} vs {x_label}', xaxis_title=x_label, yaxis_title=y_label, height=450)
-            fp = resource_path('backend/files/customplot.html'); fig.write_html(fp)
-            self.cplot_widget.webviewCustom.setUrl(QUrl.fromLocalFile(fp))
-            self.web_view.setUrl(QUrl.fromLocalFile(fp))
-        except Exception as e:
-            self.open_Error(e)
 
-    def add_plot_tele(self):
-        try:
-            if self.curr_data is None or self.curr_data.empty:
-                QMessageBox.critical(self, "Error", "Please load a project first."); return
-            import re as _re
-            tlist = [c for c in self.header_list if _re.match(r'^F\d+', c)]
-            if not tlist:
-                QMessageBox.warning(self, "No Telemetry Data", "No telemetry (F...) columns found."); return
-            self.tplot_widget = telePlot(tlist)
-            self.ui.graphLayout.addWidget(self.tplot_widget)
-            self.tplot_widget.closeTele.clicked.connect(self.tplot_widget.close_window)
-            self.tplot_widget.checkBox.stateChanged.connect(self.magnetisation)
-            self.tplot_widget.checkBox_2.stateChanged.connect(self.velocity)
-            self.tplot_widget.comboBox.currentIndexChanged.connect(self.plot_telemetry)
-            if len(tlist) > 0:
-                self.tplot_widget.comboBox.setCurrentIndex(1)
-                self.plot_telemetry()
-        except Exception as e:
-            self.open_Error(e)
+
+
+
 
     def magnetisation(self):
         try:
@@ -4555,13 +4477,7 @@ class MyMainWindow(QMainWindow):
         except Exception as e:
             self.open_Error(e)
 
-    def add_plot_ad(self):
-        try:
-            self.adplot_widget = adPlot(self.curr_data if isinstance(self.curr_data, list) else self.curr_data)
-            self.ui.graphLayout.addWidget(self.adplot_widget)
-            self.adplot_widget.closeAnamoly.clicked.connect(self.adplot_widget.close_window)
-        except Exception as e:
-            self.open_Error(e)
+
 
     def on_row_selection_changed(self, *_):
         idxs = self.ui.tableWidgetDefect.selectionModel().selectedRows()
@@ -4951,71 +4867,7 @@ class MyMainWindow(QMainWindow):
     #             self.tabSwitcherDropdown.blockSignals(False)
     #     self.ui.action_Pipe_Sch.setEnabled(False)
 
-    def open_CMLD(self):
-        selected_columns = [r"Abs. Distance (m)", r"Type", r"Orientation o' clock"]
-        if not isinstance(self.pipe_tally, pd.DataFrame):
-            QMessageBox.critical(self, "Error", "Pipe tally data is missing or not loaded.")
-            return
-        for col in selected_columns:
-            if col not in self.pipe_tally.columns:
-                QMessageBox.critical(self, "Error", f"Missing column: {col}")
-                return
-        fil_tally = self.pipe_tally[selected_columns].copy()
-        try:
-            fil_tally["Abs. Distance (m)"] = fil_tally["Abs. Distance (m)"].astype(int)
-            fil_tally["Type"] = fil_tally["Type"].astype(str)
-            fil_tally[r"Orientation o' clock"] = fil_tally[r"Orientation o' clock"].astype(str)
 
-            self.m3 = Main03Tab(fil_tally)
-            self.m3.setWindowTitle("Circumferential Metal Loss Distribution")
-            self.m3.resize(1285, 913)
-            self.m3.show()
-        except Exception as e:
-            self.open_Error(e)
-
-    def open_DBAD(self):
-        selected_columns = [r"Abs. Distance (m)", r"Depth %", r"Type"]
-        if not isinstance(self.pipe_tally, pd.DataFrame):
-            QMessageBox.critical(self, "Error", "Pipe tally data is missing or not loaded.")
-            return
-        for col in selected_columns:
-            if col not in self.pipe_tally.columns:
-                QMessageBox.critical(self, "Error", f"Missing column: {col}")
-                return
-        fil_tally = self.pipe_tally[selected_columns].copy()
-        try:
-            fil_tally["Abs. Distance (m)"] = fil_tally["Abs. Distance (m)"].astype(int)
-            fil_tally["Depth %"] = pd.to_numeric(fil_tally["Depth %"], errors='coerce')
-            fil_tally["Type"] = fil_tally["Type"].astype(str)
-
-            self.m2 = Main02Tab(fil_tally)
-            self.m2.setWindowTitle("Depth Based Anomalies Distribution")
-            self.m2.resize(1285, 913)
-            self.m2.show()
-        except Exception as e:
-            self.open_Error(e)
-
-    def open_EAD(self):
-        selected_columns = [r"Abs. Distance (m)", r"Type", r"ERF (ASME B31G)"]
-        if not isinstance(self.pipe_tally, pd.DataFrame):
-            QMessageBox.critical(self, "Error", "Pipe tally data is missing or not loaded.")
-            return
-        for col in selected_columns:
-            if col not in self.pipe_tally.columns:
-                QMessageBox.critical(self, "Error", f"Missing column: {col}")
-                return
-        fil_tally = self.pipe_tally[selected_columns].copy()
-        try:
-            fil_tally["Abs. Distance (m)"] = fil_tally["Abs. Distance (m)"].astype(int)
-            fil_tally["Type"] = fil_tally["Type"].astype(str)
-            fil_tally["ERF (ASME B31G)"] = pd.to_numeric(fil_tally["ERF (ASME B31G)"], errors='coerce')
-
-            self.m1 = Main01Tab(fil_tally)
-            self.m1.setWindowTitle("ERF Based Anomalies Distribution")
-            self.m1.resize(1285, 913)
-            self.m1.show()
-        except Exception as e:
-            self.open_Error(e)
 
 
 
@@ -5318,3 +5170,177 @@ class MyMainWindow(QMainWindow):
             self.top_hsplit.setSizes([top, bottom])
 
         print(f"Heatmap layout changed to: {mode}")
+
+
+
+    #extras
+    def open_Admin(self):
+        self.ap = Admin_Panel(); self.ap.show()
+
+    def gen_data(self):
+        try:
+            if 'genData' not in self.child_windows or not self.child_windows['genData'].isVisible():
+                self.script_runner_window = ScriptRunnerApp()
+                self.script_runner_window.show()
+                self.child_windows['genData'] = self.script_runner_window
+            else:
+                self.child_windows['genData'].raise_()
+                self.child_windows['genData'].activateWindow()
+        except Exception as e:
+            self.open_Error(e)
+
+    def open_Report(self):
+        cols = [r"Abs. Distance (m)", r"Depth %", r"Type", r"ERF (ASME B31G)", r"Orientation o' clock"]
+        if not isinstance(self.pipe_tally, pd.DataFrame):
+            QMessageBox.critical(self, "Error", "Pipe tally data is missing or not loaded."); return
+        for c in cols:
+            if c not in self.pipe_tally.columns:
+                QMessageBox.critical(self, "Error", f"Missing column: {c}"); return
+        fil = self.pipe_tally[cols].copy()
+        fil = fil.dropna(subset=["Abs. Distance (m)"])
+        fil["Abs. Distance (m)"] = fil["Abs. Distance (m)"].astype(int)
+        fil["Depth %"] = pd.to_numeric(fil["Depth %"], errors='coerce')
+        fil["Type"] = fil["Type"].astype(str)
+        fil["ERF (ASME B31G)"] = pd.to_numeric(fil["ERF (ASME B31G)"], errors='coerce')
+        fil[r"Orientation o' clock"] = fil[r"Orientation o' clock"].astype(str)
+        fil["Surface Location"] = fil["Type"].apply(
+            lambda x: "Internal" if "Internal" in x else ("External" if "External" in x else "Unknown")
+        )
+        self.fr = Report(fil); self.fr.show()
+
+
+    def open_Assessment(self):
+        Assess_Dialog().exec()
+
+    def open_Cluster(self):
+        Cluster_Dialog().exec()
+
+    def open_CMLD(self):
+        selected_columns = [r"Abs. Distance (m)", r"Type", r"Orientation o' clock"]
+        if not isinstance(self.pipe_tally, pd.DataFrame):
+            QMessageBox.critical(self, "Error", "Pipe tally data is missing or not loaded.")
+            return
+        for col in selected_columns:
+            if col not in self.pipe_tally.columns:
+                QMessageBox.critical(self, "Error", f"Missing column: {col}")
+                return
+        fil_tally = self.pipe_tally[selected_columns].copy()
+        try:
+            fil_tally["Abs. Distance (m)"] = fil_tally["Abs. Distance (m)"].astype(int)
+            fil_tally["Type"] = fil_tally["Type"].astype(str)
+            fil_tally[r"Orientation o' clock"] = fil_tally[r"Orientation o' clock"].astype(str)
+
+            self.m3 = Main03Tab(fil_tally)
+            self.m3.setWindowTitle("Circumferential Metal Loss Distribution")
+            self.m3.resize(1285, 913)
+            self.m3.show()
+        except Exception as e:
+            self.open_Error(e)
+
+    def open_DBAD(self):
+        selected_columns = [r"Abs. Distance (m)", r"Depth %", r"Type"]
+        if not isinstance(self.pipe_tally, pd.DataFrame):
+            QMessageBox.critical(self, "Error", "Pipe tally data is missing or not loaded.")
+            return
+        for col in selected_columns:
+            if col not in self.pipe_tally.columns:
+                QMessageBox.critical(self, "Error", f"Missing column: {col}")
+                return
+        fil_tally = self.pipe_tally[selected_columns].copy()
+        try:
+            fil_tally["Abs. Distance (m)"] = fil_tally["Abs. Distance (m)"].astype(int)
+            fil_tally["Depth %"] = pd.to_numeric(fil_tally["Depth %"], errors='coerce')
+            fil_tally["Type"] = fil_tally["Type"].astype(str)
+
+            self.m2 = Main02Tab(fil_tally)
+            self.m2.setWindowTitle("Depth Based Anomalies Distribution")
+            self.m2.resize(1285, 913)
+            self.m2.show()
+        except Exception as e:
+            self.open_Error(e)
+
+    def open_EAD(self):
+        selected_columns = [r"Abs. Distance (m)", r"Type", r"ERF (ASME B31G)"]
+        if not isinstance(self.pipe_tally, pd.DataFrame):
+            QMessageBox.critical(self, "Error", "Pipe tally data is missing or not loaded.")
+            return
+        for col in selected_columns:
+            if col not in self.pipe_tally.columns:
+                QMessageBox.critical(self, "Error", f"Missing column: {col}")
+                return
+        fil_tally = self.pipe_tally[selected_columns].copy()
+        try:
+            fil_tally["Abs. Distance (m)"] = fil_tally["Abs. Distance (m)"].astype(int)
+            fil_tally["Type"] = fil_tally["Type"].astype(str)
+            fil_tally["ERF (ASME B31G)"] = pd.to_numeric(fil_tally["ERF (ASME B31G)"], errors='coerce')
+
+            self.m1 = Main01Tab(fil_tally)
+            self.m1.setWindowTitle("ERF Based Anomalies Distribution")
+            self.m1.resize(1285, 913)
+            self.m1.show()
+        except Exception as e:
+            self.open_Error(e)
+
+    def add_plot_custom(self):
+        try:
+            self.cplot_widget = customPlot(self.header_list)
+            self.ui.graphLayout.addWidget(self.cplot_widget)
+            self.cplot_widget.closeCustom.clicked.connect(self.cplot_widget.close_window)
+            self.cplot_widget.comboBox.currentIndexChanged.connect(self.plot_c)
+        except Exception as e:
+            self.open_Error(e)
+
+    def add_plot_tele(self):
+        try:
+            if self.curr_data is None or self.curr_data.empty:
+                QMessageBox.critical(self, "Error", "Please load a project first."); return
+            import re as _re
+            tlist = [c for c in self.header_list if _re.match(r'^F\d+', c)]
+            if not tlist:
+                QMessageBox.warning(self, "No Telemetry Data", "No telemetry (F...) columns found."); return
+            self.tplot_widget = telePlot(tlist)
+            self.ui.graphLayout.addWidget(self.tplot_widget)
+            self.tplot_widget.closeTele.clicked.connect(self.tplot_widget.close_window)
+            self.tplot_widget.checkBox.stateChanged.connect(self.magnetisation)
+            self.tplot_widget.checkBox_2.stateChanged.connect(self.velocity)
+            self.tplot_widget.comboBox.currentIndexChanged.connect(self.plot_telemetry)
+            if len(tlist) > 0:
+                self.tplot_widget.comboBox.setCurrentIndex(1)
+                self.plot_telemetry()
+        except Exception as e:
+            self.open_Error(e)
+
+    def add_plot_ad(self):
+        try:
+            self.adplot_widget = adPlot(self.curr_data if isinstance(self.curr_data, list) else self.curr_data)
+            self.ui.graphLayout.addWidget(self.adplot_widget)
+            self.adplot_widget.closeAnamoly.clicked.connect(self.adplot_widget.close_window)
+        except Exception as e:
+            self.open_Error(e)
+
+    def draw_boxes_v2(self):
+        if not self.project_is_open:
+            return
+        try:
+            if self.heatmap_box and os.path.exists(self.heatmap_box):
+                self.web_view.setUrl(QUrl.fromLocalFile(self.heatmap_box))
+            else:
+                self.open_Error("Boxed heatmap not found for the selected pipe.")
+        except Exception as e:
+            self.open_Error(e)
+
+    def plot_c(self):
+        try:
+            y_label = self.cplot_widget.comboBox.currentText()
+            x_label = self.cplot_widget.comboBox_2.currentText()
+            if x_label not in self.curr_data or y_label not in self.curr_data:
+                raise ValueError("Selected labels are not in the current data.")
+            x_data = self.curr_data[x_label]; y_data = self.curr_data[y_label]
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=x_data, y=y_data, mode='lines', name=y_label))
+            fig.update_layout(title=f'{y_label} vs {x_label}', xaxis_title=x_label, yaxis_title=y_label, height=450)
+            fp = resource_path('backend/files/customplot.html'); fig.write_html(fp)
+            self.cplot_widget.webviewCustom.setUrl(QUrl.fromLocalFile(fp))
+            self.web_view.setUrl(QUrl.fromLocalFile(fp))
+        except Exception as e:
+            self.open_Error(e)
