@@ -1,6 +1,8 @@
 from PyQt6.QtCore import QUrl
 from PyQt6.QtWidgets import QMessageBox
 
+from main_window.components.helper_func import _update_project_actions
+
 
 def close_project(self):
     try:
@@ -107,7 +109,7 @@ def close_project(self):
 
         self._force_full_start_state()
 
-        self._update_project_actions()
+        _update_project_actions(self)
         QMessageBox.information(self, "Project Closed", "The project has been successfully closed.")
 
     except Exception as e:

@@ -1,9 +1,14 @@
+import os
+import sys
+import tempfile
+import uuid
+
 from PyQt6.QtCore import QTimer, Qt, pyqtSignal, QEvent
 from PyQt6.QtGui import QCursor
 from PyQt6.QtWebEngineCore import QWebEnginePage
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import QScrollArea, QVBoxLayout, QWidget, QStackedWidget, QHBoxLayout, QSplitter, QTabBar, \
-    QSplitterHandle, QFrame
+    QSplitterHandle, QFrame, QScrollBar
 from typing import Optional
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QFileDialog, QHeaderView, QInputDialog,
@@ -13,9 +18,42 @@ from PyQt6.QtWidgets import (
     QTabBar, QFrame, QHBoxLayout as _QHBoxLayout, QSplitterHandle, QComboBox,
     QAbstractItemView, QAbstractScrollArea, QProgressBar
 )
-
+from PyQt6 import QtWidgets
 from main_section_view.helpers_temp import _arm_topbar
+SCROLLBAR_STYLE = """
+QScrollBar:vertical {
+    background: #2b2b2b;
+    width: 14px;
+}
+QScrollBar::handle:vertical {
+    background: #555;
+    min-height: 20px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #777;
+}
+QScrollBar:horizontal {
+    background: #2b2b2b;
+    height: 14px;
+}
+QScrollBar::handle:horizontal {
+    background: #555;
+    min-width: 20px;
+}
+QScrollBar::handle:horizontal:hover {
+    background: #777;
+}
+"""
+def resource_path(relative_path):
+    if getattr(sys, 'frozen', False):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 
+def _dump_tally_to_temp(df):
+    import pickle
+    p = os.path.join(tempfile.gettempdir(), f"pipe_tally_{uuid.uuid4().hex}.pkl")
+    with open(p, "wb") as f: pickle.dump(df, f)
+    return p
 
 class MidBarHandle(QSplitterHandle):
     def __init__(self, orientation, parent, tabbar: QTabBar):
@@ -665,7 +703,15 @@ def _build_main_section(self):
     main_web_layout.addWidget(self.top_stack)
 
     # Top scrollbar (used only for single chart)
-    self.main_top_scrollbar = self._make_topbar_row(
+    # self.main_top_scrollbar = self._make_topbar_row(
+    #     "mainTopBar",
+    #     main_web_layout,
+    #     bar_h=10,
+    #     left_px=1300,
+    #     right_px=570
+    # )
+    self.main_top_scrollbar = _make_topbar_row(
+        self,
         "mainTopBar",
         main_web_layout,
         bar_h=10,
@@ -762,7 +808,15 @@ def _build_main_section(self):
         Qt.ScrollBarPolicy.ScrollBarAlwaysOff
     )
 
-    self.table_scrollbar = self._make_topbar_row(
+    # self.table_scrollbar = self._make_topbar_row(
+    #     "tableTopBar",
+    #     defect_layout,
+    #     bar_h=10,
+    #     left_px=1300,
+    #     right_px=570
+    # )
+    self.table_scrollbar = _make_topbar_row(
+        self,
         "tableTopBar",
         defect_layout,
         bar_h=10,
@@ -777,7 +831,7 @@ def _build_main_section(self):
     vh.setVisible(False)
     self.ui.tableWidgetDefect.setCornerButtonEnabled(False)
 
-    self._install_left_vbar(self.ui.tableWidgetDefect)
+    _install_left_vbar(self, self.ui.tableWidgetDefect)
     self._setup_table_scrollbar_sync()
 
     # ----------------------------------------------------------------------
@@ -807,7 +861,15 @@ def _build_main_section(self):
     web_layout.setContentsMargins(0, 0, 0, 0)
     web_layout.setSpacing(0)
 
-    self.top_scrollbar = self._make_topbar_row(
+    # self.top_scrollbar = self._make_topbar_row(
+    #     "proxTopBar",
+    #     web_layout,
+    #     bar_h=10,
+    #     left_px=1300,
+    #     right_px=570
+    # )
+    self.top_scrollbar = _make_topbar_row(
+        self,
         "proxTopBar",
         web_layout,
         bar_h=10,
@@ -825,8 +887,8 @@ def _build_main_section(self):
 
     self.web_scroll_area.setWidget(self.web_view2)
     web_layout.addWidget(self.web_scroll_area)
-
-    self._apply_scrollbar_theme("#6AA2FF")
+    # self._apply_scrollbar_theme("#6AA2FF")
+    _apply_scrollbar_theme(self, "#6AA2FF")
 
     # ======================================================================
     # PROXIMITY SCROLLBAR SYNC LOGIC
@@ -983,3 +1045,351 @@ def _build_main_section(self):
 
 
 
+def _make_topbar_row(
+        self,
+        object_name: str,
+        parent_vbox: QVBoxLayout,
+        bar_h: int = 14,
+        *,
+        left_px: int | None = None,     # ← fixed left spacer (px). None = expanding
+        right_px: int | None = None,    # ← fixed right spacer (px). None = expanding
+        pad_left: int = 8,              # tiny inner padding (optional)
+        pad_right: int = 8
+) -> QScrollBar:
+    row_frame = QFrame()
+    row_frame.setObjectName(object_name + "_container")
+    row_frame.setFixedHeight(bar_h)
+    row_frame.setStyleSheet("QFrame{margin:0;padding:0;border:0;background:transparent;}")
+
+    row = QHBoxLayout(row_frame)
+    row.setContentsMargins(pad_left, 0, pad_right, 0)
+    row.setSpacing(0)
+
+    # Left spacer
+    if left_px is None:
+        left_sp = QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+    else:
+        left_sp = QSpacerItem(left_px, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
+
+    # Right spacer
+    if right_px is None:
+        right_sp = QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+    else:
+        right_sp = QSpacerItem(right_px, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
+
+    bar = QScrollBar(Qt.Orientation.Horizontal)
+    bar.setObjectName(object_name)
+    bar.setFixedHeight(bar_h)
+    bar.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+    row.addItem(left_sp)
+    row.addWidget(bar)
+    row.addItem(right_sp)
+
+    parent_vbox.addWidget(row_frame)
+    return bar
+
+
+def _install_left_vbar(self, tw: QtWidgets.QTableWidget):
+    """
+    Place a custom vertical scrollbar inside the table's left margin and
+    sync it to the table's internal vertical scrollbar.
+    """
+    LEFT_GUTTER = 16  # width for the left vbar inside the table
+    # Reserve space on the left *inside* the table for our bar
+    tw.setViewportMargins(LEFT_GUTTER, 0, 0, 0)
+
+    # Create the bar as a child of the table so it sits in the viewport area
+    self.left_vbar = QScrollBar(Qt.Orientation.Vertical, tw)
+    self.left_vbar.setObjectName("leftTableVBar")
+    self.left_vbar.setStyleSheet(SCROLLBAR_STYLE)
+    self.left_vbar.setFixedWidth(LEFT_GUTTER)
+
+    # Hide the table's built-in right vbar; we will drive it via the left one
+    tw.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    inner_vbar = tw.verticalScrollBar()  # still exists, just hidden
+
+    # keep ranges/values in sync
+    def _apply_range():
+        self.left_vbar.blockSignals(True)
+        self.left_vbar.setRange(inner_vbar.minimum(), inner_vbar.maximum())
+        self.left_vbar.setPageStep(inner_vbar.pageStep())
+        self.left_vbar.setSingleStep(inner_vbar.singleStep())
+        self.left_vbar.setValue(inner_vbar.value())
+        self.left_vbar.blockSignals(False)
+
+    def _on_left_changed(v):
+        inner_vbar.setValue(v)
+
+    def _on_inner_changed(v):
+        self.left_vbar.blockSignals(True)
+        self.left_vbar.setValue(v)
+        self.left_vbar.blockSignals(False)
+
+    def _on_inner_range_changed(_min, _max):
+        _apply_range()
+
+    self.left_vbar.valueChanged.connect(_on_left_changed)
+    inner_vbar.valueChanged.connect(_on_inner_changed)
+    inner_vbar.rangeChanged.connect(_on_inner_range_changed)
+
+    # position the left bar so it starts below the header and fills the viewport height
+    _update_left_vbar_geometry(self, tw)
+    tw.installEventFilter(self)  # so we can reposition it on resize/show
+
+    # first-time sync after layout settles
+    QTimer.singleShot(0, _apply_range)
+    _style_left_vertical_bar(self)
+
+
+def _update_left_vbar_geometry(self, tw: QtWidgets.QTableWidget):
+    """Keep the left scrollbar aligned with the table’s viewport (below header)."""
+    try:
+        header_h = tw.horizontalHeader().height() if tw.horizontalHeader() else 0
+        x = 0
+        y = header_h
+        w = self.left_vbar.width()
+        h = tw.viewport().height()
+        self.left_vbar.setGeometry(x, y, w, h)
+        self.left_vbar.raise_()
+    except Exception:
+        pass
+
+
+
+def _style_left_vertical_bar(self):
+    # icon paths
+    up    = resource_path("ui/icons/arrow_up.svg").replace("\\", "/")
+    down  = resource_path("ui/icons/arrow_down.svg").replace("\\", "/")
+
+    # dimensions
+    btn = 18       # arrow button size
+    w   = 16       # bar width
+    r   = 8        # thumb radius
+
+    style = f"""
+    /* entire bar */
+    QScrollBar#leftTableVBar:vertical {{
+        width:{w}px;
+        margin:{btn + 2}px 0;           /* room for arrow buttons */
+        background: transparent;
+        border: none;
+    }}
+
+    /* the thumb */
+    QScrollBar#leftTableVBar::handle:vertical {{
+        min-height: 36px;
+        border-radius:{r}px;
+        background: #6b6b6b;
+        border: 1px solid rgba(0,0,0,0.25);
+    }}
+    QScrollBar#leftTableVBar::handle:vertical:hover {{
+        background: #7f7f7f;
+    }}
+    QScrollBar#leftTableVBar::handle:vertical:pressed {{
+        background: #4f4f4f;
+    }}
+
+    /* top arrow */
+    QScrollBar#leftTableVBar::sub-line:vertical {{
+        height:{btn}px; width:{btn}px;
+        subcontrol-origin: margin;
+        subcontrol-position: top;
+        border: none;
+        border-radius:{btn//2}px;
+        background: #e7e7e7;
+        image: url("{up}");
+    }}
+    /* bottom arrow */
+    QScrollBar#leftTableVBar::add-line:vertical {{
+        height:{btn}px; width:{btn}px;
+        subcontrol-origin: margin;
+        subcontrol-position: bottom;
+        border: none;
+        border-radius:{btn//2}px;
+        background: #e7e7e7;
+        image: url("{down}");
+    }}
+    QScrollBar#leftTableVBar::sub-line:vertical:hover,
+    QScrollBar#leftTableVBar::add-line:vertical:hover {{
+        background: #d7d7d7;
+    }}
+    QScrollBar#leftTableVBar::sub-line:vertical:pressed,
+    QScrollBar#leftTableVBar::add-line:vertical:pressed {{
+        background: #c7c7c7;
+    }}
+
+    /* the “pages” above/below the thumb */
+    QScrollBar#leftTableVBar::sub-page:vertical,
+    QScrollBar#leftTableVBar::add-page:vertical {{
+        background: #f2f2f2;
+        border: none;
+    }}
+    """
+    self.left_vbar.setStyleSheet(style)
+
+
+
+
+def _apply_scrollbar_theme(self, _accent_ignored="#b8b8b8"):
+    handle_radius = 10
+    btn_wh = 22         # arrow circle size
+    bar_h  = 14         # unified height for all top bars
+    bar_w  = 16
+
+    # SVG paths
+    left  = resource_path("ui/icons/arrow_left.svg").replace("\\", "/")
+    right = resource_path("ui/icons/arrow_right.svg").replace("\\", "/")
+    up    = resource_path("ui/icons/arrow_up.svg").replace("\\", "/")
+    down  = resource_path("ui/icons/arrow_down.svg").replace("\\", "/")
+
+    # ---- HORIZONTAL: all three custom top bars ----
+    h_style = f"""
+    QScrollBar#proxTopBar:horizontal,
+    QScrollBar#mainTopBar:horizontal,
+    QScrollBar#tableTopBar:horizontal {{
+        height:{bar_h}px;
+        background: transparent;
+        margin: 0 {btn_wh + 3}px 0 {btn_wh + 3}px;             /* kill outer margin */
+        padding: 0;             /* kill inner padding */
+        border: 0;
+    }}
+
+    /* handle (thumb) */
+    QScrollBar#proxTopBar::handle:horizontal,
+    QScrollBar#mainTopBar::handle:horizontal,
+    QScrollBar#tableTopBar::handle:horizontal {{
+        min-width: 40px;
+        border-radius:{handle_radius}px;
+        border:1px solid rgba(0,0,0,0.18);
+        background:#d9d9d9;
+    }}
+    QScrollBar#proxTopBar::handle:horizontal:hover,
+    QScrollBar#mainTopBar::handle:horizontal:hover,
+    QScrollBar#tableTopBar::handle:horizontal:hover {{
+        background:#bfbfbf; border-color:rgba(0,0,0,0.28);
+    }}
+    QScrollBar#proxTopBar::handle:horizontal:pressed,
+    QScrollBar#mainTopBar::handle:horizontal:pressed,
+    QScrollBar#tableTopBar::handle:horizontal:pressed {{
+        background:#9a9a9a; border-color:rgba(0,0,0,0.38);
+    }}
+
+    /* arrows */
+    QScrollBar#proxTopBar::sub-line:horizontal,
+    QScrollBar#mainTopBar::sub-line:horizontal,
+    QScrollBar#tableTopBar::sub-line:horizontal {{
+        width:{btn_wh}px; height:{btn_wh}px;
+        subcontrol-origin: margin;
+        subcontrol-position: left;
+        border: none;
+        border-radius:{btn_wh//2}px;
+        background:#e9e9e9;
+        image: url("{left}");
+    }}
+    QScrollBar#proxTopBar::add-line:horizontal,
+    QScrollBar#mainTopBar::add-line:horizontal,
+    QScrollBar#tableTopBar::add-line:horizontal {{
+        width:{btn_wh}px; height:{btn_wh}px;
+        subcontrol-origin: margin;
+        subcontrol-position: right;
+        border: none;
+        border-radius:{btn_wh//2}px;
+        background:#e9e9e9;
+        image: url("{right}");
+    }}
+
+    /* hover states */
+    QScrollBar#proxTopBar::sub-line:horizontal:hover,
+    QScrollBar#mainTopBar::sub-line:horizontal:hover,
+    QScrollBar#tableTopBar::sub-line:horizontal:hover,
+    QScrollBar#proxTopBar::add-line:horizontal:hover,
+    QScrollBar#mainTopBar::add-line:horizontal:hover,
+    QScrollBar#tableTopBar::add-line:horizontal:hover {{
+        background:#d6d6d6;
+    }}
+    QScrollBar#proxTopBar::sub-line:horizontal:pressed,
+    QScrollBar#mainTopBar::sub-line:horizontal:pressed,
+    QScrollBar#tableTopBar::sub-line:horizontal:pressed,
+    QScrollBar#proxTopBar::add-line:horizontal:pressed,
+    QScrollBar#mainTopBar::add-line:horizontal:pressed,
+    QScrollBar#tableTopBar::add-line:horizontal:pressed {{
+        background:#c2c2c2;
+    }}
+
+    /* pages transparent */
+    QScrollBar#proxTopBar::add-page:horizontal,
+    QScrollBar#proxTopBar::sub-page:horizontal,
+    QScrollBar#mainTopBar::add-page:horizontal,
+    QScrollBar#mainTopBar::sub-page:horizontal,
+    QScrollBar#tableTopBar::add-page:horizontal,
+    QScrollBar#tableTopBar::sub-page:horizontal {{
+        background: transparent;
+    }}
+    """
+
+    # ---- VERTICAL: style the scrollareas' vertical bars (optional) ----
+    v_style = f"""
+    QScrollBar:vertical {{
+        width:{bar_w}px;
+        margin:{btn_wh + 8}px 0;
+        background: transparent;
+    }}
+    QScrollBar::handle:vertical {{
+        min-height:40px;
+        border-radius:{handle_radius}px;
+        border:1px solid rgba(0,0,0,0.18);
+        background:#d9d9d9;
+    }}
+    QScrollBar::handle:vertical:hover  {{ background:#bfbfbf; border-color:rgba(0,0,0,0.28); }}
+    QScrollBar::handle:vertical:pressed{{ background:#9a9a9a; border-color:rgba(0,0,0,0.38); }}
+
+    QScrollBar::sub-line:vertical {{
+        height:{btn_wh}px; width:{btn_wh}px;
+        subcontrol-origin: margin;
+        subcontrol-position: top;
+        border:none; border-radius:{btn_wh//2}px;
+        background:#e9e9e9;
+        image: url("{up}");
+    }}
+    QScrollBar::add-line:vertical {{
+        height:{btn_wh}px; width:{btn_wh}px;
+        subcontrol-origin: margin;
+        subcontrol-position: bottom;
+        border:none; border-radius:{btn_wh//2}px;
+        background:#e9e9e9;
+        image: url("{down}");
+    }}
+    QScrollBar::sub-line:vertical:hover,
+    QScrollBar::add-line:vertical:hover {{ background:#d6d6d6; }}
+    QScrollBar::sub-line:vertical:pressed,
+    QScrollBar::add-line:vertical:pressed {{ background:#c2c2c2; }}
+
+    QScrollBar::add-page:vertical,
+    QScrollBar::sub-page:vertical {{ background: transparent; }}
+    """
+
+    # apply
+    self.top_scrollbar.setStyleSheet(h_style)
+    self.main_top_scrollbar.setStyleSheet(h_style)
+    self.table_scrollbar.setStyleSheet(h_style)
+    self.web_scroll_area.verticalScrollBar().setStyleSheet(v_style)
+    self.main_web_scroll_area.verticalScrollBar().setStyleSheet(v_style)
+
+
+
+
+def resizeEvent(self, event):
+    super().resizeEvent(event)
+    if hasattr(self, "_select_pipe_container") and self._select_pipe_container.isVisible():
+        central = self.centralWidget().rect()
+        header_height = self.ui.comboBoxPipe.height() + 20
+        self._select_pipe_container.setGeometry(
+            0,
+            header_height,
+            central.width(),
+            central.height() - header_height
+        )
+    if hasattr(self, "_create_proj_container") and self._create_proj_container.isVisible():
+        central = self.centralWidget().rect()
+        self._create_proj_container.setGeometry(central)

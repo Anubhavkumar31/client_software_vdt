@@ -401,8 +401,6 @@ class PipeLoaderWorker(QThread):
                 df[col] = pd.to_numeric(df[col], errors='coerce').round(3)
 
         return df
-
-
 class ModernLoadingDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1624,24 +1622,24 @@ class MyMainWindow(QMainWindow):
         self.btnLoadPipe.setEnabled(False)
 
 
-    def _update_project_actions(self):
-        a = self.ui
-        act_create = getattr(a, "action_Create_Proj", None)
-        act_close = getattr(a, "action_Close_Proj", None)
-        act_graphs = getattr(a, "action_graphs", None)
-        act_xyz = getattr(a, "action_XYZ", None)
-        act_pipehigh = getattr(a, "action_Pipe_High", None)
-        if isinstance(act_create, QAction):
-            act_create.setEnabled(not self.project_is_open)
-        if isinstance(act_close, QAction):
-            act_close.setEnabled(self.project_is_open)
-        if isinstance(act_graphs, QAction):
-            act_graphs.setEnabled(self.project_is_open)
-        if isinstance(act_xyz, QAction):  # ← Add this block
-            act_xyz.setEnabled(self.project_is_open)
-        if isinstance(act_pipehigh, QAction):  # ← ADD THIS BLOCK
-            act_pipehigh.setEnabled(self.project_is_open)
-        self._update_generate_actions()
+    # def _update_project_actions(self):
+    #     a = self.ui
+    #     act_create = getattr(a, "action_Create_Proj", None)
+    #     act_close = getattr(a, "action_Close_Proj", None)
+    #     act_graphs = getattr(a, "action_graphs", None)
+    #     act_xyz = getattr(a, "action_XYZ", None)
+    #     act_pipehigh = getattr(a, "action_Pipe_High", None)
+    #     if isinstance(act_create, QAction):
+    #         act_create.setEnabled(not self.project_is_open)
+    #     if isinstance(act_close, QAction):
+    #         act_close.setEnabled(self.project_is_open)
+    #     if isinstance(act_graphs, QAction):
+    #         act_graphs.setEnabled(self.project_is_open)
+    #     if isinstance(act_xyz, QAction):  # ← Add this block
+    #         act_xyz.setEnabled(self.project_is_open)
+    #     if isinstance(act_pipehigh, QAction):  # ← ADD THIS BLOCK
+    #         act_pipehigh.setEnabled(self.project_is_open)
+    #     self._update_generate_actions()
 
 
     # def open_graphs_window(self):
@@ -1709,113 +1707,115 @@ class MyMainWindow(QMainWindow):
     #             return
     #     QMessageBox.information(self, "Tab not found", f"Could not locate tab: {tab_name}")
 
-    def _make_topbar_row(
-            self,
-            object_name: str,
-            parent_vbox: QVBoxLayout,
-            bar_h: int = 14,
-            *,
-            left_px: int | None = None,     # ← fixed left spacer (px). None = expanding
-            right_px: int | None = None,    # ← fixed right spacer (px). None = expanding
-            pad_left: int = 8,              # tiny inner padding (optional)
-            pad_right: int = 8
-    ) -> QScrollBar:
-        row_frame = QFrame()
-        row_frame.setObjectName(object_name + "_container")
-        row_frame.setFixedHeight(bar_h)
-        row_frame.setStyleSheet("QFrame{margin:0;padding:0;border:0;background:transparent;}")
 
-        row = QHBoxLayout(row_frame)
-        row.setContentsMargins(pad_left, 0, pad_right, 0)
-        row.setSpacing(0)
+    # def _make_topbar_row(
+    #         self,
+    #         object_name: str,
+    #         parent_vbox: QVBoxLayout,
+    #         bar_h: int = 14,
+    #         *,
+    #         left_px: int | None = None,     # ← fixed left spacer (px). None = expanding
+    #         right_px: int | None = None,    # ← fixed right spacer (px). None = expanding
+    #         pad_left: int = 8,              # tiny inner padding (optional)
+    #         pad_right: int = 8
+    # ) -> QScrollBar:
+    #     row_frame = QFrame()
+    #     row_frame.setObjectName(object_name + "_container")
+    #     row_frame.setFixedHeight(bar_h)
+    #     row_frame.setStyleSheet("QFrame{margin:0;padding:0;border:0;background:transparent;}")
+    #
+    #     row = QHBoxLayout(row_frame)
+    #     row.setContentsMargins(pad_left, 0, pad_right, 0)
+    #     row.setSpacing(0)
+    #
+    #     # Left spacer
+    #     if left_px is None:
+    #         left_sp = QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+    #     else:
+    #         left_sp = QSpacerItem(left_px, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
+    #
+    #     # Right spacer
+    #     if right_px is None:
+    #         right_sp = QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+    #     else:
+    #         right_sp = QSpacerItem(right_px, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
+    #
+    #     bar = QScrollBar(Qt.Orientation.Horizontal)
+    #     bar.setObjectName(object_name)
+    #     bar.setFixedHeight(bar_h)
+    #     bar.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+    #
+    #     row.addItem(left_sp)
+    #     row.addWidget(bar)
+    #     row.addItem(right_sp)
+    #
+    #     parent_vbox.addWidget(row_frame)
+    #     return bar
 
-        # Left spacer
-        if left_px is None:
-            left_sp = QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        else:
-            left_sp = QSpacerItem(left_px, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
 
-        # Right spacer
-        if right_px is None:
-            right_sp = QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        else:
-            right_sp = QSpacerItem(right_px, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
+    # def _install_left_vbar(self, tw: QtWidgets.QTableWidget):
+    #     """
+    #     Place a custom vertical scrollbar inside the table's left margin and
+    #     sync it to the table's internal vertical scrollbar.
+    #     """
+    #     LEFT_GUTTER = 16  # width for the left vbar inside the table
+    #     # Reserve space on the left *inside* the table for our bar
+    #     tw.setViewportMargins(LEFT_GUTTER, 0, 0, 0)
+    #
+    #     # Create the bar as a child of the table so it sits in the viewport area
+    #     self.left_vbar = QScrollBar(Qt.Orientation.Vertical, tw)
+    #     self.left_vbar.setObjectName("leftTableVBar")
+    #     self.left_vbar.setStyleSheet(SCROLLBAR_STYLE)
+    #     self.left_vbar.setFixedWidth(LEFT_GUTTER)
+    #
+    #     # Hide the table's built-in right vbar; we will drive it via the left one
+    #     tw.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    #     inner_vbar = tw.verticalScrollBar()  # still exists, just hidden
+    #
+    #     # keep ranges/values in sync
+    #     def _apply_range():
+    #         self.left_vbar.blockSignals(True)
+    #         self.left_vbar.setRange(inner_vbar.minimum(), inner_vbar.maximum())
+    #         self.left_vbar.setPageStep(inner_vbar.pageStep())
+    #         self.left_vbar.setSingleStep(inner_vbar.singleStep())
+    #         self.left_vbar.setValue(inner_vbar.value())
+    #         self.left_vbar.blockSignals(False)
+    #
+    #     def _on_left_changed(v):
+    #         inner_vbar.setValue(v)
+    #
+    #     def _on_inner_changed(v):
+    #         self.left_vbar.blockSignals(True)
+    #         self.left_vbar.setValue(v)
+    #         self.left_vbar.blockSignals(False)
+    #
+    #     def _on_inner_range_changed(_min, _max):
+    #         _apply_range()
+    #
+    #     self.left_vbar.valueChanged.connect(_on_left_changed)
+    #     inner_vbar.valueChanged.connect(_on_inner_changed)
+    #     inner_vbar.rangeChanged.connect(_on_inner_range_changed)
+    #
+    #     # position the left bar so it starts below the header and fills the viewport height
+    #     self._update_left_vbar_geometry(tw)
+    #     tw.installEventFilter(self)  # so we can reposition it on resize/show
+    #
+    #     # first-time sync after layout settles
+    #     QTimer.singleShot(0, _apply_range)
+    #     self._style_left_vertical_bar()
 
-        bar = QScrollBar(Qt.Orientation.Horizontal)
-        bar.setObjectName(object_name)
-        bar.setFixedHeight(bar_h)
-        bar.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-
-        row.addItem(left_sp)
-        row.addWidget(bar)
-        row.addItem(right_sp)
-
-        parent_vbox.addWidget(row_frame)
-        return bar
-
-    def _install_left_vbar(self, tw: QtWidgets.QTableWidget):
-        """
-        Place a custom vertical scrollbar inside the table's left margin and
-        sync it to the table's internal vertical scrollbar.
-        """
-        LEFT_GUTTER = 16  # width for the left vbar inside the table
-        # Reserve space on the left *inside* the table for our bar
-        tw.setViewportMargins(LEFT_GUTTER, 0, 0, 0)
-
-        # Create the bar as a child of the table so it sits in the viewport area
-        self.left_vbar = QScrollBar(Qt.Orientation.Vertical, tw)
-        self.left_vbar.setObjectName("leftTableVBar")
-        self.left_vbar.setStyleSheet(SCROLLBAR_STYLE)
-        self.left_vbar.setFixedWidth(LEFT_GUTTER)
-
-        # Hide the table's built-in right vbar; we will drive it via the left one
-        tw.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        inner_vbar = tw.verticalScrollBar()  # still exists, just hidden
-
-        # keep ranges/values in sync
-        def _apply_range():
-            self.left_vbar.blockSignals(True)
-            self.left_vbar.setRange(inner_vbar.minimum(), inner_vbar.maximum())
-            self.left_vbar.setPageStep(inner_vbar.pageStep())
-            self.left_vbar.setSingleStep(inner_vbar.singleStep())
-            self.left_vbar.setValue(inner_vbar.value())
-            self.left_vbar.blockSignals(False)
-
-        def _on_left_changed(v):
-            inner_vbar.setValue(v)
-
-        def _on_inner_changed(v):
-            self.left_vbar.blockSignals(True)
-            self.left_vbar.setValue(v)
-            self.left_vbar.blockSignals(False)
-
-        def _on_inner_range_changed(_min, _max):
-            _apply_range()
-
-        self.left_vbar.valueChanged.connect(_on_left_changed)
-        inner_vbar.valueChanged.connect(_on_inner_changed)
-        inner_vbar.rangeChanged.connect(_on_inner_range_changed)
-
-        # position the left bar so it starts below the header and fills the viewport height
-        self._update_left_vbar_geometry(tw)
-        tw.installEventFilter(self)  # so we can reposition it on resize/show
-
-        # first-time sync after layout settles
-        QTimer.singleShot(0, _apply_range)
-        self._style_left_vertical_bar()
-
-    def _update_left_vbar_geometry(self, tw: QtWidgets.QTableWidget):
-        """Keep the left scrollbar aligned with the table’s viewport (below header)."""
-        try:
-            header_h = tw.horizontalHeader().height() if tw.horizontalHeader() else 0
-            x = 0
-            y = header_h
-            w = self.left_vbar.width()
-            h = tw.viewport().height()
-            self.left_vbar.setGeometry(x, y, w, h)
-            self.left_vbar.raise_()
-        except Exception:
-            pass
+    # def _update_left_vbar_geometry(self, tw: QtWidgets.QTableWidget):
+    #     """Keep the left scrollbar aligned with the table’s viewport (below header)."""
+    #     try:
+    #         header_h = tw.horizontalHeader().height() if tw.horizontalHeader() else 0
+    #         x = 0
+    #         y = header_h
+    #         w = self.left_vbar.width()
+    #         h = tw.viewport().height()
+    #         self.left_vbar.setGeometry(x, y, w, h)
+    #         self.left_vbar.raise_()
+    #     except Exception:
+    #         pass
 
     # def _build_splitter(self):
     #     # ---------- tiny local helpers so this method is self-contained ----------
@@ -2546,221 +2546,221 @@ class MyMainWindow(QMainWindow):
     #         self.open_Error(e)
     #     self.ui.action_Pipe_Sch.setEnabled(True)
 
-    def _style_left_vertical_bar(self):
-        # icon paths
-        up    = resource_path("ui/icons/arrow_up.svg").replace("\\", "/")
-        down  = resource_path("ui/icons/arrow_down.svg").replace("\\", "/")
+    # def _style_left_vertical_bar(self):
+    #     # icon paths
+    #     up    = resource_path("ui/icons/arrow_up.svg").replace("\\", "/")
+    #     down  = resource_path("ui/icons/arrow_down.svg").replace("\\", "/")
+    #
+    #     # dimensions
+    #     btn = 18       # arrow button size
+    #     w   = 16       # bar width
+    #     r   = 8        # thumb radius
+    #
+    #     style = f"""
+    #     /* entire bar */
+    #     QScrollBar#leftTableVBar:vertical {{
+    #         width:{w}px;
+    #         margin:{btn + 2}px 0;           /* room for arrow buttons */
+    #         background: transparent;
+    #         border: none;
+    #     }}
+    #
+    #     /* the thumb */
+    #     QScrollBar#leftTableVBar::handle:vertical {{
+    #         min-height: 36px;
+    #         border-radius:{r}px;
+    #         background: #6b6b6b;
+    #         border: 1px solid rgba(0,0,0,0.25);
+    #     }}
+    #     QScrollBar#leftTableVBar::handle:vertical:hover {{
+    #         background: #7f7f7f;
+    #     }}
+    #     QScrollBar#leftTableVBar::handle:vertical:pressed {{
+    #         background: #4f4f4f;
+    #     }}
+    #
+    #     /* top arrow */
+    #     QScrollBar#leftTableVBar::sub-line:vertical {{
+    #         height:{btn}px; width:{btn}px;
+    #         subcontrol-origin: margin;
+    #         subcontrol-position: top;
+    #         border: none;
+    #         border-radius:{btn//2}px;
+    #         background: #e7e7e7;
+    #         image: url("{up}");
+    #     }}
+    #     /* bottom arrow */
+    #     QScrollBar#leftTableVBar::add-line:vertical {{
+    #         height:{btn}px; width:{btn}px;
+    #         subcontrol-origin: margin;
+    #         subcontrol-position: bottom;
+    #         border: none;
+    #         border-radius:{btn//2}px;
+    #         background: #e7e7e7;
+    #         image: url("{down}");
+    #     }}
+    #     QScrollBar#leftTableVBar::sub-line:vertical:hover,
+    #     QScrollBar#leftTableVBar::add-line:vertical:hover {{
+    #         background: #d7d7d7;
+    #     }}
+    #     QScrollBar#leftTableVBar::sub-line:vertical:pressed,
+    #     QScrollBar#leftTableVBar::add-line:vertical:pressed {{
+    #         background: #c7c7c7;
+    #     }}
+    #
+    #     /* the “pages” above/below the thumb */
+    #     QScrollBar#leftTableVBar::sub-page:vertical,
+    #     QScrollBar#leftTableVBar::add-page:vertical {{
+    #         background: #f2f2f2;
+    #         border: none;
+    #     }}
+    #     """
+    #     self.left_vbar.setStyleSheet(style)
 
-        # dimensions
-        btn = 18       # arrow button size
-        w   = 16       # bar width
-        r   = 8        # thumb radius
-
-        style = f"""
-        /* entire bar */
-        QScrollBar#leftTableVBar:vertical {{
-            width:{w}px;
-            margin:{btn + 2}px 0;           /* room for arrow buttons */
-            background: transparent;
-            border: none;
-        }}
-
-        /* the thumb */
-        QScrollBar#leftTableVBar::handle:vertical {{
-            min-height: 36px;
-            border-radius:{r}px;
-            background: #6b6b6b;
-            border: 1px solid rgba(0,0,0,0.25);
-        }}
-        QScrollBar#leftTableVBar::handle:vertical:hover {{
-            background: #7f7f7f;
-        }}
-        QScrollBar#leftTableVBar::handle:vertical:pressed {{
-            background: #4f4f4f;
-        }}
-
-        /* top arrow */
-        QScrollBar#leftTableVBar::sub-line:vertical {{
-            height:{btn}px; width:{btn}px;
-            subcontrol-origin: margin;
-            subcontrol-position: top;
-            border: none;
-            border-radius:{btn//2}px;
-            background: #e7e7e7;
-            image: url("{up}");
-        }}
-        /* bottom arrow */
-        QScrollBar#leftTableVBar::add-line:vertical {{
-            height:{btn}px; width:{btn}px;
-            subcontrol-origin: margin;
-            subcontrol-position: bottom;
-            border: none;
-            border-radius:{btn//2}px;
-            background: #e7e7e7;
-            image: url("{down}");
-        }}
-        QScrollBar#leftTableVBar::sub-line:vertical:hover,
-        QScrollBar#leftTableVBar::add-line:vertical:hover {{
-            background: #d7d7d7;
-        }}
-        QScrollBar#leftTableVBar::sub-line:vertical:pressed,
-        QScrollBar#leftTableVBar::add-line:vertical:pressed {{
-            background: #c7c7c7;
-        }}
-
-        /* the “pages” above/below the thumb */
-        QScrollBar#leftTableVBar::sub-page:vertical,
-        QScrollBar#leftTableVBar::add-page:vertical {{
-            background: #f2f2f2;
-            border: none;
-        }}
-        """
-        self.left_vbar.setStyleSheet(style)
-
-    def _apply_scrollbar_theme(self, _accent_ignored="#b8b8b8"):
-        handle_radius = 10
-        btn_wh = 22         # arrow circle size
-        bar_h  = 14         # unified height for all top bars
-        bar_w  = 16
-
-        # SVG paths
-        left  = resource_path("ui/icons/arrow_left.svg").replace("\\", "/")
-        right = resource_path("ui/icons/arrow_right.svg").replace("\\", "/")
-        up    = resource_path("ui/icons/arrow_up.svg").replace("\\", "/")
-        down  = resource_path("ui/icons/arrow_down.svg").replace("\\", "/")
-
-        # ---- HORIZONTAL: all three custom top bars ----
-        h_style = f"""
-        QScrollBar#proxTopBar:horizontal,
-        QScrollBar#mainTopBar:horizontal,
-        QScrollBar#tableTopBar:horizontal {{
-            height:{bar_h}px;
-            background: transparent;
-            margin: 0 {btn_wh + 3}px 0 {btn_wh + 3}px;             /* kill outer margin */
-            padding: 0;             /* kill inner padding */
-            border: 0;
-        }}
-
-        /* handle (thumb) */
-        QScrollBar#proxTopBar::handle:horizontal,
-        QScrollBar#mainTopBar::handle:horizontal,
-        QScrollBar#tableTopBar::handle:horizontal {{
-            min-width: 40px;
-            border-radius:{handle_radius}px;
-            border:1px solid rgba(0,0,0,0.18);
-            background:#d9d9d9;
-        }}
-        QScrollBar#proxTopBar::handle:horizontal:hover,
-        QScrollBar#mainTopBar::handle:horizontal:hover,
-        QScrollBar#tableTopBar::handle:horizontal:hover {{
-            background:#bfbfbf; border-color:rgba(0,0,0,0.28);
-        }}
-        QScrollBar#proxTopBar::handle:horizontal:pressed,
-        QScrollBar#mainTopBar::handle:horizontal:pressed,
-        QScrollBar#tableTopBar::handle:horizontal:pressed {{
-            background:#9a9a9a; border-color:rgba(0,0,0,0.38);
-        }}
-
-        /* arrows */
-        QScrollBar#proxTopBar::sub-line:horizontal,
-        QScrollBar#mainTopBar::sub-line:horizontal,
-        QScrollBar#tableTopBar::sub-line:horizontal {{
-            width:{btn_wh}px; height:{btn_wh}px;
-            subcontrol-origin: margin;
-            subcontrol-position: left;
-            border: none;
-            border-radius:{btn_wh//2}px;
-            background:#e9e9e9;
-            image: url("{left}");
-        }}
-        QScrollBar#proxTopBar::add-line:horizontal,
-        QScrollBar#mainTopBar::add-line:horizontal,
-        QScrollBar#tableTopBar::add-line:horizontal {{
-            width:{btn_wh}px; height:{btn_wh}px;
-            subcontrol-origin: margin;
-            subcontrol-position: right;
-            border: none;
-            border-radius:{btn_wh//2}px;
-            background:#e9e9e9;
-            image: url("{right}");
-        }}
-
-        /* hover states */
-        QScrollBar#proxTopBar::sub-line:horizontal:hover,
-        QScrollBar#mainTopBar::sub-line:horizontal:hover,
-        QScrollBar#tableTopBar::sub-line:horizontal:hover,
-        QScrollBar#proxTopBar::add-line:horizontal:hover,
-        QScrollBar#mainTopBar::add-line:horizontal:hover,
-        QScrollBar#tableTopBar::add-line:horizontal:hover {{
-            background:#d6d6d6;
-        }}
-        QScrollBar#proxTopBar::sub-line:horizontal:pressed,
-        QScrollBar#mainTopBar::sub-line:horizontal:pressed,
-        QScrollBar#tableTopBar::sub-line:horizontal:pressed,
-        QScrollBar#proxTopBar::add-line:horizontal:pressed,
-        QScrollBar#mainTopBar::add-line:horizontal:pressed,
-        QScrollBar#tableTopBar::add-line:horizontal:pressed {{
-            background:#c2c2c2;
-        }}
-
-        /* pages transparent */
-        QScrollBar#proxTopBar::add-page:horizontal,
-        QScrollBar#proxTopBar::sub-page:horizontal,
-        QScrollBar#mainTopBar::add-page:horizontal,
-        QScrollBar#mainTopBar::sub-page:horizontal,
-        QScrollBar#tableTopBar::add-page:horizontal,
-        QScrollBar#tableTopBar::sub-page:horizontal {{
-            background: transparent;
-        }}
-        """
-
-        # ---- VERTICAL: style the scrollareas' vertical bars (optional) ----
-        v_style = f"""
-        QScrollBar:vertical {{
-            width:{bar_w}px;
-            margin:{btn_wh + 8}px 0;
-            background: transparent;
-        }}
-        QScrollBar::handle:vertical {{
-            min-height:40px;
-            border-radius:{handle_radius}px;
-            border:1px solid rgba(0,0,0,0.18);
-            background:#d9d9d9;
-        }}
-        QScrollBar::handle:vertical:hover  {{ background:#bfbfbf; border-color:rgba(0,0,0,0.28); }}
-        QScrollBar::handle:vertical:pressed{{ background:#9a9a9a; border-color:rgba(0,0,0,0.38); }}
-
-        QScrollBar::sub-line:vertical {{
-            height:{btn_wh}px; width:{btn_wh}px;
-            subcontrol-origin: margin;
-            subcontrol-position: top;
-            border:none; border-radius:{btn_wh//2}px;
-            background:#e9e9e9;
-            image: url("{up}");
-        }}
-        QScrollBar::add-line:vertical {{
-            height:{btn_wh}px; width:{btn_wh}px;
-            subcontrol-origin: margin;
-            subcontrol-position: bottom;
-            border:none; border-radius:{btn_wh//2}px;
-            background:#e9e9e9;
-            image: url("{down}");
-        }}
-        QScrollBar::sub-line:vertical:hover,
-        QScrollBar::add-line:vertical:hover {{ background:#d6d6d6; }}
-        QScrollBar::sub-line:vertical:pressed,
-        QScrollBar::add-line:vertical:pressed {{ background:#c2c2c2; }}
-
-        QScrollBar::add-page:vertical,
-        QScrollBar::sub-page:vertical {{ background: transparent; }}
-        """
-
-        # apply
-        self.top_scrollbar.setStyleSheet(h_style)
-        self.main_top_scrollbar.setStyleSheet(h_style)
-        self.table_scrollbar.setStyleSheet(h_style)
-        self.web_scroll_area.verticalScrollBar().setStyleSheet(v_style)
-        self.main_web_scroll_area.verticalScrollBar().setStyleSheet(v_style)
+    # def _apply_scrollbar_theme(self, _accent_ignored="#b8b8b8"):
+    #     handle_radius = 10
+    #     btn_wh = 22         # arrow circle size
+    #     bar_h  = 14         # unified height for all top bars
+    #     bar_w  = 16
+    #
+    #     # SVG paths
+    #     left  = resource_path("ui/icons/arrow_left.svg").replace("\\", "/")
+    #     right = resource_path("ui/icons/arrow_right.svg").replace("\\", "/")
+    #     up    = resource_path("ui/icons/arrow_up.svg").replace("\\", "/")
+    #     down  = resource_path("ui/icons/arrow_down.svg").replace("\\", "/")
+    #
+    #     # ---- HORIZONTAL: all three custom top bars ----
+    #     h_style = f"""
+    #     QScrollBar#proxTopBar:horizontal,
+    #     QScrollBar#mainTopBar:horizontal,
+    #     QScrollBar#tableTopBar:horizontal {{
+    #         height:{bar_h}px;
+    #         background: transparent;
+    #         margin: 0 {btn_wh + 3}px 0 {btn_wh + 3}px;             /* kill outer margin */
+    #         padding: 0;             /* kill inner padding */
+    #         border: 0;
+    #     }}
+    #
+    #     /* handle (thumb) */
+    #     QScrollBar#proxTopBar::handle:horizontal,
+    #     QScrollBar#mainTopBar::handle:horizontal,
+    #     QScrollBar#tableTopBar::handle:horizontal {{
+    #         min-width: 40px;
+    #         border-radius:{handle_radius}px;
+    #         border:1px solid rgba(0,0,0,0.18);
+    #         background:#d9d9d9;
+    #     }}
+    #     QScrollBar#proxTopBar::handle:horizontal:hover,
+    #     QScrollBar#mainTopBar::handle:horizontal:hover,
+    #     QScrollBar#tableTopBar::handle:horizontal:hover {{
+    #         background:#bfbfbf; border-color:rgba(0,0,0,0.28);
+    #     }}
+    #     QScrollBar#proxTopBar::handle:horizontal:pressed,
+    #     QScrollBar#mainTopBar::handle:horizontal:pressed,
+    #     QScrollBar#tableTopBar::handle:horizontal:pressed {{
+    #         background:#9a9a9a; border-color:rgba(0,0,0,0.38);
+    #     }}
+    #
+    #     /* arrows */
+    #     QScrollBar#proxTopBar::sub-line:horizontal,
+    #     QScrollBar#mainTopBar::sub-line:horizontal,
+    #     QScrollBar#tableTopBar::sub-line:horizontal {{
+    #         width:{btn_wh}px; height:{btn_wh}px;
+    #         subcontrol-origin: margin;
+    #         subcontrol-position: left;
+    #         border: none;
+    #         border-radius:{btn_wh//2}px;
+    #         background:#e9e9e9;
+    #         image: url("{left}");
+    #     }}
+    #     QScrollBar#proxTopBar::add-line:horizontal,
+    #     QScrollBar#mainTopBar::add-line:horizontal,
+    #     QScrollBar#tableTopBar::add-line:horizontal {{
+    #         width:{btn_wh}px; height:{btn_wh}px;
+    #         subcontrol-origin: margin;
+    #         subcontrol-position: right;
+    #         border: none;
+    #         border-radius:{btn_wh//2}px;
+    #         background:#e9e9e9;
+    #         image: url("{right}");
+    #     }}
+    #
+    #     /* hover states */
+    #     QScrollBar#proxTopBar::sub-line:horizontal:hover,
+    #     QScrollBar#mainTopBar::sub-line:horizontal:hover,
+    #     QScrollBar#tableTopBar::sub-line:horizontal:hover,
+    #     QScrollBar#proxTopBar::add-line:horizontal:hover,
+    #     QScrollBar#mainTopBar::add-line:horizontal:hover,
+    #     QScrollBar#tableTopBar::add-line:horizontal:hover {{
+    #         background:#d6d6d6;
+    #     }}
+    #     QScrollBar#proxTopBar::sub-line:horizontal:pressed,
+    #     QScrollBar#mainTopBar::sub-line:horizontal:pressed,
+    #     QScrollBar#tableTopBar::sub-line:horizontal:pressed,
+    #     QScrollBar#proxTopBar::add-line:horizontal:pressed,
+    #     QScrollBar#mainTopBar::add-line:horizontal:pressed,
+    #     QScrollBar#tableTopBar::add-line:horizontal:pressed {{
+    #         background:#c2c2c2;
+    #     }}
+    #
+    #     /* pages transparent */
+    #     QScrollBar#proxTopBar::add-page:horizontal,
+    #     QScrollBar#proxTopBar::sub-page:horizontal,
+    #     QScrollBar#mainTopBar::add-page:horizontal,
+    #     QScrollBar#mainTopBar::sub-page:horizontal,
+    #     QScrollBar#tableTopBar::add-page:horizontal,
+    #     QScrollBar#tableTopBar::sub-page:horizontal {{
+    #         background: transparent;
+    #     }}
+    #     """
+    #
+    #     # ---- VERTICAL: style the scrollareas' vertical bars (optional) ----
+    #     v_style = f"""
+    #     QScrollBar:vertical {{
+    #         width:{bar_w}px;
+    #         margin:{btn_wh + 8}px 0;
+    #         background: transparent;
+    #     }}
+    #     QScrollBar::handle:vertical {{
+    #         min-height:40px;
+    #         border-radius:{handle_radius}px;
+    #         border:1px solid rgba(0,0,0,0.18);
+    #         background:#d9d9d9;
+    #     }}
+    #     QScrollBar::handle:vertical:hover  {{ background:#bfbfbf; border-color:rgba(0,0,0,0.28); }}
+    #     QScrollBar::handle:vertical:pressed{{ background:#9a9a9a; border-color:rgba(0,0,0,0.38); }}
+    #
+    #     QScrollBar::sub-line:vertical {{
+    #         height:{btn_wh}px; width:{btn_wh}px;
+    #         subcontrol-origin: margin;
+    #         subcontrol-position: top;
+    #         border:none; border-radius:{btn_wh//2}px;
+    #         background:#e9e9e9;
+    #         image: url("{up}");
+    #     }}
+    #     QScrollBar::add-line:vertical {{
+    #         height:{btn_wh}px; width:{btn_wh}px;
+    #         subcontrol-origin: margin;
+    #         subcontrol-position: bottom;
+    #         border:none; border-radius:{btn_wh//2}px;
+    #         background:#e9e9e9;
+    #         image: url("{down}");
+    #     }}
+    #     QScrollBar::sub-line:vertical:hover,
+    #     QScrollBar::add-line:vertical:hover {{ background:#d6d6d6; }}
+    #     QScrollBar::sub-line:vertical:pressed,
+    #     QScrollBar::add-line:vertical:pressed {{ background:#c2c2c2; }}
+    #
+    #     QScrollBar::add-page:vertical,
+    #     QScrollBar::sub-page:vertical {{ background: transparent; }}
+    #     """
+    #
+    #     # apply
+    #     self.top_scrollbar.setStyleSheet(h_style)
+    #     self.main_top_scrollbar.setStyleSheet(h_style)
+    #     self.table_scrollbar.setStyleSheet(h_style)
+    #     self.web_scroll_area.verticalScrollBar().setStyleSheet(v_style)
+    #     self.main_web_scroll_area.verticalScrollBar().setStyleSheet(v_style)
 
     def _toggle_plot_ui(self, enabled: bool):
         tab_names = {"Heatmap", "LineChart", "Line Chart", "Line Plot", "3D Graph", "3D"}
@@ -2773,10 +2773,7 @@ class MyMainWindow(QMainWindow):
         except Exception:
             pass
 
-    def on_combo_index_changed(self, combo_idx: int):
-        if not self.project_is_open or combo_idx < 0:
-            return
-        self.load_selected_by_index(combo_idx)
+
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -3632,93 +3629,93 @@ class MyMainWindow(QMainWindow):
         except Exception as e:
             print("⚠️ _close_graphs_view:", e)
 
-    def _setup_web_view_scrollbars(self, web_view):
-        """Force scrollbars to be visible on QWebEngineView"""
-        try:
-            # Enable scrollbars at the widget level
-            web_view.page().settings().setAttribute(
-                web_view.page().settings().WebAttribute.ShowScrollBars, True
-            )
+    # def _setup_web_view_scrollbars(self, web_view):
+    #     """Force scrollbars to be visible on QWebEngineView"""
+    #     try:
+    #         # Enable scrollbars at the widget level
+    #         web_view.page().settings().setAttribute(
+    #             web_view.page().settings().WebAttribute.ShowScrollBars, True
+    #         )
+    #
+    #         # Inject CSS to force scrollbar visibility
+    #         css = """
+    #         ::-webkit-scrollbar {
+    #             width: 16px !important;
+    #             height: 16px !important;
+    #             display: block !important;
+    #         }
+    #         ::-webkit-scrollbar-track {
+    #             background: #f0f0f0 !important;
+    #         }
+    #         ::-webkit-scrollbar-thumb {
+    #             background: #888 !important;
+    #             border-radius: 4px !important;
+    #         }
+    #         html, body {
+    #             overflow: scroll !important;
+    #         }
+    #         """
+    #
+    #         web_view.page().runJavaScript(f"""
+    #         var style = document.createElement('style');
+    #         style.textContent = `{css}`;
+    #         document.head.appendChild(style);
+    #         """)
+    #     except Exception as e:
+    #         print(f"Error setting up scrollbars: {e}")
 
-            # Inject CSS to force scrollbar visibility
-            css = """
-            ::-webkit-scrollbar { 
-                width: 16px !important; 
-                height: 16px !important; 
-                display: block !important; 
-            }
-            ::-webkit-scrollbar-track { 
-                background: #f0f0f0 !important; 
-            }
-            ::-webkit-scrollbar-thumb { 
-                background: #888 !important; 
-                border-radius: 4px !important; 
-            }
-            html, body { 
-                overflow: scroll !important; 
-            }
-            """
-
-            web_view.page().runJavaScript(f"""
-            var style = document.createElement('style');
-            style.textContent = `{css}`;
-            document.head.appendChild(style);
-            """)
-        except Exception as e:
-            print(f"Error setting up scrollbars: {e}")
-
-    def _auto_load_pipe_tally(self, root: str) -> bool:
-            # Look for pipe tally files inside pipetally_main subfolder
-        pipetally_dir = os.path.join(root, "pipetally_main")
-        if not os.path.isdir(pipetally_dir):
-            print(f"[Warning] pipetally_main directory not found in {root}")
-            self.pipe_tally = None
-            return False
-
-        candidates = [
-            os.path.join(pipetally_dir, "pipe_tally.xlsx"),
-            os.path.join(pipetally_dir, "pipe_tally.csv"),
-        ]
-
-        # Also scan for any tally-related files in the pipetally_main directory
-        for f in os.listdir(pipetally_dir):
-            name = f.lower()
-            if name.endswith((".xlsx", ".xls", ".csv")):
-                candidates.append(os.path.join(pipetally_dir, f))
-        seen = set()
-        for path in candidates:
-            if not path or path in seen:
-                continue
-            seen.add(path)
-            if not os.path.exists(path): continue
-            try:
-                if path.lower().endswith((".xlsx", ".xls")):
-                    df = pd.read_excel(path)
-                else:
-                    df = pd.read_csv(path)
-                df.columns = [str(c).strip() for c in df.columns]
-
-                # ✅ Round numeric columns to 3 decimal places
-                numeric_columns = [
-                    'Depth %', 'Depth (mm)', 'ERF (ASME B31G)', 'Psafe (ASME B31G) Barg',
-                    'Abs. Distance (m)', 'Distance to U/S GW(m)', 'Length (mm)',
-                    'Width (mm)', 'WT (mm)', 'Pipe Length (mm)'
-                ]
-                for col in numeric_columns:
-                    if col in df.columns:
-                        df[col] = pd.to_numeric(df[col], errors='coerce').round(3)
-
-                missing = [c for c in self.REQUIRED_TALLY_COLS if c not in df.columns]
-                if missing:
-                    print(f"[pipe_tally] Loaded {os.path.basename(path)} (missing cols: {missing})")
-                else:
-                    print(f"[pipe_tally] Loaded {os.path.basename(path)}")
-                self.pipe_tally = df
-                return True
-            except Exception as e:
-                print(f"[pipe_tally] Failed to load {path}: {e}")
-        self.pipe_tally = None
-        return False
+    # def _auto_load_pipe_tally(self, root: str) -> bool:
+    #         # Look for pipe tally files inside pipetally_main subfolder
+    #     pipetally_dir = os.path.join(root, "pipetally_main")
+    #     if not os.path.isdir(pipetally_dir):
+    #         print(f"[Warning] pipetally_main directory not found in {root}")
+    #         self.pipe_tally = None
+    #         return False
+    #
+    #     candidates = [
+    #         os.path.join(pipetally_dir, "pipe_tally.xlsx"),
+    #         os.path.join(pipetally_dir, "pipe_tally.csv"),
+    #     ]
+    #
+    #     # Also scan for any tally-related files in the pipetally_main directory
+    #     for f in os.listdir(pipetally_dir):
+    #         name = f.lower()
+    #         if name.endswith((".xlsx", ".xls", ".csv")):
+    #             candidates.append(os.path.join(pipetally_dir, f))
+    #     seen = set()
+    #     for path in candidates:
+    #         if not path or path in seen:
+    #             continue
+    #         seen.add(path)
+    #         if not os.path.exists(path): continue
+    #         try:
+    #             if path.lower().endswith((".xlsx", ".xls")):
+    #                 df = pd.read_excel(path)
+    #             else:
+    #                 df = pd.read_csv(path)
+    #             df.columns = [str(c).strip() for c in df.columns]
+    #
+    #             # ✅ Round numeric columns to 3 decimal places
+    #             numeric_columns = [
+    #                 'Depth %', 'Depth (mm)', 'ERF (ASME B31G)', 'Psafe (ASME B31G) Barg',
+    #                 'Abs. Distance (m)', 'Distance to U/S GW(m)', 'Length (mm)',
+    #                 'Width (mm)', 'WT (mm)', 'Pipe Length (mm)'
+    #             ]
+    #             for col in numeric_columns:
+    #                 if col in df.columns:
+    #                     df[col] = pd.to_numeric(df[col], errors='coerce').round(3)
+    #
+    #             missing = [c for c in self.REQUIRED_TALLY_COLS if c not in df.columns]
+    #             if missing:
+    #                 print(f"[pipe_tally] Loaded {os.path.basename(path)} (missing cols: {missing})")
+    #             else:
+    #                 print(f"[pipe_tally] Loaded {os.path.basename(path)}")
+    #             self.pipe_tally = df
+    #             return True
+    #         except Exception as e:
+    #             print(f"[pipe_tally] Failed to load {path}: {e}")
+    #     self.pipe_tally = None
+    #     return False
 
 
     # def open_XYZ(self):
@@ -4436,43 +4433,43 @@ class MyMainWindow(QMainWindow):
     #     except Exception as e:
     #         self.open_Error(f"Error opening ABS-distance digsheet:\n{e}")
 
-    def _update_generate_actions(self):
-        """Update Generate menu buttons based on project and data status"""
-        # Check if pipe tally data is available
-        has_pipe_tally = isinstance(self.pipe_tally, pd.DataFrame) and not self.pipe_tally.empty
-
-        # Check if preliminary report exists
-        has_prelim_report = False
-        if self.project_is_open and self.project_root:
-            report_dir = os.path.join(self.project_root, "report")
-            prelim_report_path = os.path.join(report_dir, "PR.pdf")
-            has_prelim_report = os.path.exists(prelim_report_path)
-
-        # Check if final report exists
-        has_final_report = False
-        if self.project_is_open and self.project_root:
-            report_dir = os.path.join(self.project_root, "report")
-            final_report_path = os.path.join(report_dir, "FR.pdf")
-            has_final_report = os.path.exists(final_report_path)
-
-        # Update BOTH Final Report actions ✅
-        if hasattr(self.ui, 'action_Final_Report'):
-            self.ui.action_Final_Report.setEnabled(self.project_is_open and has_final_report)
-
-        if hasattr(self.ui, 'Final_Report'):  # ← Add this block
-            self.ui.Final_Report.setEnabled(self.project_is_open and has_final_report)
-
-        # Update Pipe Tally button/action
-        if hasattr(self.ui, 'action__pipetally'):
-            self.ui.action__pipetally.setEnabled(self.project_is_open and has_pipe_tally)
-
-        # Update Preliminary Report action
-        if hasattr(self.ui, 'action_Preliminary_Report'):
-            self.ui.action_Preliminary_Report.setEnabled(self.project_is_open and has_prelim_report)
-
-        # Update Digsheet actions (both standard and ABS-based)
-        if hasattr(self.ui, 'actionStandard'):  # Standard digsheet
-            self.ui.actionStandard.setEnabled(self.project_is_open and has_pipe_tally)
+    # def _update_generate_actions(self):
+    #     """Update Generate menu buttons based on project and data status"""
+    #     # Check if pipe tally data is available
+    #     has_pipe_tally = isinstance(self.pipe_tally, pd.DataFrame) and not self.pipe_tally.empty
+    #
+    #     # Check if preliminary report exists
+    #     has_prelim_report = False
+    #     if self.project_is_open and self.project_root:
+    #         report_dir = os.path.join(self.project_root, "report")
+    #         prelim_report_path = os.path.join(report_dir, "PR.pdf")
+    #         has_prelim_report = os.path.exists(prelim_report_path)
+    #
+    #     # Check if final report exists
+    #     has_final_report = False
+    #     if self.project_is_open and self.project_root:
+    #         report_dir = os.path.join(self.project_root, "report")
+    #         final_report_path = os.path.join(report_dir, "FR.pdf")
+    #         has_final_report = os.path.exists(final_report_path)
+    #
+    #     # Update BOTH Final Report actions ✅
+    #     if hasattr(self.ui, 'action_Final_Report'):
+    #         self.ui.action_Final_Report.setEnabled(self.project_is_open and has_final_report)
+    #
+    #     if hasattr(self.ui, 'Final_Report'):  # ← Add this block
+    #         self.ui.Final_Report.setEnabled(self.project_is_open and has_final_report)
+    #
+    #     # Update Pipe Tally button/action
+    #     if hasattr(self.ui, 'action__pipetally'):
+    #         self.ui.action__pipetally.setEnabled(self.project_is_open and has_pipe_tally)
+    #
+    #     # Update Preliminary Report action
+    #     if hasattr(self.ui, 'action_Preliminary_Report'):
+    #         self.ui.action_Preliminary_Report.setEnabled(self.project_is_open and has_prelim_report)
+    #
+    #     # Update Digsheet actions (both standard and ABS-based)
+    #     if hasattr(self.ui, 'actionStandard'):  # Standard digsheet
+    #         self.ui.actionStandard.setEnabled(self.project_is_open and has_pipe_tally)
 
     # def _force_heatmap_start(self):
     #     """Ensure middle view opens on Heatmap before the next load."""
@@ -4843,30 +4840,7 @@ class MyMainWindow(QMainWindow):
     #     except Exception as e:
     #         print(f"Error syncing dropdown: {e}")
 
-    def toggletablevisibility(self):
-        """Toggle table visibility in heatmap view only"""
-        # Only work in Heatmap tab
-        current_tab = self.ui.tabWidgetM.tabText(self.ui.tabWidgetM.currentIndex()).strip()
-        if current_tab != "Heatmap":
-            QMessageBox.information(self, "Heatmap Only",
-                                "Table toggle only works in Heatmap view.")
-            return
 
-        # Toggle the flag
-        self._table_hidden = not self._table_hidden
-
-        # Hide or show the bottom section (table area)
-        if self._table_hidden:
-            self.bottom_stack.hide()
-            self.btnToggleTable.setText("Show Table")
-        else:
-            self.bottom_stack.show()
-            # self.ui.tableWidgetDefect.setMinimumHeight(250)
-            # self.bottom_stack.setMinimumHeight(250)
-
-            self.btnToggleTable.setText("Hide Table")
-
-        print(f"Table visibility toggled: {'Hidden' if self._table_hidden else 'Shown'}")
 
 
     def _apply_heatmap_layout(self, mode: str = None):
@@ -5147,6 +5121,37 @@ class MyMainWindow(QMainWindow):
 
     def maximize_tabs(self):
         self.ui.tabWidgetM.show()
+
+    def toggletablevisibility(self):
+        """Toggle table visibility in heatmap view only"""
+        # Only work in Heatmap tab
+        current_tab = self.ui.tabWidgetM.tabText(self.ui.tabWidgetM.currentIndex()).strip()
+        if current_tab != "Heatmap":
+            QMessageBox.information(self, "Heatmap Only",
+                                "Table toggle only works in Heatmap view.")
+            return
+
+        # Toggle the flag
+        self._table_hidden = not self._table_hidden
+
+        # Hide or show the bottom section (table area)
+        if self._table_hidden:
+            self.bottom_stack.hide()
+            self.btnToggleTable.setText("Show Table")
+        else:
+            self.bottom_stack.show()
+            # self.ui.tableWidgetDefect.setMinimumHeight(250)
+            # self.bottom_stack.setMinimumHeight(250)
+
+            self.btnToggleTable.setText("Hide Table")
+
+        print(f"Table visibility toggled: {'Hidden' if self._table_hidden else 'Shown'}")
+
+
+    def on_combo_index_changed(self, combo_idx: int):
+        if not self.project_is_open or combo_idx < 0:
+            return
+        self.load_selected_by_index(combo_idx)
 
 
     # def _reset_ui_to_start_state(self):

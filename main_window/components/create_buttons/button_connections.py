@@ -10,6 +10,7 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import QMessageBox, QDialog
 
 from main_section_view.helpers_temp import _on_middle_tab_changed, apply_column_filter, ColumnFilterDialog
+from main_section_view.load_button_working import load_selected_by_index
 
 
 def resource_path(relative_path):
@@ -89,8 +90,8 @@ def load_selected_pipe(self):
         self._select_pipe_container.hide()
 
     self.btnLoadPipe.setEnabled(False)
-    self.load_selected_by_index(idx)
-
+    # self.load_selected_by_index(idx)
+    load_selected_by_index(self, idx)
     #self.btnLoadPipe.clicked.connect(self.load_selected_pipe)
 
 #filter button connection

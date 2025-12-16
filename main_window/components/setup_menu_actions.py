@@ -12,6 +12,7 @@ from menubar.report_menu.open_PipeScheme import open_PipeScheme
 from menubar.report_menu.open_pipehigh import open_PipeHigh
 from menubar.view_menu.open_ERF import open_ERF
 from menubar.view_menu.open_XYZ import open_XYZ
+from menubar.view_menu.open_graphs import open_graphs
 
 
 def setup_menu_actions(self):
@@ -43,9 +44,6 @@ def setup_menu_actions(self):
     self.ui.tabWidgetM.currentChanged.connect(lambda index: _on_middle_tab_changed(self, index))
     self.ui.tabWidgetM.currentChanged.connect(lambda index: syncdropdownwithtabs(self, index))
 
-
-def open_graphs(self):
-    pass
 
 
 def setup_actions(self):

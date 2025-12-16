@@ -1,4 +1,10 @@
+import os
+
+import pandas as pd
 from PyQt6.QtCore import QTimer
+from PyQt6.QtGui import QAction
+
+from main_window.components.helper_func import _update_project_actions
 
 
 def setup_initial_ui_state(self):
@@ -19,7 +25,7 @@ def setup_initial_ui_state(self):
     -------------------------------------------------------------
     """
     self._toggle_plot_ui(False)
-    self._update_project_actions()
+    _update_project_actions(self)
 
     self.setStyleSheet("QMainWindow { background-color: #FFFFFF; color: #000000; }")
     self.showMaximized()
@@ -27,3 +33,5 @@ def setup_initial_ui_state(self):
     QTimer.singleShot(0, lambda: setattr(self, "_ui_ready", True))
 
     self._show_watermark()
+
+

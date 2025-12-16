@@ -477,7 +477,7 @@ def tab_switcher2(self, *_):
                 self._load_scrollable_chart(self.web_view2, self.prox_linechart, min_w=2000, min_h=900)
                 QTimer.singleShot(0, lambda : _arm_topbar(self))
                 QTimer.singleShot(120, lambda : _arm_topbar(self))  # small safety nudge
-                QTimer.singleShot(500, lambda: self._setup_web_view_scrollbars(self.web_view2))
+                QTimer.singleShot(500, lambda: _setup_web_view_scrollbars(self, self.web_view2))
             else:
                 self.bottom_stack.setCurrentIndex(0)
                 self.web_view2.setUrl(QUrl())
@@ -583,3 +583,39 @@ def _sync_heatmap_range(self, target_view, payload):
 
     # Apply to the other view
     target_view.apply_relayout(clean_payload)
+
+
+def _setup_web_view_scrollbars(self, web_view):
+    """Force scrollbars to be visible on QWebEngineView"""
+    try:
+        # Enable scrollbars at the widget level
+        web_view.page().settings().setAttribute(
+            web_view.page().settings().WebAttribute.ShowScrollBars, True
+        )
+
+        # Inject CSS to force scrollbar visibility
+        css = """
+        ::-webkit-scrollbar { 
+            width: 16px !important; 
+            height: 16px !important; 
+            display: block !important; 
+        }
+        ::-webkit-scrollbar-track { 
+            background: #f0f0f0 !important; 
+        }
+        ::-webkit-scrollbar-thumb { 
+            background: #888 !important; 
+            border-radius: 4px !important; 
+        }
+        html, body { 
+            overflow: scroll !important; 
+        }
+        """
+
+        web_view.page().runJavaScript(f"""
+        var style = document.createElement('style');
+        style.textContent = `{css}`;
+        document.head.appendChild(style);
+        """)
+    except Exception as e:
+        print(f"Error setting up scrollbars: {e}")

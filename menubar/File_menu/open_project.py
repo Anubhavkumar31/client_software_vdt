@@ -1,8 +1,11 @@
 import os
 import re
 
+import pandas as pd
 from PyQt6 import QtWidgets
 from PyQt6.QtWidgets import QMessageBox, QFileDialog
+
+from main_window.components.helper_func import _update_project_actions
 
 
 def open_project(self):
@@ -19,7 +22,7 @@ def open_project(self):
             self.project_is_open = False
             self._toggle_plot_ui(False)
             self._show_watermark()
-            self._update_project_actions()
+            _update_project_actions(self)
 
             # show overlay back if user cancelled
             if hasattr(self, "_create_proj_container") and self._create_proj_container:
@@ -31,7 +34,7 @@ def open_project(self):
         self._force_full_start_state()
 
         self.pipe_tally = None
-        loaded_tally = self._auto_load_pipe_tally(root)
+        loaded_tally = _auto_load_pipe_tally(self, root)
         if not loaded_tally:
             print("[pipe_tally] No tally file found in this project; graphs/reports will warn if needed.")
 
@@ -101,12 +104,12 @@ def open_project(self):
             if hasattr(self, "_create_proj_container") and self._create_proj_container:
                 self._create_proj_container.show()
 
-        self._update_project_actions()
+        _update_project_actions(self)
     except Exception as e:
         self.project_is_open = False
         self._toggle_plot_ui(False)
         self._show_watermark()
-        self._update_project_actions()
+        _update_project_actions(self)
 
         # show overlay back on error
         if hasattr(self, "_create_proj_container") and self._create_proj_container:
@@ -151,3 +154,58 @@ def _force_heatmap_start(self):
 def _hide_create_project_message(self):
     if hasattr(self, '_create_proj_container'):
         self._create_proj_container.hide()
+
+
+
+def _auto_load_pipe_tally(self, root: str) -> bool:
+        # Look for pipe tally files inside pipetally_main subfolder
+    pipetally_dir = os.path.join(root, "pipetally_main")
+    if not os.path.isdir(pipetally_dir):
+        print(f"[Warning] pipetally_main directory not found in {root}")
+        self.pipe_tally = None
+        return False
+
+    candidates = [
+        os.path.join(pipetally_dir, "pipe_tally.xlsx"),
+        os.path.join(pipetally_dir, "pipe_tally.csv"),
+    ]
+
+    # Also scan for any tally-related files in the pipetally_main directory
+    for f in os.listdir(pipetally_dir):
+        name = f.lower()
+        if name.endswith((".xlsx", ".xls", ".csv")):
+            candidates.append(os.path.join(pipetally_dir, f))
+    seen = set()
+    for path in candidates:
+        if not path or path in seen:
+            continue
+        seen.add(path)
+        if not os.path.exists(path): continue
+        try:
+            if path.lower().endswith((".xlsx", ".xls")):
+                df = pd.read_excel(path)
+            else:
+                df = pd.read_csv(path)
+            df.columns = [str(c).strip() for c in df.columns]
+
+            # ✅ Round numeric columns to 3 decimal places
+            numeric_columns = [
+                'Depth %', 'Depth (mm)', 'ERF (ASME B31G)', 'Psafe (ASME B31G) Barg',
+                'Abs. Distance (m)', 'Distance to U/S GW(m)', 'Length (mm)',
+                'Width (mm)', 'WT (mm)', 'Pipe Length (mm)'
+            ]
+            for col in numeric_columns:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce').round(3)
+
+            missing = [c for c in self.REQUIRED_TALLY_COLS if c not in df.columns]
+            if missing:
+                print(f"[pipe_tally] Loaded {os.path.basename(path)} (missing cols: {missing})")
+            else:
+                print(f"[pipe_tally] Loaded {os.path.basename(path)}")
+            self.pipe_tally = df
+            return True
+        except Exception as e:
+            print(f"[pipe_tally] Failed to load {path}: {e}")
+    self.pipe_tally = None
+    return False
