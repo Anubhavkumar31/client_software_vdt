@@ -1,12 +1,11 @@
 
-#digsheet button connection (for absolute distance digsheet)
 import os
 import subprocess
 import sys
 import tempfile
 import uuid
-
 import pandas as pd
+
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import QMessageBox, QDialog
 
@@ -24,6 +23,9 @@ def _dump_tally_to_temp(df):
     with open(p, "wb") as f: pickle.dump(df, f)
     return p
 
+
+
+#digsheet button connection to open with abs. distance
 def open_digsheet_by_abs_from_selection(self):
     try:
         if not self.project_is_open or not isinstance(self.pipe_tally, pd.DataFrame):

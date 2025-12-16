@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QAbstractItemView, QAbstractScrollArea, QProgressBar
 )
 
+from main_section_view.helpers_temp import _arm_topbar
 
 
 class MidBarHandle(QSplitterHandle):
@@ -733,7 +734,7 @@ def _build_main_section(self):
     self.bottom_stack.hide()
     self.bottom_stack.setContentsMargins(0, 0, 0, 0)
     self.bottom_stack.currentChanged.connect(
-        lambda idx: self._arm_topbar() if idx == 2 else None
+        lambda idx: lambda : _arm_topbar(self, idx) if idx == 2 else None
     )
 
     self._HM_FOOTER_H = 44

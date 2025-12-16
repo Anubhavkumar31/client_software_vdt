@@ -1,8 +1,134 @@
-from PyQt6.QtCore import QTimer, Qt
+import os
+
+from PyQt6.QtCore import QTimer, Qt, QUrl, pyqtSignal
+from PyQt6.QtWebEngineCore import QWebEnginePage
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+
 from ui.graphs_ui import GraphApp
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QMessageBox, QDialog
 
+
+class ConsoleRelayPage(QWebEnginePage):
+    """Catches JS console messages to ferry Plotly relayout/hover to Python."""
+    relayout_json = pyqtSignal(dict)    # emits on plotly_relayout
+    hover_json    = pyqtSignal(dict)    # (optional) emits on plotly_hover
+
+    def javaScriptConsoleMessage(self, level, msg, line, source):
+        if msg.startswith("RANGE:"):
+            import json
+            try:
+                payload = json.loads(msg[6:])
+                self.relayout_json.emit(payload)
+            except Exception:
+                pass
+        elif msg.startswith("HOVER:"):
+            import json
+            try:
+                payload = json.loads(msg[6:])
+                self.hover_json.emit(payload)
+            except Exception:
+                pass
+        # still let base handle logging
+        return super().javaScriptConsoleMessage(level, msg, line, source)
+
+class SyncPlotlyView(QWebEngineView):
+    """
+    A webview that, after the Plotly HTML loads, injects small JS hooks that:
+      - listen for plotly_relayout and emit to Python
+      - expose a JS function to apply ranges from Python
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._page = ConsoleRelayPage(self)
+        self.setPage(self._page)
+        self._installed = False
+        self._busy = False
+        self.loadFinished.connect(self._install_hooks_if_needed)
+
+    @property
+    def relay(self) -> ConsoleRelayPage:
+        return self._page
+
+    def _install_hooks_if_needed(self, ok: bool):
+        if not ok or self._installed:
+            return
+
+        js = r"""
+        (function(){
+          if (window.__pie_hooks_installed) return;
+          window.__pie_hooks_installed = true;
+
+          function getGraph(){
+            let g = document.querySelector('.js-plotly-plot');
+            if (!g) g = document.querySelector('div[data-plotly]');
+            if (!g) {
+              const cand = Array.from(document.querySelectorAll('div'));
+              g = cand.find(d => d && d._fullLayout);
+            }
+            return g;
+          }
+
+          function emitRange(){
+            const g = getGraph();
+            if (!g || !window.Plotly) return;
+            const x = g.layout?.xaxis?.range;
+            const y = g.layout?.yaxis?.range;
+            if (x && y) {
+              try {
+                console.log('RANGE:' + JSON.stringify({'xaxis.range':x, 'yaxis.range':y}));
+              } catch(e){}
+            }
+          }
+
+          function install(){
+            const g = getGraph();
+            if (!g || !window.Plotly) { setTimeout(install, 200); return; }
+
+            // Catch all interactions that change zoom/pan
+            g.on('plotly_relayout', emitRange);
+            g.on('plotly_doubleclick', emitRange);
+            g.on('plotly_afterplot', emitRange);
+            g.on('plotly_redraw', emitRange);
+            g.on('plotly_autosize', emitRange);
+            g.on('plotly_restyle', emitRange);
+
+            //  Support mouse wheel zoom
+            g.addEventListener('wheel', () => setTimeout(emitRange, 200));
+
+            // 🔹 Support laptop touchpad pinch / scroll gestures
+            g.addEventListener('gesturechange', () => setTimeout(emitRange, 200));
+            g.addEventListener('touchmove', () => setTimeout(emitRange, 200));
+
+            // 🔹 Function called from Python to apply the other heatmap's range
+            window.__pie_applyRelayout = function(payload){
+              try {
+                const g2 = getGraph();
+                if (g2 && window.Plotly) Plotly.relayout(g2, payload);
+              } catch(err){}
+            };
+          }
+
+          install();
+        })();
+        """
+        self.page().runJavaScript(js)
+        self._installed = True
+
+
+    def apply_relayout(self, payload: dict):
+        """Apply ranges from the other view (with a feedback guard)."""
+        if self._busy:
+            return
+        self._busy = True
+        self.page().runJavaScript(
+            f"window.__pie_applyRelayout({payload!r});",
+            lambda _=None: self._clear_busy()
+        )
+
+    def _clear_busy(self):
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(0, lambda: setattr(self, "_busy", False))
 
 #used in setup_menu_actions.py inside main_window.components
 def _on_middle_tab_changed(self, index: int):
@@ -52,9 +178,9 @@ def _on_middle_tab_changed(self, index: int):
             self.btnToggleTable.setEnabled(True)
         if hasattr(self, "btnToggleHmLayout"):
             self.btnToggleHmLayout.setEnabled(True)
-        QTimer.singleShot(100, lambda: self._reset_splitter_ratio(0.45))
+        QTimer.singleShot(100, lambda : _reset_splitter_ratio(self, 0.45))
 
-    self.tab_switcher2()
+    tab_switcher2(self)
     self.update_digsheet_button_state()
 
 def syncdropdownwithtabs(self, index: int):
@@ -87,25 +213,6 @@ def _reset_splitter_ratio(self, top_ratio: float = 0.6):
 
     # 🔹 Delay the resize slightly so the layout stabilizes first
     QTimer.singleShot(120, apply_ratio)
-
-
-
-#tab switcher button helpers in setup_buttons.py
-# def ondropdowntabchanged(self, index: int):
-#     """Handle tab changes from dropdown switcher"""
-#     # print("inside ondropdowntabchanged")
-#     if index >= 0:
-#         self.ui.tabWidgetM.blockSignals(True)
-#         self.mid_tabbar.blockSignals(True)
-#
-#         self.ui.tabWidgetM.setCurrentIndex(index)
-#         self.mid_tabbar.setCurrentIndex(index)
-#         self.tabSwitcherDropdown.setCurrentIndex(index)
-#
-#         self.ui.tabWidgetM.blockSignals(False)
-#         self.mid_tabbar.blockSignals(False)
-#
-#         _on_middle_tab_changed(self, index)
 
 
 
@@ -160,7 +267,7 @@ def _guarded_open_tab(self, tab_name: str):
     for i in range(tw.count()):
         if tw.tabText(i) in wanted:
             tw.setCurrentIndex(i)
-            self.tab_switcher2()
+            tab_switcher2(self)
             return
     QMessageBox.information(self, "Tab not found", f"Could not locate tab: {tab_name}")
 
@@ -298,3 +405,181 @@ def apply_column_filter(self):
         for c, name in enumerate(header_names):
             hide = (name not in names_to_keep) and (name not in locked)
             self.ui.tableView.setColumnHidden(c, hide)
+
+
+
+
+
+#tab_switcher used in on middle tab changed and its helper func
+def tab_switcher2(self, *_):
+    if not self.project_is_open:
+        self._show_watermark()
+        return
+    try:
+        tab = self.ui.tabWidgetM.tabText(self.ui.tabWidgetM.currentIndex())
+
+        if tab == "Heatmap":
+            # Only proceed if UI is fully initialized
+            if not hasattr(self, 'top_stack'):
+                print("Warning: top_stack not yet initialized, skipping heatmap view")
+                return
+
+            # Set dual mode layout
+            _set_top_mode(self, "dual")
+
+            # Load both heatmaps into the splitter
+            if self.hhmap and hasattr(self, 'web_view_left'):
+                self._load_scrollable_chart(self.web_view_left, self.hhmap, min_w=2200, min_h=1400)
+            else:
+                if hasattr(self, 'web_view_left'):
+                    self.web_view_left.setUrl(QUrl())
+
+            if self.phmap and hasattr(self, 'web_view_right'):
+                self._load_scrollable_chart(self.web_view_right, self.phmap, min_w=2200, min_h=1400)
+            else:
+                if hasattr(self, 'web_view_right'):
+                    self.web_view_right.setUrl(QUrl())
+
+            # Apply the current layout mode
+            self._apply_heatmap_layout(self._hm_layout_mode)
+            # --- 🔄 Synchronize zoom/pan between both heatmaps ---
+            try:
+                if hasattr(self, "web_view_left") and hasattr(self, "web_view_right"):
+                    self.web_view_left.relay.relayout_json.connect(
+                        lambda payload: self._sync_heatmap_range(self.web_view_right, payload)
+                    )
+                    self.web_view_right.relay.relayout_json.connect(
+                        lambda payload: self._sync_heatmap_range(self.web_view_left, payload)
+                    )
+                    print("✅ Heatmap synchronization connections established")
+            except Exception as sync_err:
+                print(f"⚠️ Heatmap sync setup failed: {sync_err}")
+
+            left_pixel_offset = 120     # your desired vertical pixel scroll offset for left heatmap
+            right_pixel_offset = 120     # desired offset for right heatmap
+
+            QTimer.singleShot(100, lambda: self.left_scroll.verticalScrollBar().setValue(left_pixel_offset))
+            QTimer.singleShot(100, lambda: self.right_scroll.verticalScrollBar().setValue(right_pixel_offset))
+
+
+            self.bottom_stack.setCurrentIndex(0)
+            QTimer.singleShot(100, lambda : _arm_main_topbar(self))
+
+
+
+        elif tab in ("LineChart", "Line Chart", "Line Plot"):
+            if self.lplot:
+                self._load_scrollable_chart(self.web_view, self.lplot, min_w=2200, min_h=1400)
+            else:
+                self.web_view.setUrl(QUrl())
+            if self.prox_linechart and os.path.exists(self.prox_linechart):
+                self.bottom_stack.setCurrentIndex(2)
+                self._load_scrollable_chart(self.web_view2, self.prox_linechart, min_w=2000, min_h=900)
+                QTimer.singleShot(0, lambda : _arm_topbar(self))
+                QTimer.singleShot(120, lambda : _arm_topbar(self))  # small safety nudge
+                QTimer.singleShot(500, lambda: self._setup_web_view_scrollbars(self.web_view2))
+            else:
+                self.bottom_stack.setCurrentIndex(0)
+                self.web_view2.setUrl(QUrl())
+            # Setup scrollbar for line chart main view
+            QTimer.singleShot(100, lambda : _arm_main_topbar(self))
+
+        elif tab in ("3D Graph", "3D"):
+            if self.pipe3d:
+                try:
+                    self._load_scrollable_chart(self.web_view, self.pipe3d, min_w=2200, min_h=1400)
+                except AttributeError:
+                    self.web_view.setUrl(QUrl.fromLocalFile(self.pipe3d))
+            else:
+                self.web_view.setUrl(QUrl())
+            self.bottom_stack.setCurrentIndex(0)
+            self.web_view2.setUrl(QUrl())
+            # Setup scrollbar for 3D graph
+            QTimer.singleShot(100, lambda : _arm_main_topbar(self))
+
+        self.update_digsheet_button_state()
+    except Exception as e:
+        self.open_Error(e)
+
+
+def _arm_topbar(self, virtual_max: int = 2000):
+    """Re-sync the top scrollbar with the inner QScrollArea hbar and enable mapping."""
+    try:
+        inner = self.web_scroll_area.horizontalScrollBar()
+        imin, imax = inner.minimum(), inner.maximum()
+        rng = max(1, imax - imin)
+        # map inner -> top
+        top_val = int(round(((inner.value() - imin) / rng) * virtual_max))
+        self._hscroll_ready = True
+        self.top_scrollbar.blockSignals(True)
+        self.top_scrollbar.setRange(0, virtual_max)
+        self.top_scrollbar.setPageStep(100)
+        self.top_scrollbar.setSingleStep(10)
+        self.top_scrollbar.setValue(top_val)
+        self.top_scrollbar.blockSignals(False)
+    except Exception:
+        # don't crash UI if something is missing during early init
+        self._hscroll_ready = True
+
+
+def _arm_main_topbar(self, virtual_max: int = 2000):
+    """Re-sync the main top scrollbar with the inner QScrollArea hbar and enable mapping."""
+    try:
+        inner = self.main_web_scroll_area.horizontalScrollBar()
+        imin, imax = inner.minimum(), inner.maximum()
+        rng = max(1, imax - imin)
+        # map inner -> top
+        top_val = int(round(((inner.value() - imin) / rng) * virtual_max))
+        self._hscroll_ready_main = True
+        self.main_top_scrollbar.blockSignals(True)
+        self.main_top_scrollbar.setRange(0, virtual_max)
+        self.main_top_scrollbar.setPageStep(100)
+        self.main_top_scrollbar.setSingleStep(10)
+        self.main_top_scrollbar.setValue(top_val)
+        self.main_top_scrollbar.blockSignals(False)
+    except Exception:
+        # don't crash UI if something is missing during early init
+        self._hscroll_ready_main = True
+
+
+def _set_top_mode(self, mode: str):
+    """mode: 'dual' for heatmaps, 'single' for line/3D"""
+    mode = mode.lower()
+    if mode == "dual":
+        # show the dual heatmaps page on top
+        self.top_stack.setCurrentWidget(self.dual_heatmaps_page)
+        self.main_top_scrollbar.hide()
+    else:
+        # show the single chart page on top
+        self.top_stack.setCurrentWidget(self.single_chart_page)
+        self.main_top_scrollbar.show()
+
+    # optional: blank out views that aren't visible so you never see stale content
+    if self.top_stack.currentWidget() is self.single_chart_page:
+        # blank dual views
+        try:
+            self.web_view_left.setHtml("<html></html>")
+            self.web_view_right.setHtml("<html></html>")
+        except Exception:
+            pass
+    else:
+        # blank single view
+        try:
+            self.web_view.setHtml("<html></html>")
+        except Exception:
+            pass
+
+
+def _sync_heatmap_range(self, target_view, payload):
+    """Synchronize zoom/pan between both heatmaps."""
+    if not isinstance(target_view, SyncPlotlyView):
+        return
+
+    clean_payload = {}
+    if "xaxis.range" in payload:
+        clean_payload["xaxis.range"] = payload["xaxis.range"]
+    if "yaxis.range" in payload:
+        clean_payload["yaxis.range"] = payload["yaxis.range"]
+
+    # Apply to the other view
+    target_view.apply_relayout(clean_payload)

@@ -30,11 +30,11 @@ def setup_tab_system(self):
     # Sync in both directions
     self.mid_tabbar.currentChanged.connect(
         lambda i: [self.ui.tabWidgetM.setCurrentIndex(i),
-                   self._sync_dropdown_with_tabs(i)][0]
+                   _sync_dropdown_with_tabs(self, i)][0]
     )
     self.ui.tabWidgetM.currentChanged.connect(
         lambda i: [self.mid_tabbar.setCurrentIndex(i),
-                   self._sync_dropdown_with_tabs(i)][0]
+                   _sync_dropdown_with_tabs(self, i)][0]
     )
 
     self.mid_tabbar.installEventFilter(self)
@@ -42,3 +42,19 @@ def setup_tab_system(self):
 
     # self._build_splitter()
     # _build_main_section(self)
+
+
+def _sync_dropdown_with_tabs(self, index: int):
+    """Sync dropdown when tab changes from other sources"""
+    try:
+        # Block signals to prevent infinite loop
+        self.tabSwitcherDropdown.blockSignals(True)
+
+        # Update dropdown selection
+        self.tabSwitcherDropdown.setCurrentIndex(index)
+
+        # Unblock signals
+        self.tabSwitcherDropdown.blockSignals(False)
+
+    except Exception as e:
+        print(f"Error syncing dropdown: {e}")

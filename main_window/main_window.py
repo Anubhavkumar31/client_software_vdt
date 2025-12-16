@@ -15,6 +15,7 @@ from PyQt6.QtCore import Qt, QAbstractTableModel
 from PyQt6.QtCore import QAbstractTableModel, QVariant
 
 from main_section_view.build_main_section import _build_main_section, SyncPlotlyView, MidBarSplitter
+from main_section_view.helpers_temp import tab_switcher2, _arm_topbar, _arm_main_topbar
 from main_window.components.create_buttons.buttons.Load_btn import create_Load_btn
 from main_window.components.create_buttons.buttons.comboBoxpipe import comboBoxPipe_setup
 from main_window.components.create_buttons.buttons.digsheet_btn_main_ui import create_digsheet_btn
@@ -1181,19 +1182,19 @@ class MyMainWindow(QMainWindow):
     #         QTimer.singleShot(100, self._refresh_table_scrollbars)
     #         QTimer.singleShot(300, self._reset_table_state)
 
-    def _sync_heatmap_range(self, target_view, payload):
-        """Synchronize zoom/pan between both heatmaps."""
-        if not isinstance(target_view, SyncPlotlyView):
-            return
-
-        clean_payload = {}
-        if "xaxis.range" in payload:
-            clean_payload["xaxis.range"] = payload["xaxis.range"]
-        if "yaxis.range" in payload:
-            clean_payload["yaxis.range"] = payload["yaxis.range"]
-
-        # Apply to the other view
-        target_view.apply_relayout(clean_payload)
+    # def _sync_heatmap_range(self, target_view, payload):
+    #     """Synchronize zoom/pan between both heatmaps."""
+    #     if not isinstance(target_view, SyncPlotlyView):
+    #         return
+    #
+    #     clean_payload = {}
+    #     if "xaxis.range" in payload:
+    #         clean_payload["xaxis.range"] = payload["xaxis.range"]
+    #     if "yaxis.range" in payload:
+    #         clean_payload["yaxis.range"] = payload["yaxis.range"]
+    #
+    #     # Apply to the other view
+    #     target_view.apply_relayout(clean_payload)
 
     def _refresh_table_scrollbars(self):
         """Force scrollbar redraw for all tables."""
@@ -2932,8 +2933,8 @@ class MyMainWindow(QMainWindow):
 
         # Refresh the current view and topbars
         self._refresh_current_view()
-        QTimer.singleShot(0, self._arm_topbar)
-        QTimer.singleShot(0, self._arm_main_topbar)
+        QTimer.singleShot(0, lambda : _arm_topbar(self))
+        QTimer.singleShot(0, lambda : _arm_main_topbar(self))
         self.update_digsheet_button_state()
         QTimer.singleShot(100, self.update_digsheet_button_state)
         # 👇 keep Load button disabled after file load
@@ -3284,150 +3285,150 @@ class MyMainWindow(QMainWindow):
     #     self.tab_switcher2()
     #     self.update_digsheet_button_state()
 
-    def _set_top_mode(self, mode: str):
-        """mode: 'dual' for heatmaps, 'single' for line/3D"""
-        mode = mode.lower()
-        if mode == "dual":
-            # show the dual heatmaps page on top
-            self.top_stack.setCurrentWidget(self.dual_heatmaps_page)
-            self.main_top_scrollbar.hide()
-        else:
-            # show the single chart page on top
-            self.top_stack.setCurrentWidget(self.single_chart_page)
-            self.main_top_scrollbar.show()
+    # def _set_top_mode(self, mode: str):
+    #     """mode: 'dual' for heatmaps, 'single' for line/3D"""
+    #     mode = mode.lower()
+    #     if mode == "dual":
+    #         # show the dual heatmaps page on top
+    #         self.top_stack.setCurrentWidget(self.dual_heatmaps_page)
+    #         self.main_top_scrollbar.hide()
+    #     else:
+    #         # show the single chart page on top
+    #         self.top_stack.setCurrentWidget(self.single_chart_page)
+    #         self.main_top_scrollbar.show()
+    #
+    #     # optional: blank out views that aren't visible so you never see stale content
+    #     if self.top_stack.currentWidget() is self.single_chart_page:
+    #         # blank dual views
+    #         try:
+    #             self.web_view_left.setHtml("<html></html>")
+    #             self.web_view_right.setHtml("<html></html>")
+    #         except Exception:
+    #             pass
+    #     else:
+    #         # blank single view
+    #         try:
+    #             self.web_view.setHtml("<html></html>")
+    #         except Exception:
+    #             pass
 
-        # optional: blank out views that aren't visible so you never see stale content
-        if self.top_stack.currentWidget() is self.single_chart_page:
-            # blank dual views
-            try:
-                self.web_view_left.setHtml("<html></html>")
-                self.web_view_right.setHtml("<html></html>")
-            except Exception:
-                pass
-        else:
-            # blank single view
-            try:
-                self.web_view.setHtml("<html></html>")
-            except Exception:
-                pass
-
-    def tab_switcher2(self, *_):
-        if not self.project_is_open:
-            self._show_watermark()
-            return
-        try:
-            tab = self.ui.tabWidgetM.tabText(self.ui.tabWidgetM.currentIndex())
-            # if tab == "Heatmap":
-            #     if self.hmap:
-            #         self._load_scrollable_chart(self.web_view, self.hmap, min_w=2200, min_h=1400)
-            #     else:
-            #         self.web_view.setUrl(QUrl())
-            #     self.bottom_stack.setCurrentIndex(0)
-            #     self.web_view2.setUrl(QUrl())
-            #     # Setup scrollbar for heatmap
-            #     QTimer.singleShot(100, self._arm_main_topbar)
-            # if tab == "Heatmap":
-            #     # Set dual mode layout
-            #     self._set_top_mode("dual")
-
-            #     # Load both heatmaps into the splitter
-            #     if self.hhmap:
-            #         self._load_scrollable_chart(self.web_view_left, self.hhmap, min_w=2200, min_h=1400)
-            #     else:
-            #         self.web_view_left.setUrl(QUrl())
-
-            #     if self.phmap:
-            #         self._load_scrollable_chart(self.web_view_right, self.phmap, min_w=2200, min_h=1400)
-            #     else:
-            #         self.web_view_right.setUrl(QUrl())
-
-            #     # Apply the current layout mode (horizontal or vertical)
-            #     self.apply_heatmap_layout(self.hm_layout_mode)
-
-            #     self.bottom_stack.setCurrentIndex(0)
-            #     QTimer.singleShot(100, self._arm_main_topbar)
-            if tab == "Heatmap":
-                # Only proceed if UI is fully initialized
-                if not hasattr(self, 'top_stack'):
-                    print("Warning: top_stack not yet initialized, skipping heatmap view")
-                    return
-
-                # Set dual mode layout
-                self._set_top_mode("dual")
-
-                # Load both heatmaps into the splitter
-                if self.hhmap and hasattr(self, 'web_view_left'):
-                    self._load_scrollable_chart(self.web_view_left, self.hhmap, min_w=2200, min_h=1400)
-                else:
-                    if hasattr(self, 'web_view_left'):
-                        self.web_view_left.setUrl(QUrl())
-
-                if self.phmap and hasattr(self, 'web_view_right'):
-                    self._load_scrollable_chart(self.web_view_right, self.phmap, min_w=2200, min_h=1400)
-                else:
-                    if hasattr(self, 'web_view_right'):
-                        self.web_view_right.setUrl(QUrl())
-
-                # Apply the current layout mode
-                self._apply_heatmap_layout(self._hm_layout_mode)
-                # --- 🔄 Synchronize zoom/pan between both heatmaps ---
-                try:
-                    if hasattr(self, "web_view_left") and hasattr(self, "web_view_right"):
-                        self.web_view_left.relay.relayout_json.connect(
-                            lambda payload: self._sync_heatmap_range(self.web_view_right, payload)
-                        )
-                        self.web_view_right.relay.relayout_json.connect(
-                            lambda payload: self._sync_heatmap_range(self.web_view_left, payload)
-                        )
-                        print("✅ Heatmap synchronization connections established")
-                except Exception as sync_err:
-                    print(f"⚠️ Heatmap sync setup failed: {sync_err}")
-
-                left_pixel_offset = 120     # your desired vertical pixel scroll offset for left heatmap
-                right_pixel_offset = 120     # desired offset for right heatmap
-
-                QTimer.singleShot(100, lambda: self.left_scroll.verticalScrollBar().setValue(left_pixel_offset))
-                QTimer.singleShot(100, lambda: self.right_scroll.verticalScrollBar().setValue(right_pixel_offset))
-
-
-                self.bottom_stack.setCurrentIndex(0)
-                QTimer.singleShot(100, self._arm_main_topbar)
-
-
-
-            elif tab in ("LineChart", "Line Chart", "Line Plot"):
-                if self.lplot:
-                    self._load_scrollable_chart(self.web_view, self.lplot, min_w=2200, min_h=1400)
-                else:
-                    self.web_view.setUrl(QUrl())
-                if self.prox_linechart and os.path.exists(self.prox_linechart):
-                    self.bottom_stack.setCurrentIndex(2)
-                    self._load_scrollable_chart(self.web_view2, self.prox_linechart, min_w=2000, min_h=900)
-                    QTimer.singleShot(0, self._arm_topbar)
-                    QTimer.singleShot(120, self._arm_topbar)  # small safety nudge
-                    QTimer.singleShot(500, lambda: self._setup_web_view_scrollbars(self.web_view2))
-                else:
-                    self.bottom_stack.setCurrentIndex(0)
-                    self.web_view2.setUrl(QUrl())
-                # Setup scrollbar for line chart main view
-                QTimer.singleShot(100, self._arm_main_topbar)
-
-            elif tab in ("3D Graph", "3D"):
-                if self.pipe3d:
-                    try:
-                        self._load_scrollable_chart(self.web_view, self.pipe3d, min_w=2200, min_h=1400)
-                    except AttributeError:
-                        self.web_view.setUrl(QUrl.fromLocalFile(self.pipe3d))
-                else:
-                    self.web_view.setUrl(QUrl())
-                self.bottom_stack.setCurrentIndex(0)
-                self.web_view2.setUrl(QUrl())
-                # Setup scrollbar for 3D graph
-                QTimer.singleShot(100, self._arm_main_topbar)
-
-            self.update_digsheet_button_state()
-        except Exception as e:
-            self.open_Error(e)
+    # def tab_switcher2(self, *_):
+    #     if not self.project_is_open:
+    #         self._show_watermark()
+    #         return
+    #     try:
+    #         tab = self.ui.tabWidgetM.tabText(self.ui.tabWidgetM.currentIndex())
+    #         # if tab == "Heatmap":
+    #         #     if self.hmap:
+    #         #         self._load_scrollable_chart(self.web_view, self.hmap, min_w=2200, min_h=1400)
+    #         #     else:
+    #         #         self.web_view.setUrl(QUrl())
+    #         #     self.bottom_stack.setCurrentIndex(0)
+    #         #     self.web_view2.setUrl(QUrl())
+    #         #     # Setup scrollbar for heatmap
+    #         #     QTimer.singleShot(100, self._arm_main_topbar)
+    #         # if tab == "Heatmap":
+    #         #     # Set dual mode layout
+    #         #     self._set_top_mode("dual")
+    #
+    #         #     # Load both heatmaps into the splitter
+    #         #     if self.hhmap:
+    #         #         self._load_scrollable_chart(self.web_view_left, self.hhmap, min_w=2200, min_h=1400)
+    #         #     else:
+    #         #         self.web_view_left.setUrl(QUrl())
+    #
+    #         #     if self.phmap:
+    #         #         self._load_scrollable_chart(self.web_view_right, self.phmap, min_w=2200, min_h=1400)
+    #         #     else:
+    #         #         self.web_view_right.setUrl(QUrl())
+    #
+    #         #     # Apply the current layout mode (horizontal or vertical)
+    #         #     self.apply_heatmap_layout(self.hm_layout_mode)
+    #
+    #         #     self.bottom_stack.setCurrentIndex(0)
+    #         #     QTimer.singleShot(100, self._arm_main_topbar)
+    #         if tab == "Heatmap":
+    #             # Only proceed if UI is fully initialized
+    #             if not hasattr(self, 'top_stack'):
+    #                 print("Warning: top_stack not yet initialized, skipping heatmap view")
+    #                 return
+    #
+    #             # Set dual mode layout
+    #             self._set_top_mode("dual")
+    #
+    #             # Load both heatmaps into the splitter
+    #             if self.hhmap and hasattr(self, 'web_view_left'):
+    #                 self._load_scrollable_chart(self.web_view_left, self.hhmap, min_w=2200, min_h=1400)
+    #             else:
+    #                 if hasattr(self, 'web_view_left'):
+    #                     self.web_view_left.setUrl(QUrl())
+    #
+    #             if self.phmap and hasattr(self, 'web_view_right'):
+    #                 self._load_scrollable_chart(self.web_view_right, self.phmap, min_w=2200, min_h=1400)
+    #             else:
+    #                 if hasattr(self, 'web_view_right'):
+    #                     self.web_view_right.setUrl(QUrl())
+    #
+    #             # Apply the current layout mode
+    #             self._apply_heatmap_layout(self._hm_layout_mode)
+    #             # --- 🔄 Synchronize zoom/pan between both heatmaps ---
+    #             try:
+    #                 if hasattr(self, "web_view_left") and hasattr(self, "web_view_right"):
+    #                     self.web_view_left.relay.relayout_json.connect(
+    #                         lambda payload: self._sync_heatmap_range(self.web_view_right, payload)
+    #                     )
+    #                     self.web_view_right.relay.relayout_json.connect(
+    #                         lambda payload: self._sync_heatmap_range(self.web_view_left, payload)
+    #                     )
+    #                     print("✅ Heatmap synchronization connections established")
+    #             except Exception as sync_err:
+    #                 print(f"⚠️ Heatmap sync setup failed: {sync_err}")
+    #
+    #             left_pixel_offset = 120     # your desired vertical pixel scroll offset for left heatmap
+    #             right_pixel_offset = 120     # desired offset for right heatmap
+    #
+    #             QTimer.singleShot(100, lambda: self.left_scroll.verticalScrollBar().setValue(left_pixel_offset))
+    #             QTimer.singleShot(100, lambda: self.right_scroll.verticalScrollBar().setValue(right_pixel_offset))
+    #
+    #
+    #             self.bottom_stack.setCurrentIndex(0)
+    #             QTimer.singleShot(100, self._arm_main_topbar)
+    #
+    #
+    #
+    #         elif tab in ("LineChart", "Line Chart", "Line Plot"):
+    #             if self.lplot:
+    #                 self._load_scrollable_chart(self.web_view, self.lplot, min_w=2200, min_h=1400)
+    #             else:
+    #                 self.web_view.setUrl(QUrl())
+    #             if self.prox_linechart and os.path.exists(self.prox_linechart):
+    #                 self.bottom_stack.setCurrentIndex(2)
+    #                 self._load_scrollable_chart(self.web_view2, self.prox_linechart, min_w=2000, min_h=900)
+    #                 QTimer.singleShot(0, self._arm_topbar)
+    #                 QTimer.singleShot(120, self._arm_topbar)  # small safety nudge
+    #                 QTimer.singleShot(500, lambda: self._setup_web_view_scrollbars(self.web_view2))
+    #             else:
+    #                 self.bottom_stack.setCurrentIndex(0)
+    #                 self.web_view2.setUrl(QUrl())
+    #             # Setup scrollbar for line chart main view
+    #             QTimer.singleShot(100, self._arm_main_topbar)
+    #
+    #         elif tab in ("3D Graph", "3D"):
+    #             if self.pipe3d:
+    #                 try:
+    #                     self._load_scrollable_chart(self.web_view, self.pipe3d, min_w=2200, min_h=1400)
+    #                 except AttributeError:
+    #                     self.web_view.setUrl(QUrl.fromLocalFile(self.pipe3d))
+    #             else:
+    #                 self.web_view.setUrl(QUrl())
+    #             self.bottom_stack.setCurrentIndex(0)
+    #             self.web_view2.setUrl(QUrl())
+    #             # Setup scrollbar for 3D graph
+    #             QTimer.singleShot(100, self._arm_main_topbar)
+    #
+    #         self.update_digsheet_button_state()
+    #     except Exception as e:
+    #         self.open_Error(e)
 
 
     BACKEND_LOCKED_COLS = {"Empty"}  # for styling purpose this is takin extra ,DONT REMOVE IT FROM THE SET
@@ -3442,7 +3443,7 @@ class MyMainWindow(QMainWindow):
         except Exception:
             pass
         # Let the event loop breathe, then render the right thing for the active tab
-        QTimer.singleShot(0, self.tab_switcher2)
+        QTimer.singleShot(0, lambda : tab_switcher2(self))
 
     def _load_scrollable_chart(self, view: QWebEngineView, html_path: str, min_w: int = 2200, min_h: int = 1400):
         if not html_path or not os.path.exists(html_path):
@@ -3536,11 +3537,7 @@ class MyMainWindow(QMainWindow):
         base = QUrl.fromLocalFile(os.path.dirname(html_path) + os.sep)
         view.setHtml(wrapper, base)
 
-    def minimize_tabs(self):
-        self.ui.tabWidgetM.hide()
 
-    def maximize_tabs(self):
-        self.ui.tabWidgetM.show()
 
     # def open_graphs(self):
     #     try:
@@ -3835,21 +3832,21 @@ class MyMainWindow(QMainWindow):
 
 
 
-    def jump_to_number(self):
-        if not self.project_is_open:
-            return
-        text = self.ui.comboBoxPipe.currentText().strip()
-        if not text: return
-        try:
-            base_names = [os.path.splitext(os.path.basename(f))[0] for f in self.pkl_files]
-            if text in base_names:
-                idx = base_names.index(text)
-            else:
-                idx = next((i for i, n in enumerate(base_names) if re.search(rf'\b{text}\b', n)), None)
-                if idx is None: return
-            self.ui.comboBoxPipe.setCurrentIndex(idx)
-        except Exception as e:
-            self.open_Error(f"Jump error: {e}")
+    # def jump_to_number(self):
+    #     if not self.project_is_open:
+    #         return
+    #     text = self.ui.comboBoxPipe.currentText().strip()
+    #     if not text: return
+    #     try:
+    #         base_names = [os.path.splitext(os.path.basename(f))[0] for f in self.pkl_files]
+    #         if text in base_names:
+    #             idx = base_names.index(text)
+    #         else:
+    #             idx = next((i for i, n in enumerate(base_names) if re.search(rf'\b{text}\b', n)), None)
+    #             if idx is None: return
+    #         self.ui.comboBoxPipe.setCurrentIndex(idx)
+    #     except Exception as e:
+    #         self.open_Error(f"Jump error: {e}")
 
     # def open_About(self):
     #     About_Dialog().exec()
@@ -4238,45 +4235,32 @@ class MyMainWindow(QMainWindow):
 
 
 
-    def on_row_selection_changed(self, *_):
-        idxs = self.ui.tableWidgetDefect.selectionModel().selectedRows()
-        if not idxs:
-            self.update_digsheet_button_state()
-            return
-        row = idxs[0].row()
-        item = self.ui.tableWidgetDefect.item(row, 0)
-        if item:
-            defect_id = item.text()
-            try:
-                self.web_view.page().runJavaScript(f"highlightBox({defect_id});")
-            except Exception:
-                pass
-        self.update_digsheet_button_state()
 
-    def _get_selected_abs_distance_from_defect_table(self) -> Optional[str]:
-        tw = self.ui.tableWidgetDefect
-        if tw.rowCount() == 0 or tw.columnCount() == 0:
-            QMessageBox.warning(self, "No data", "Defect table is empty.")
-            return None
 
-        abs_col = self._abs_col_index_silent()
-        if abs_col is None:
-            QMessageBox.warning(self, "Missing column", "Could not find the Absolute Distance column.")
-            return None
-
-        sel_model = tw.selectionModel()
-        rows = [idx.row() for idx in sel_model.selectedRows()] or [i.row() for i in tw.selectedIndexes()]
-        rows = list(dict.fromkeys(rows))
-        if len(rows) != 1:
-            QMessageBox.information(self, "Select one row", "Please select exactly one row in the defect table.")
-            return None
-
-        item = tw.item(rows[0], abs_col)
-        if item is None or not item.text().strip():
-            QMessageBox.warning(self, "No Absolute Distance", "Selected row has empty Absolute Distance.")
-            return None
-
-        return item.text().strip()
+    # def _get_selected_abs_distance_from_defect_table(self) -> Optional[str]:
+    #     tw = self.ui.tableWidgetDefect
+    #     if tw.rowCount() == 0 or tw.columnCount() == 0:
+    #         QMessageBox.warning(self, "No data", "Defect table is empty.")
+    #         return None
+    #
+    #     abs_col = self._abs_col_index_silent()
+    #     if abs_col is None:
+    #         QMessageBox.warning(self, "Missing column", "Could not find the Absolute Distance column.")
+    #         return None
+    #
+    #     sel_model = tw.selectionModel()
+    #     rows = [idx.row() for idx in sel_model.selectedRows()] or [i.row() for i in tw.selectedIndexes()]
+    #     rows = list(dict.fromkeys(rows))
+    #     if len(rows) != 1:
+    #         QMessageBox.information(self, "Select one row", "Please select exactly one row in the defect table.")
+    #         return None
+    #
+    #     item = tw.item(rows[0], abs_col)
+    #     if item is None or not item.text().strip():
+    #         QMessageBox.warning(self, "No Absolute Distance", "Selected row has empty Absolute Distance.")
+    #         return None
+    #
+    #     return item.text().strip()
 
     # ---------------------------
     # Helpers + global event filter popups
@@ -4490,19 +4474,19 @@ class MyMainWindow(QMainWindow):
         if hasattr(self.ui, 'actionStandard'):  # Standard digsheet
             self.ui.actionStandard.setEnabled(self.project_is_open and has_pipe_tally)
 
-    def _force_heatmap_start(self):
-        """Ensure middle view opens on Heatmap before the next load."""
-        self._last_allowed_tab_index = 0
-        self._reverting_tab = False
-        tw = getattr(self.ui, "tabWidgetM", None)
-        if tw is not None:
-            tw.blockSignals(True)
-            tw.setCurrentIndex(0)
-            tw.blockSignals(False)
-        if hasattr(self, "tabSwitcherDropdown"):
-            self.tabSwitcherDropdown.blockSignals(True)
-            self.tabSwitcherDropdown.setCurrentIndex(0)
-            self.tabSwitcherDropdown.blockSignals(False)
+    # def _force_heatmap_start(self):
+    #     """Ensure middle view opens on Heatmap before the next load."""
+    #     self._last_allowed_tab_index = 0
+    #     self._reverting_tab = False
+    #     tw = getattr(self.ui, "tabWidgetM", None)
+    #     if tw is not None:
+    #         tw.blockSignals(True)
+    #         tw.setCurrentIndex(0)
+    #         tw.blockSignals(False)
+    #     if hasattr(self, "tabSwitcherDropdown"):
+    #         self.tabSwitcherDropdown.blockSignals(True)
+    #         self.tabSwitcherDropdown.setCurrentIndex(0)
+    #         self.tabSwitcherDropdown.blockSignals(False)
 
 
     # def close_project(self):
@@ -4653,174 +4637,174 @@ class MyMainWindow(QMainWindow):
     #     except Exception as e:
     #         self.open_Error(f"An error occurred: {e}")
 
-    def _on_dropdown_tab_changed(self, index: int):
-        """Handle tab change from dropdown"""
-        try:
-            # Block signals to prevent infinite loop
-            self.ui.tabWidgetM.blockSignals(True)
-            self.mid_tabbar.blockSignals(True)
+    # def _on_dropdown_tab_changed(self, index: int):
+    #     """Handle tab change from dropdown"""
+    #     try:
+    #         # Block signals to prevent infinite loop
+    #         self.ui.tabWidgetM.blockSignals(True)
+    #         self.mid_tabbar.blockSignals(True)
+    #
+    #         # Set the tab index
+    #         self.ui.tabWidgetM.setCurrentIndex(index)
+    #         self.mid_tabbar.setCurrentIndex(index)
+    #
+    #         # Unblock signals
+    #         self.ui.tabWidgetM.blockSignals(False)
+    #         self.mid_tabbar.blockSignals(False)
+    #
+    #         # Trigger the actual tab change logic
+    #         self.onmiddletabchanged(index)
+    #
+    #     except Exception as e:
+    #         print(f"Error in dropdown tab change: {e}")
 
-            # Set the tab index
-            self.ui.tabWidgetM.setCurrentIndex(index)
-            self.mid_tabbar.setCurrentIndex(index)
+    # def _sync_dropdown_with_tabs(self, index: int):
+    #     """Sync dropdown when tab changes from other sources"""
+    #     try:
+    #         # Block signals to prevent infinite loop
+    #         self.tabSwitcherDropdown.blockSignals(True)
+    #
+    #         # Update dropdown selection
+    #         self.tabSwitcherDropdown.setCurrentIndex(index)
+    #
+    #         # Unblock signals
+    #         self.tabSwitcherDropdown.blockSignals(False)
+    #
+    #     except Exception as e:
+    #         print(f"Error syncing dropdown: {e}")
 
-            # Unblock signals
-            self.ui.tabWidgetM.blockSignals(False)
-            self.mid_tabbar.blockSignals(False)
+    # def _arm_topbar(self, virtual_max: int = 2000):
+    #     """Re-sync the top scrollbar with the inner QScrollArea hbar and enable mapping."""
+    #     try:
+    #         inner = self.web_scroll_area.horizontalScrollBar()
+    #         imin, imax = inner.minimum(), inner.maximum()
+    #         rng = max(1, imax - imin)
+    #         # map inner -> top
+    #         top_val = int(round(((inner.value() - imin) / rng) * virtual_max))
+    #         self._hscroll_ready = True
+    #         self.top_scrollbar.blockSignals(True)
+    #         self.top_scrollbar.setRange(0, virtual_max)
+    #         self.top_scrollbar.setPageStep(100)
+    #         self.top_scrollbar.setSingleStep(10)
+    #         self.top_scrollbar.setValue(top_val)
+    #         self.top_scrollbar.blockSignals(False)
+    #     except Exception:
+    #         # don't crash UI if something is missing during early init
+    #         self._hscroll_ready = True
 
-            # Trigger the actual tab change logic
-            self.onmiddletabchanged(index)
+    # def _setup_create_project_label(self):
+    #     """Create a centered overlay for 'Create Project' message"""
+    #     central = self.centralWidget()
+    #     self._create_proj_container = QWidget(central)
+    #     self._create_proj_container.setGeometry(central.rect())
+    #     self._create_proj_container.setStyleSheet("""
+    #         background-color: rgba(245, 247, 250, 200);
+    #     """)
+    #
+    #     layout = QVBoxLayout(self._create_proj_container)
+    #     layout.setContentsMargins(0, 0, 0, 0)
+    #     layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    #
+    #     # Main card
+    #     card = QFrame()
+    #     card.setFixedWidth(420)
+    #     card.setStyleSheet("""
+    #         QFrame {
+    #             background-color: #ffffff;
+    #             border-radius: 14px;
+    #             border: 1px solid #e0e0e0;
+    #             padding: 30px 20px;
+    #         }
+    #     """)
+    #     card_layout = QVBoxLayout(card)
+    #     card_layout.setSpacing(20)
+    #     card_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    #
+    #     # Proper icon (no cropping)
+    #     icon_label = QLabel()
+    #     pixmap = QPixmap("icons/folder.png")  # ✅ use your own folder.png here
+    #     if not pixmap.isNull():
+    #         pixmap = pixmap.scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio,
+    #                                Qt.TransformationMode.SmoothTransformation)
+    #         icon_label.setPixmap(pixmap)
+    #     else:
+    #         icon_label.setText("📁")  # fallback emoji
+    #         icon_label.setStyleSheet("font-size: 48px;")
+    #
+    #     icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    #     card_layout.addWidget(icon_label)
+    #
+    #     # Title
+    #     title = QLabel("Create the Project")
+    #     title.setStyleSheet("""
+    #         font-size: 20pt;
+    #         font-weight: 600;
+    #         color: #2c3e50;
+    #     """)
+    #     title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    #     card_layout.addWidget(title)
+    #
+    #     # Divider
+    #     divider = QFrame()
+    #     divider.setFrameShape(QFrame.Shape.HLine)
+    #     divider.setStyleSheet("color: #e0e0e0; margin: 8px 0;")
+    #     card_layout.addWidget(divider)
+    #
+    #     # Subtitle (fixed clipping issue)
+    #     subtitle = QLabel("Go to <b>File → Create Project</b> in the menu bar")
+    #     subtitle.setWordWrap(True)
+    #     subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    #     subtitle.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+    #     subtitle.setStyleSheet("""
+    #         font-size: 12pt;
+    #         color: #555;
+    #     """)
+    #     card_layout.addWidget(subtitle)
+    #
+    #     layout.addWidget(card)
+    #     self._create_proj_container.hide()
 
-        except Exception as e:
-            print(f"Error in dropdown tab change: {e}")
+    # def _show_create_project_message(self):
+    #     """Show 'Create the Project in File' message, hide table + scrollbars."""
+    #     try:
+    #         if hasattr(self, '_create_proj_container') and self._create_proj_container:
+    #             self._create_proj_container.show()
+    #
+    #         if hasattr(self.ui, 'tableWidgetDefect'):
+    #             self.ui.tableWidgetDefect.hide()
+    #
+    #         if hasattr(self, '_no_defects_container') and self._no_defects_container:
+    #             self._no_defects_container.hide()
+    #
+    #         if hasattr(self, 'table_scrollbar') and self.table_scrollbar:
+    #             self.table_scrollbar.hide()   # 👈 also hide table top bar
+    #
+    #         print("📋 Displaying 'Create the Project in File' message")
+    #     except Exception as e:
+    #         print(f"Error showing create project message: {e}")
 
-    def _sync_dropdown_with_tabs(self, index: int):
-        """Sync dropdown when tab changes from other sources"""
-        try:
-            # Block signals to prevent infinite loop
-            self.tabSwitcherDropdown.blockSignals(True)
+    # def _hide_create_project_message(self):
+    #     if hasattr(self, '_create_proj_container'):
+    #         self._create_proj_container.hide()
 
-            # Update dropdown selection
-            self.tabSwitcherDropdown.setCurrentIndex(index)
-
-            # Unblock signals
-            self.tabSwitcherDropdown.blockSignals(False)
-
-        except Exception as e:
-            print(f"Error syncing dropdown: {e}")
-
-    def _arm_topbar(self, virtual_max: int = 2000):
-        """Re-sync the top scrollbar with the inner QScrollArea hbar and enable mapping."""
-        try:
-            inner = self.web_scroll_area.horizontalScrollBar()
-            imin, imax = inner.minimum(), inner.maximum()
-            rng = max(1, imax - imin)
-            # map inner -> top
-            top_val = int(round(((inner.value() - imin) / rng) * virtual_max))
-            self._hscroll_ready = True
-            self.top_scrollbar.blockSignals(True)
-            self.top_scrollbar.setRange(0, virtual_max)
-            self.top_scrollbar.setPageStep(100)
-            self.top_scrollbar.setSingleStep(10)
-            self.top_scrollbar.setValue(top_val)
-            self.top_scrollbar.blockSignals(False)
-        except Exception:
-            # don't crash UI if something is missing during early init
-            self._hscroll_ready = True
-
-    def _setup_create_project_label(self):
-        """Create a centered overlay for 'Create Project' message"""
-        central = self.centralWidget()
-        self._create_proj_container = QWidget(central)
-        self._create_proj_container.setGeometry(central.rect())
-        self._create_proj_container.setStyleSheet("""
-            background-color: rgba(245, 247, 250, 200);
-        """)
-
-        layout = QVBoxLayout(self._create_proj_container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # Main card
-        card = QFrame()
-        card.setFixedWidth(420)
-        card.setStyleSheet("""
-            QFrame {
-                background-color: #ffffff;
-                border-radius: 14px;
-                border: 1px solid #e0e0e0;
-                padding: 30px 20px;
-            }
-        """)
-        card_layout = QVBoxLayout(card)
-        card_layout.setSpacing(20)
-        card_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # Proper icon (no cropping)
-        icon_label = QLabel()
-        pixmap = QPixmap("icons/folder.png")  # ✅ use your own folder.png here
-        if not pixmap.isNull():
-            pixmap = pixmap.scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio,
-                                   Qt.TransformationMode.SmoothTransformation)
-            icon_label.setPixmap(pixmap)
-        else:
-            icon_label.setText("📁")  # fallback emoji
-            icon_label.setStyleSheet("font-size: 48px;")
-
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        card_layout.addWidget(icon_label)
-
-        # Title
-        title = QLabel("Create the Project")
-        title.setStyleSheet("""
-            font-size: 20pt;
-            font-weight: 600;
-            color: #2c3e50;
-        """)
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        card_layout.addWidget(title)
-
-        # Divider
-        divider = QFrame()
-        divider.setFrameShape(QFrame.Shape.HLine)
-        divider.setStyleSheet("color: #e0e0e0; margin: 8px 0;")
-        card_layout.addWidget(divider)
-
-        # Subtitle (fixed clipping issue)
-        subtitle = QLabel("Go to <b>File → Create Project</b> in the menu bar")
-        subtitle.setWordWrap(True)
-        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        subtitle.setStyleSheet("""
-            font-size: 12pt;
-            color: #555;
-        """)
-        card_layout.addWidget(subtitle)
-
-        layout.addWidget(card)
-        self._create_proj_container.hide()
-
-    def _show_create_project_message(self):
-        """Show 'Create the Project in File' message, hide table + scrollbars."""
-        try:
-            if hasattr(self, '_create_proj_container') and self._create_proj_container:
-                self._create_proj_container.show()
-
-            if hasattr(self.ui, 'tableWidgetDefect'):
-                self.ui.tableWidgetDefect.hide()
-
-            if hasattr(self, '_no_defects_container') and self._no_defects_container:
-                self._no_defects_container.hide()
-
-            if hasattr(self, 'table_scrollbar') and self.table_scrollbar:
-                self.table_scrollbar.hide()   # 👈 also hide table top bar
-
-            print("📋 Displaying 'Create the Project in File' message")
-        except Exception as e:
-            print(f"Error showing create project message: {e}")
-
-    def _hide_create_project_message(self):
-        if hasattr(self, '_create_proj_container'):
-            self._create_proj_container.hide()
-
-    def _arm_main_topbar(self, virtual_max: int = 2000):
-        """Re-sync the main top scrollbar with the inner QScrollArea hbar and enable mapping."""
-        try:
-            inner = self.main_web_scroll_area.horizontalScrollBar()
-            imin, imax = inner.minimum(), inner.maximum()
-            rng = max(1, imax - imin)
-            # map inner -> top
-            top_val = int(round(((inner.value() - imin) / rng) * virtual_max))
-            self._hscroll_ready_main = True
-            self.main_top_scrollbar.blockSignals(True)
-            self.main_top_scrollbar.setRange(0, virtual_max)
-            self.main_top_scrollbar.setPageStep(100)
-            self.main_top_scrollbar.setSingleStep(10)
-            self.main_top_scrollbar.setValue(top_val)
-            self.main_top_scrollbar.blockSignals(False)
-        except Exception:
-            # don't crash UI if something is missing during early init
-            self._hscroll_ready_main = True
+    # def _arm_main_topbar(self, virtual_max: int = 2000):
+    #     """Re-sync the main top scrollbar with the inner QScrollArea hbar and enable mapping."""
+    #     try:
+    #         inner = self.main_web_scroll_area.horizontalScrollBar()
+    #         imin, imax = inner.minimum(), inner.maximum()
+    #         rng = max(1, imax - imin)
+    #         # map inner -> top
+    #         top_val = int(round(((inner.value() - imin) / rng) * virtual_max))
+    #         self._hscroll_ready_main = True
+    #         self.main_top_scrollbar.blockSignals(True)
+    #         self.main_top_scrollbar.setRange(0, virtual_max)
+    #         self.main_top_scrollbar.setPageStep(100)
+    #         self.main_top_scrollbar.setSingleStep(10)
+    #         self.main_top_scrollbar.setValue(top_val)
+    #         self.main_top_scrollbar.blockSignals(False)
+    #     except Exception:
+    #         # don't crash UI if something is missing during early init
+    #         self._hscroll_ready_main = True
 
     def open_Error(self, e):
         try:
@@ -5158,73 +5142,97 @@ class MyMainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Pipe tally load failed: {e}")
 
+    def minimize_tabs(self):
+        self.ui.tabWidgetM.hide()
 
-    def _reset_ui_to_start_state(self):
-        # mark app state
-        self.project_is_open = False
+    def maximize_tabs(self):
+        self.ui.tabWidgetM.show()
 
-        # clear data/paths
-        for attr in [
-            "curr_data", "pipe_tally", "hmap", "hmap_r", "heatmap_box",
-            "lplot", "lplot_r", "pipe3d", "prox_linechart", "hhmap", "phmap"
-        ]:
-            setattr(self, attr, None)
-        self.pkl_files = []
-        self.project_root = None
 
-        # combo + load
-        cb = self.ui.comboBoxPipe
-        cb.blockSignals(True)
-        cb.clear(); cb.addItem("-Pipe-"); cb.setCurrentIndex(0)
-        cb.blockSignals(False)
-        self.btnLoadPipe.setEnabled(False)
+    # def _reset_ui_to_start_state(self):
+    #     # mark app state
+    #     self.project_is_open = False
+    #
+    #     # clear data/paths
+    #     for attr in [
+    #         "curr_data", "pipe_tally", "hmap", "hmap_r", "heatmap_box",
+    #         "lplot", "lplot_r", "pipe3d", "prox_linechart", "hhmap", "phmap"
+    #     ]:
+    #         setattr(self, attr, None)
+    #     self.pkl_files = []
+    #     self.project_root = None
+    #
+    #     # combo + load
+    #     cb = self.ui.comboBoxPipe
+    #     cb.blockSignals(True)
+    #     cb.clear(); cb.addItem("-Pipe-"); cb.setCurrentIndex(0)
+    #     cb.blockSignals(False)
+    #     self.btnLoadPipe.setEnabled(False)
+    #
+    #     # tables
+    #     try:
+    #         self.ui.tableWidgetDefect.clear()
+    #         self.ui.tableWidgetDefect.setRowCount(0)
+    #         self.ui.tableWidgetDefect.setColumnCount(0)
+    #         self.ui.tableWidgetDefect.hide()
+    #     except Exception:
+    #         pass
+    #
+    #     # bottom area
+    #     self._table_hidden = True
+    #     if hasattr(self, "btnToggleTable"):
+    #         self.btnToggleTable.setText("Show Table")
+    #         self.btnToggleTable.setEnabled(False)
+    #     if hasattr(self, "bottom_stack"):
+    #         self.bottom_stack.hide()
+    #
+    #     # top area → back to startup (single page + watermark)
+    #     try:
+    #         if hasattr(self, "top_stack"):
+    #             self.top_stack.setCurrentIndex(0)   # single_chart_page
+    #         # blank any old heatmaps / prox views
+    #         for wname in ("web_view_left", "web_view_right", "web_view2"):
+    #             if hasattr(self, wname):
+    #                 getattr(self, wname).setUrl(QUrl())
+    #         # show startup watermark in main web view
+    #         self._show_watermark()
+    #     except Exception:
+    #         pass
+    #
+    #     # disable heatmap layout toggle & dropdown until a project opens
+    #     if hasattr(self, "btnToggleHmLayout"):
+    #         self.btnToggleHmLayout.setEnabled(False)
+    #     if hasattr(self, "tabSwitcherDropdown"):
+    #         self.tabSwitcherDropdown.setCurrentIndex(0)
+    #         self.tabSwitcherDropdown.setEnabled(False)
+    #
+    #     # disable graph tabs and update menu actions
+    #     self._toggle_plot_ui(False)
+    #     self._update_project_actions()
+    #
+    #     # show the “Create Project” overlay again
+    #     if hasattr(self, "_show_create_project_message"):
+    #         self._show_create_project_message()
+    #
+    #     # reset scroll sync guards
+    #     self._hscroll_ready = False
+    #     self._hscroll_ready_main = False
+    #     self._hscroll_ready_table = False
 
-        # tables
-        try:
-            self.ui.tableWidgetDefect.clear()
-            self.ui.tableWidgetDefect.setRowCount(0)
-            self.ui.tableWidgetDefect.setColumnCount(0)
-            self.ui.tableWidgetDefect.hide()
-        except Exception:
-            pass
 
-        # bottom area
-        self._table_hidden = True
-        if hasattr(self, "btnToggleTable"):
-            self.btnToggleTable.setText("Show Table")
-            self.btnToggleTable.setEnabled(False)
-        if hasattr(self, "bottom_stack"):
-            self.bottom_stack.hide()
 
-        # top area → back to startup (single page + watermark)
-        try:
-            if hasattr(self, "top_stack"):
-                self.top_stack.setCurrentIndex(0)   # single_chart_page
-            # blank any old heatmaps / prox views
-            for wname in ("web_view_left", "web_view_right", "web_view2"):
-                if hasattr(self, wname):
-                    getattr(self, wname).setUrl(QUrl())
-            # show startup watermark in main web view
-            self._show_watermark()
-        except Exception:
-            pass
 
-        # disable heatmap layout toggle & dropdown until a project opens
-        if hasattr(self, "btnToggleHmLayout"):
-            self.btnToggleHmLayout.setEnabled(False)
-        if hasattr(self, "tabSwitcherDropdown"):
-            self.tabSwitcherDropdown.setCurrentIndex(0)
-            self.tabSwitcherDropdown.setEnabled(False)
-
-        # disable graph tabs and update menu actions
-        self._toggle_plot_ui(False)
-        self._update_project_actions()
-
-        # show the “Create Project” overlay again
-        if hasattr(self, "_show_create_project_message"):
-            self._show_create_project_message()
-
-        # reset scroll sync guards
-        self._hscroll_ready = False
-        self._hscroll_ready_main = False
-        self._hscroll_ready_table = False
+    # def on_row_selection_changed(self, *_):
+    #     idxs = self.ui.tableWidgetDefect.selectionModel().selectedRows()
+    #     if not idxs:
+    #         self.update_digsheet_button_state()
+    #         return
+    #     row = idxs[0].row()
+    #     item = self.ui.tableWidgetDefect.item(row, 0)
+    #     if item:
+    #         defect_id = item.text()
+    #         try:
+    #             self.web_view.page().runJavaScript(f"highlightBox({defect_id});")
+    #         except Exception:
+    #             pass
+    #     self.update_digsheet_button_state()
