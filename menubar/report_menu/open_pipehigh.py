@@ -71,7 +71,7 @@ def open_PipeHigh(self):
                    border: 1.5px solid #cccccc;
                }
            """)
-        back_btn.clicked.connect(self._close_pipeline_view)
+        back_btn.clicked.connect(lambda : _close_pipeline_view(self))
 
         title_label = QLabel("")
         title_label.setStyleSheet("font-weight: 600; font-size: 16pt; color: #2c3e50;")
@@ -110,3 +110,32 @@ def open_PipeHigh(self):
                     self.setCentralWidget(self._central_original)
         except Exception:
             pass
+
+
+def _close_pipeline_view(self):
+    """Close Pipeline Highlights and return to main view"""
+    try:
+        if self.centralWidget() is getattr(self, '_central_original', None):
+            return  # Already showing original view
+
+        # Take current widget and delete it
+        pipeline_central = self.takeCentralWidget()
+        if pipeline_central is not None:
+            pipeline_central.deleteLater()
+
+        # Restore original central widget
+        if hasattr(self, '_central_original') and self._central_original is not None:
+            if self._central_original.parent() is not self:
+                self._central_original.setParent(self)
+            self.setCentralWidget(self._central_original)
+
+        # Clean up references
+        if hasattr(self, '_pipeline_widget'):
+            self._pipeline_widget = None
+        if hasattr(self, '_central_pipeline'):
+            self._central_pipeline = None
+
+        print("✅ Returned to main view from Pipeline Highlights")
+
+    except Exception as e:
+        print(f"⚠️ Error closing Pipeline Highlights view: {e}")

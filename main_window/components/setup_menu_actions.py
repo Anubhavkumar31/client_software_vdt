@@ -1,3 +1,4 @@
+from main_section_view.helpers_temp import _on_middle_tab_changed, syncdropdownwithtabs, _connect_guarded_graph_controls
 from menubar.File_menu.close_project import close_project
 from menubar.File_menu.open_project import open_project
 from menubar.File_menu.quit_app import quit_app
@@ -25,16 +26,22 @@ def setup_menu_actions(self):
     Replaces default tab change handler with guarded switching.
     -------------------------------------------------------------
     """
+    #normal button connections
     setup_actions(self)
-    self._connect_guarded_graph_controls()
+
+    # load button state on depend on whats in pipe number selection dropdown
+    self.ui.comboBoxPipe.currentIndexChanged.connect(self.update_load_button_state)
+
+    #heatmap/linechart/3dgraph guarded connections
+    _connect_guarded_graph_controls(self)
 
     try:
         self.ui.tabWidgetM.currentChanged.disconnect()
     except:
         pass
 
-    self.ui.tabWidgetM.currentChanged.connect(self._on_middle_tab_changed)
-    self.ui.tabWidgetM.currentChanged.connect(self.syncdropdownwithtabs)
+    self.ui.tabWidgetM.currentChanged.connect(lambda index: _on_middle_tab_changed(self, index))
+    self.ui.tabWidgetM.currentChanged.connect(lambda index: syncdropdownwithtabs(self, index))
 
 
 def open_graphs(self):
