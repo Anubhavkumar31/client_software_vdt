@@ -832,7 +832,7 @@ def _build_main_section(self):
     self.ui.tableWidgetDefect.setCornerButtonEnabled(False)
 
     _install_left_vbar(self, self.ui.tableWidgetDefect)
-    self._setup_table_scrollbar_sync()
+    _setup_table_scrollbar_sync(self)
 
     # ----------------------------------------------------------------------
     # DATA TABLE PAGE
@@ -1393,3 +1393,59 @@ def resizeEvent(self, event):
     if hasattr(self, "_create_proj_container") and self._create_proj_container.isVisible():
         central = self.centralWidget().rect()
         self._create_proj_container.setGeometry(central)
+
+
+
+def _setup_table_scrollbar_sync(self):
+    """Setup synchronization between custom table scrollbar and table's internal scrollbar"""
+    table_inner_hbar = self.ui.tableWidgetDefect.horizontalScrollBar()
+    VIRTUAL_MAX = 2000
+
+    def _eff_table_bounds():
+        imin, imax = table_inner_hbar.minimum(), table_inner_hbar.maximum()
+        eff_max = max(imin, imax - 50)  # Small right margin
+        return imin, eff_max
+
+    def _map_table_top_to_inner(v_top: int) -> int:
+        imin, eff_max = _eff_table_bounds()
+        rng = max(1, eff_max - imin)
+        return int(round(imin + (v_top / VIRTUAL_MAX) * rng))
+
+    def _map_table_inner_to_top(v_inner: int) -> int:
+        imin, eff_max = _eff_table_bounds()
+        rng = max(1, eff_max - imin)
+        return int(round(((v_inner - imin) / rng) * VIRTUAL_MAX))
+
+    def _apply_table_fixed_range():
+        self.table_scrollbar.blockSignals(True)
+        self.table_scrollbar.setRange(0, VIRTUAL_MAX)
+        self.table_scrollbar.setPageStep(100)
+        self.table_scrollbar.setSingleStep(10)
+        self.table_scrollbar.setValue(_map_table_inner_to_top(table_inner_hbar.value()))
+        self.table_scrollbar.blockSignals(False)
+
+    def _on_table_top_changed(v):
+        if not self._hscroll_ready_table:
+            return
+        table_inner_hbar.setValue(_map_table_top_to_inner(v))
+
+    def _on_table_inner_changed(v):
+        if not self._hscroll_ready_table:
+            return
+        self.table_scrollbar.blockSignals(True)
+        self.table_scrollbar.setValue(_map_table_inner_to_top(v))
+        self.table_scrollbar.blockSignals(False)
+
+    # Connect the signals
+    self.table_scrollbar.valueChanged.connect(_on_table_top_changed)
+    table_inner_hbar.valueChanged.connect(_on_table_inner_changed)
+
+    def _on_table_inner_range_changed(_min, _max):
+        if _max > _min:
+            self._hscroll_ready_table = True
+            _apply_table_fixed_range()
+
+    table_inner_hbar.rangeChanged.connect(_on_table_inner_range_changed)
+
+    # Initial setup nudge
+    QTimer.singleShot(100, lambda: table_inner_hbar.setValue(table_inner_hbar.value()))

@@ -1,4 +1,5 @@
 from main_section_view.helpers_temp import _on_middle_tab_changed, syncdropdownwithtabs, _connect_guarded_graph_controls
+from main_section_view.load_button_working import load_prev_pipe, load_next_pipe
 from menubar.File_menu.close_project import close_project
 from menubar.File_menu.open_project import open_project
 from menubar.File_menu.quit_app import quit_app
@@ -86,8 +87,8 @@ def setup_actions(self):
     a.action_Telemetry.triggered.connect(self.add_plot_tele)
     a.actionAnomalies_Distribution.triggered.connect(self.add_plot_ad)
     a.action_DefectDetect.triggered.connect(self.draw_boxes_v2)
-    if hasattr(a, "pushButtonNext"): a.pushButtonNext.clicked.connect(self.load_next_pipe)
-    if hasattr(a, "pushButtonPrev"): a.pushButtonPrev.clicked.connect(self.load_prev_pipe)
+    if hasattr(a, "pushButtonNext"): a.pushButtonNext.clicked.connect(lambda : load_next_pipe(self))
+    if hasattr(a, "pushButtonPrev"): a.pushButtonPrev.clicked.connect(lambda : load_prev_pipe(self))
     a.actionAdmin_Panel.triggered.connect(self.open_Admin)
 
 

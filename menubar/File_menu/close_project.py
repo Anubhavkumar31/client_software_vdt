@@ -2,6 +2,7 @@ from PyQt6.QtCore import QUrl
 from PyQt6.QtWidgets import QMessageBox
 
 from main_window.components.helper_func import _update_project_actions
+from menubar.File_menu.helper_func import _force_full_start_state
 
 
 def close_project(self):
@@ -107,7 +108,7 @@ def close_project(self):
         if hasattr(self, "tabSwitcherDropdown"):
             self.tabSwitcherDropdown.setEnabled(False)
 
-        self._force_full_start_state()
+        _force_full_start_state(self)
 
         _update_project_actions(self)
         QMessageBox.information(self, "Project Closed", "The project has been successfully closed.")

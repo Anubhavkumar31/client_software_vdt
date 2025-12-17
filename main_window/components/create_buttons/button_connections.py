@@ -5,11 +5,12 @@ import sys
 import tempfile
 import uuid
 import pandas as pd
-
+from typing import Optional
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import QMessageBox, QDialog
 
-from main_section_view.helpers_temp import _on_middle_tab_changed, apply_column_filter, ColumnFilterDialog
+from main_section_view.column_filter_worker import open_column_filter_dialog_con
+from main_section_view.helpers_temp import _on_middle_tab_changed, apply_column_filter
 from main_section_view.load_button_working import load_selected_by_index
 
 
@@ -32,7 +33,7 @@ def open_digsheet_by_abs_from_selection(self):
         if not self.project_is_open or not isinstance(self.pipe_tally, pd.DataFrame):
             QMessageBox.warning(self, "No Pipe Tally", "Load a project/tally first.");
             return
-        abs_text = self._get_selected_abs_distance_from_defect_table()
+        abs_text = _get_selected_abs_distance_from_defect_table(self)
         if not abs_text: return
 
         tally_pkl = _dump_tally_to_temp(self.pipe_tally)
@@ -65,6 +66,31 @@ def open_digsheet_by_abs_from_selection(self):
     except Exception as e:
         self.open_Error(f"Error opening ABS-distance digsheet:\n{e}")
 
+def _get_selected_abs_distance_from_defect_table(self) -> Optional[str]:
+    tw = self.ui.tableWidgetDefect
+    if tw.rowCount() == 0 or tw.columnCount() == 0:
+        QMessageBox.warning(self, "No data", "Defect table is empty.")
+        return None
+
+    abs_col = self._abs_col_index_silent()
+    if abs_col is None:
+        QMessageBox.warning(self, "Missing column", "Could not find the Absolute Distance column.")
+        return None
+
+    sel_model = tw.selectionModel()
+    rows = [idx.row() for idx in sel_model.selectedRows()] or [i.row() for i in tw.selectedIndexes()]
+    rows = list(dict.fromkeys(rows))
+    if len(rows) != 1:
+        QMessageBox.information(self, "Select one row", "Please select exactly one row in the defect table.")
+        return None
+
+    item = tw.item(rows[0], abs_col)
+    if item is None or not item.text().strip():
+        QMessageBox.warning(self, "No Absolute Distance", "Selected row has empty Absolute Distance.")
+        return None
+
+    return item.text().strip()
+
 #load selected pipe button connection
 def load_selected_pipe(self):
     if not self.project_is_open:
@@ -95,24 +121,26 @@ def load_selected_pipe(self):
     #self.btnLoadPipe.clicked.connect(self.load_selected_pipe)
 
 #filter button connection
+# def open_column_filter_dialog(self):
+#     """Open column selector dialog and apply the result."""
+#     headers = self._current_headers_for_filter()
+#     locked = set(getattr(self, "BACKEND_LOCKED_COLS", set()))
+#
+#     # default: first time, select everything that's not locked
+#     if not self._selected_columns:
+#         checked = set(h for h in headers if h not in locked)
+#     else:
+#         checked = set(h for h in self._selected_columns if h in headers and h not in locked)
+#
+#     dlg = ColumnFilterDialog(headers=headers, checked=checked, locked=locked, parent=self)
+#     if dlg.exec() != QDialog.DialogCode.Accepted:
+#         return
+#
+#     # persist + apply (locked are always enforced)
+#     self._selected_columns = set(dlg.selected_names()) | locked
+#     apply_column_filter(self)
 def open_column_filter_dialog(self):
-    """Open column selector dialog and apply the result."""
-    headers = self._current_headers_for_filter()
-    locked = set(getattr(self, "BACKEND_LOCKED_COLS", set()))
-
-    # default: first time, select everything that's not locked
-    if not self._selected_columns:
-        checked = set(h for h in headers if h not in locked)
-    else:
-        checked = set(h for h in self._selected_columns if h in headers and h not in locked)
-
-    dlg = ColumnFilterDialog(headers=headers, checked=checked, locked=locked, parent=self)
-    if dlg.exec() != QDialog.DialogCode.Accepted:
-        return
-
-    # persist + apply (locked are always enforced)
-    self._selected_columns = set(dlg.selected_names()) | locked
-    apply_column_filter(self)
+    open_column_filter_dialog_con(self)
 
 #tab switcher connection
 def ondropdowntabchanged(self, index: int):

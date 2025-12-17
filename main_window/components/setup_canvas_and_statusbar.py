@@ -1,3 +1,5 @@
+import time
+
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QStatusBar, QWidget, QHBoxLayout, QLabel
 
@@ -29,5 +31,10 @@ def setup_canvas_and_statusbar(self):
     self.statusBar().addPermanentWidget(right_container)
 
     self.timer = QTimer()
-    self.timer.timeout.connect(self._tick)
+    self.timer.timeout.connect(lambda : _tick(self))
     self._t0 = None
+
+def _tick(self):
+    if self._t0:
+        dt = time.time() - self._t0
+        self.right_status_label.setText(f"{dt:.1f}s    ")

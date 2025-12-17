@@ -15,6 +15,7 @@ from PyQt6.QtCore import Qt, QAbstractTableModel
 from PyQt6.QtCore import QAbstractTableModel, QVariant
 
 from main_section_view.build_main_section import _build_main_section, SyncPlotlyView, MidBarSplitter
+from main_section_view.digsheet_abs_worker import _is_graph_tab_ok, _has_valid_abs_selection
 from main_section_view.helpers_temp import tab_switcher2, _arm_topbar, _arm_main_topbar
 from main_window.components.create_buttons.buttons.Load_btn import create_Load_btn
 from main_window.components.create_buttons.buttons.comboBoxpipe import comboBoxPipe_setup
@@ -1338,67 +1339,54 @@ class MyMainWindow(QMainWindow):
             # Position at specific coordinates (x=100, y=50)
             self._no_defects_container.move(500, 50)  # ← TWEAK THESE VALUES
 
-    def _setup_table_styling(self):
-        """Setup bold headers and row numbers for tables"""
-        # Style for tableView (pandas model)
-        if hasattr(self.ui, 'tableView'):
-            # Set header style
-            self.ui.tableView.horizontalHeader().setStyleSheet("""
-                QHeaderView::section {
-                    font-weight: bold;
-                    background-color: #f0f0f0;
-                    border: 1px solid #d0d0d0;
-                    padding: 5px;
-                    text-align: center;
-                }
-            """)
-            self.ui.tableView.verticalHeader().setStyleSheet("""
-                QHeaderView::section {
-                    font-weight: bold;
-                    background-color: #f0f0f0;
-                    border: 1px solid #d0d0d0;
-                    padding: 5px;
-                    text-align: center;
-                    min-width: 40px;
-                }
-            """)
+    # def _setup_table_styling(self):
+    #     """Setup bold headers and row numbers for tables"""
+    #     # Style for tableView (pandas model)
+    #     if hasattr(self.ui, 'tableView'):
+    #         # Set header style
+    #         self.ui.tableView.horizontalHeader().setStyleSheet("""
+    #             QHeaderView::section {
+    #                 font-weight: bold;
+    #                 background-color: #f0f0f0;
+    #                 border: 1px solid #d0d0d0;
+    #                 padding: 5px;
+    #                 text-align: center;
+    #             }
+    #         """)
+    #         self.ui.tableView.verticalHeader().setStyleSheet("""
+    #             QHeaderView::section {
+    #                 font-weight: bold;
+    #                 background-color: #f0f0f0;
+    #                 border: 1px solid #d0d0d0;
+    #                 padding: 5px;
+    #                 text-align: center;
+    #                 min-width: 40px;
+    #             }
+    #         """)
+    #
+    #     # Style for tableWidgetDefect
+    #     if hasattr(self.ui, 'tableWidgetDefect'):
+    #         self.ui.tableWidgetDefect.horizontalHeader().setStyleSheet("""
+    #             QHeaderView::section {
+    #                 font-weight: bold;
+    #                 background-color: #f0f0f0;
+    #                 border: 1px solid #d0d0d0;
+    #                 padding: 5px;
+    #                 text-align: center;
+    #             }
+    #         """)
+    #         self.ui.tableWidgetDefect.verticalHeader().setStyleSheet("""
+    #             QHeaderView::section {
+    #                 font-weight: bold;
+    #                 background-color: #f0f0f0;
+    #                 border: 1px solid #d0d0d0;
+    #                 padding: 5px;
+    #                 text-align: center;
+    #                 min-width: 40px;
+    #             }
+    #         """)
 
-        # Style for tableWidgetDefect
-        if hasattr(self.ui, 'tableWidgetDefect'):
-            self.ui.tableWidgetDefect.horizontalHeader().setStyleSheet("""
-                QHeaderView::section {
-                    font-weight: bold;
-                    background-color: #f0f0f0;
-                    border: 1px solid #d0d0d0;
-                    padding: 5px;
-                    text-align: center;
-                }
-            """)
-            self.ui.tableWidgetDefect.verticalHeader().setStyleSheet("""
-                QHeaderView::section {
-                    font-weight: bold;
-                    background-color: #f0f0f0;
-                    border: 1px solid #d0d0d0;
-                    padding: 5px;
-                    text-align: center;
-                    min-width: 40px;
-                }
-            """)
 
-    def populate_column_filter(self, df: pd.DataFrame):
-        """Fill dropdown with all DataFrame columns (checkable)."""
-        model = self.columnFilter.model()
-        model.clear()
-
-        for col in df.columns:
-            it = QStandardItem(str(col))
-            # Make it user-checkable and enabled
-            it.setFlags(it.flags() | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
-            it.setData(Qt.CheckState.Checked, Qt.ItemDataRole.CheckStateRole)
-            model.appendRow(it)
-
-        # Update summary (e.g., "12 selected")
-        self._column_summary_text()
 
     def _restore_all_columns(self):
         """Show all columns again (useful when closing a project)."""
@@ -1573,53 +1561,53 @@ class MyMainWindow(QMainWindow):
         except Exception as e:
             print(f"[ERROR] Table reset failed: {e}")
 
-    def _show_defects_table(self):
-        try:
-            if hasattr(self, '_no_defects_container') and self._no_defects_container:
-                self._no_defects_container.hide()
-            if hasattr(self, '_create_proj_container') and self._create_proj_container:
-                self._create_proj_container.hide()
+    # def _show_defects_table(self):
+    #     try:
+    #         if hasattr(self, '_no_defects_container') and self._no_defects_container:
+    #             self._no_defects_container.hide()
+    #         if hasattr(self, '_create_proj_container') and self._create_proj_container:
+    #             self._create_proj_container.hide()
+    #
+    #         if hasattr(self.ui, 'tableWidgetDefect'):
+    #             self.ui.tableWidgetDefect.show()
+    #         if hasattr(self, 'table_scrollbar'):
+    #             self.table_scrollbar.show()
+    #
+    #         if hasattr(self, 'left_vscrollbar'):
+    #             self.left_vscrollbar.show()
+    #
+    #         QTimer.singleShot(150, self._refresh_table_scrollbars)
+    #         QTimer.singleShot(200, self._force_table_scroll_update)
+    #         QTimer.singleShot(250, self._reset_table_state)
+    #
+    #
+    #
+    #         print("📊 Displaying defects table")
+    #     except Exception as e:
+    #         print(f"Error showing defects table: {e}")
 
-            if hasattr(self.ui, 'tableWidgetDefect'):
-                self.ui.tableWidgetDefect.show()
-            if hasattr(self, 'table_scrollbar'):
-                self.table_scrollbar.show()
-
-            if hasattr(self, 'left_vscrollbar'):
-                self.left_vscrollbar.show()
-
-            QTimer.singleShot(150, self._refresh_table_scrollbars)
-            QTimer.singleShot(200, self._force_table_scroll_update)
-            QTimer.singleShot(250, self._reset_table_state)
-
-
-
-            print("📊 Displaying defects table")
-        except Exception as e:
-            print(f"Error showing defects table: {e}")
-
-    def _show_select_pipe_message(self):
-        if hasattr(self, "_select_pipe_container"):
-            central = self.centralWidget().rect()
-
-            # Leave space for the pipe selection row (comboBox + Load button)
-            header_height = self.ui.comboBoxPipe.height() + 20
-
-            self._select_pipe_container.setGeometry(
-                0,
-                header_height,
-                central.width(),
-                central.height() - header_height
-            )
-            self._select_pipe_container.show()
-
-        # Hide other views
-        if hasattr(self.ui, "tableWidgetDefect"):
-            self.ui.tableWidgetDefect.hide()
-        if hasattr(self.ui, "tableView"):
-            self.ui.tableView.hide()
-
-        self.btnLoadPipe.setEnabled(False)
+    # def _show_select_pipe_message(self):
+    #     if hasattr(self, "_select_pipe_container"):
+    #         central = self.centralWidget().rect()
+    #
+    #         # Leave space for the pipe selection row (comboBox + Load button)
+    #         header_height = self.ui.comboBoxPipe.height() + 20
+    #
+    #         self._select_pipe_container.setGeometry(
+    #             0,
+    #             header_height,
+    #             central.width(),
+    #             central.height() - header_height
+    #         )
+    #         self._select_pipe_container.show()
+    #
+    #     # Hide other views
+    #     if hasattr(self.ui, "tableWidgetDefect"):
+    #         self.ui.tableWidgetDefect.hide()
+    #     if hasattr(self.ui, "tableView"):
+    #         self.ui.tableView.hide()
+    #
+    #     self.btnLoadPipe.setEnabled(False)
 
 
     # def _update_project_actions(self):
@@ -2174,96 +2162,62 @@ class MyMainWindow(QMainWindow):
 
 
 
-    def _setup_left_vertical_scrollbar_sync(self):
-        """Sync the custom left vertical scrollbar with tableWidgetDefect's internal vbar."""
-        tw = self.ui.tableWidgetDefect
-        inner_vbar = tw.verticalScrollBar()  # still exists even if hidden
-        left_vbar = self.left_vscrollbar
-
-        # Mirror range/page/single step from the table's scrollbar
-        def _apply_range():
-            left_vbar.blockSignals(True)
-            left_vbar.setRange(inner_vbar.minimum(), inner_vbar.maximum())
-            left_vbar.setPageStep(inner_vbar.pageStep())
-            left_vbar.setSingleStep(inner_vbar.singleStep())
-            left_vbar.setValue(inner_vbar.value())
-            left_vbar.blockSignals(False)
-
-        # When user drags the left bar -> scroll table
-        def _on_left_changed(v):
-            inner_vbar.setValue(v)
-
-        # When table scrolls (keyboard, wheel, selection, data fill, etc.) -> move left bar
-        def _on_inner_changed(v):
-            left_vbar.blockSignals(True)
-            left_vbar.setValue(v)
-            left_vbar.blockSignals(False)
-
-        def _on_inner_range_changed(_min, _max):
-            _apply_range()
-
-        # Connect both ways
-        left_vbar.valueChanged.connect(_on_left_changed)
-        inner_vbar.valueChanged.connect(_on_inner_changed)
-        inner_vbar.rangeChanged.connect(_on_inner_range_changed)
-
-        # Initial apply on next tick (table might not have full range yet)
-        QTimer.singleShot(0, _apply_range)
 
 
-    def _setup_table_scrollbar_sync(self):
-        """Setup synchronization between custom table scrollbar and table's internal scrollbar"""
-        table_inner_hbar = self.ui.tableWidgetDefect.horizontalScrollBar()
-        VIRTUAL_MAX = 2000
 
-        def _eff_table_bounds():
-            imin, imax = table_inner_hbar.minimum(), table_inner_hbar.maximum()
-            eff_max = max(imin, imax - 50)  # Small right margin
-            return imin, eff_max
-
-        def _map_table_top_to_inner(v_top: int) -> int:
-            imin, eff_max = _eff_table_bounds()
-            rng = max(1, eff_max - imin)
-            return int(round(imin + (v_top / VIRTUAL_MAX) * rng))
-
-        def _map_table_inner_to_top(v_inner: int) -> int:
-            imin, eff_max = _eff_table_bounds()
-            rng = max(1, eff_max - imin)
-            return int(round(((v_inner - imin) / rng) * VIRTUAL_MAX))
-
-        def _apply_table_fixed_range():
-            self.table_scrollbar.blockSignals(True)
-            self.table_scrollbar.setRange(0, VIRTUAL_MAX)
-            self.table_scrollbar.setPageStep(100)
-            self.table_scrollbar.setSingleStep(10)
-            self.table_scrollbar.setValue(_map_table_inner_to_top(table_inner_hbar.value()))
-            self.table_scrollbar.blockSignals(False)
-
-        def _on_table_top_changed(v):
-            if not self._hscroll_ready_table:
-                return
-            table_inner_hbar.setValue(_map_table_top_to_inner(v))
-
-        def _on_table_inner_changed(v):
-            if not self._hscroll_ready_table:
-                return
-            self.table_scrollbar.blockSignals(True)
-            self.table_scrollbar.setValue(_map_table_inner_to_top(v))
-            self.table_scrollbar.blockSignals(False)
-
-        # Connect the signals
-        self.table_scrollbar.valueChanged.connect(_on_table_top_changed)
-        table_inner_hbar.valueChanged.connect(_on_table_inner_changed)
-
-        def _on_table_inner_range_changed(_min, _max):
-            if _max > _min:
-                self._hscroll_ready_table = True
-                _apply_table_fixed_range()
-
-        table_inner_hbar.rangeChanged.connect(_on_table_inner_range_changed)
-
-        # Initial setup nudge
-        QTimer.singleShot(100, lambda: table_inner_hbar.setValue(table_inner_hbar.value()))
+    # def _setup_table_scrollbar_sync(self):
+    #     """Setup synchronization between custom table scrollbar and table's internal scrollbar"""
+    #     table_inner_hbar = self.ui.tableWidgetDefect.horizontalScrollBar()
+    #     VIRTUAL_MAX = 2000
+    #
+    #     def _eff_table_bounds():
+    #         imin, imax = table_inner_hbar.minimum(), table_inner_hbar.maximum()
+    #         eff_max = max(imin, imax - 50)  # Small right margin
+    #         return imin, eff_max
+    #
+    #     def _map_table_top_to_inner(v_top: int) -> int:
+    #         imin, eff_max = _eff_table_bounds()
+    #         rng = max(1, eff_max - imin)
+    #         return int(round(imin + (v_top / VIRTUAL_MAX) * rng))
+    #
+    #     def _map_table_inner_to_top(v_inner: int) -> int:
+    #         imin, eff_max = _eff_table_bounds()
+    #         rng = max(1, eff_max - imin)
+    #         return int(round(((v_inner - imin) / rng) * VIRTUAL_MAX))
+    #
+    #     def _apply_table_fixed_range():
+    #         self.table_scrollbar.blockSignals(True)
+    #         self.table_scrollbar.setRange(0, VIRTUAL_MAX)
+    #         self.table_scrollbar.setPageStep(100)
+    #         self.table_scrollbar.setSingleStep(10)
+    #         self.table_scrollbar.setValue(_map_table_inner_to_top(table_inner_hbar.value()))
+    #         self.table_scrollbar.blockSignals(False)
+    #
+    #     def _on_table_top_changed(v):
+    #         if not self._hscroll_ready_table:
+    #             return
+    #         table_inner_hbar.setValue(_map_table_top_to_inner(v))
+    #
+    #     def _on_table_inner_changed(v):
+    #         if not self._hscroll_ready_table:
+    #             return
+    #         self.table_scrollbar.blockSignals(True)
+    #         self.table_scrollbar.setValue(_map_table_inner_to_top(v))
+    #         self.table_scrollbar.blockSignals(False)
+    #
+    #     # Connect the signals
+    #     self.table_scrollbar.valueChanged.connect(_on_table_top_changed)
+    #     table_inner_hbar.valueChanged.connect(_on_table_inner_changed)
+    #
+    #     def _on_table_inner_range_changed(_min, _max):
+    #         if _max > _min:
+    #             self._hscroll_ready_table = True
+    #             _apply_table_fixed_range()
+    #
+    #     table_inner_hbar.rangeChanged.connect(_on_table_inner_range_changed)
+    #
+    #     # Initial setup nudge
+    #     QTimer.singleShot(100, lambda: table_inner_hbar.setValue(table_inner_hbar.value()))
 
     def _refresh_table_scrollbars(self):
         """Comprehensive table scrollbar refresh after container resize"""
@@ -2323,23 +2277,12 @@ class MyMainWindow(QMainWindow):
         self.bottom_stack.setCurrentIndex(0)
         self.web_view2.setUrl(QUrl())
 
-    def _tick(self):
-        if self._t0:
-            dt = time.time() - self._t0
-            self.right_status_label.setText(f"{dt:.1f}s    ")
+    # def _tick(self):
+    #     if self._t0:
+    #         dt = time.time() - self._t0
+    #         self.right_status_label.setText(f"{dt:.1f}s    ")
 
-    def set_loading(self, msg="Loading"):
-        self.current_message = msg
-        self.statusBar().showMessage(f'           Status:      {self.current_message}')
-        self._t0 = time.time()
-        self.timer.start(100)
 
-    def set_idle(self):
-        self.current_message = 'App running'
-        self.statusBar().showMessage(f'           Status:      {self.current_message}')
-        self.timer.stop()
-        self._t0 = None
-        self.right_status_label.setText("0.0s")
 
     # def setup_actions(self):
     #     a = self.ui
@@ -2372,66 +2315,66 @@ class MyMainWindow(QMainWindow):
     #     a.action_Manual.triggered.connect(self.open_manual)
     #     a.actionStandard.triggered.connect(self.open_digs)  # original (by defect no.)
 
-    def load_next_pipe(self):
-        """Go to next pipe and load automatically"""
-        cb = self.ui.comboBoxPipe
-        idx = cb.currentIndex()
-        if idx < cb.count() - 1:  # not last
-            cb.setCurrentIndex(idx + 1)
-            self.load_selected_pipe()
+    # def load_next_pipe(self):
+    #     """Go to next pipe and load automatically"""
+    #     cb = self.ui.comboBoxPipe
+    #     idx = cb.currentIndex()
+    #     if idx < cb.count() - 1:  # not last
+    #         cb.setCurrentIndex(idx + 1)
+    #         self.load_selected_pipe()
+    #
+    # def load_prev_pipe(self):
+    #     """Go to previous pipe and load automatically"""
+    #     cb = self.ui.comboBoxPipe
+    #     idx = cb.currentIndex()
+    #     if idx > 0:  # not first
+    #         cb.setCurrentIndex(idx - 1)
+    #         self.load_selected_pipe()
 
-    def load_prev_pipe(self):
-        """Go to previous pipe and load automatically"""
-        cb = self.ui.comboBoxPipe
-        idx = cb.currentIndex()
-        if idx > 0:  # not first
-            cb.setCurrentIndex(idx - 1)
-            self.load_selected_pipe()
-
-    def _force_full_start_state(self):
-        """Hard reset the UI to startup layout (Heatmap, table hidden, buttons off)."""
-        # reset flags
-        self._table_hidden = True
-        self._hm_layout_mode = "vertical"
-        self._last_allowed_tab_index = 0
-        self._reverting_tab = False
-
-        # top area → dual heatmap page
-        if hasattr(self, "top_stack"):
-            try:
-                self.top_stack.setCurrentIndex(1)  # heatmap dual page
-            except Exception:
-                pass
-
-        # hide bottom table area
-        if hasattr(self, "bottom_stack"):
-            self.bottom_stack.hide()
-            self.bottom_stack.setCurrentIndex(0)
-
-        # disable buttons
-        if hasattr(self, "btnToggleTable"):
-            self.btnToggleTable.setEnabled(False)
-            self.btnToggleTable.setText("Show Table")
-        if hasattr(self, "btnToggleHmLayout"):
-            self.btnToggleHmLayout.setEnabled(False)
-            self.btnToggleHmLayout.setText("Side-by-side")
-
-        # reset middle tab and dropdown to Heatmap
-        tw = getattr(self.ui, "tabWidgetM", None)
-        if tw is not None:
-            tw.blockSignals(True)
-            tw.setCurrentIndex(0)
-            tw.blockSignals(False)
-        if hasattr(self, "tabSwitcherDropdown"):
-            self.tabSwitcherDropdown.blockSignals(True)
-            self.tabSwitcherDropdown.setCurrentIndex(0)
-            self.tabSwitcherDropdown.blockSignals(False)
-
-        # clear/blank out main web views
-        for w in ("web_view", "web_view2", "web_view_left", "web_view_right"):
-            if hasattr(self, w):
-                getattr(self, w).setUrl(QUrl())
-        self._show_watermark()
+    # def _force_full_start_state(self):
+    #     """Hard reset the UI to startup layout (Heatmap, table hidden, buttons off)."""
+    #     # reset flags
+    #     self._table_hidden = True
+    #     self._hm_layout_mode = "vertical"
+    #     self._last_allowed_tab_index = 0
+    #     self._reverting_tab = False
+    #
+    #     # top area → dual heatmap page
+    #     if hasattr(self, "top_stack"):
+    #         try:
+    #             self.top_stack.setCurrentIndex(1)  # heatmap dual page
+    #         except Exception:
+    #             pass
+    #
+    #     # hide bottom table area
+    #     if hasattr(self, "bottom_stack"):
+    #         self.bottom_stack.hide()
+    #         self.bottom_stack.setCurrentIndex(0)
+    #
+    #     # disable buttons
+    #     if hasattr(self, "btnToggleTable"):
+    #         self.btnToggleTable.setEnabled(False)
+    #         self.btnToggleTable.setText("Show Table")
+    #     if hasattr(self, "btnToggleHmLayout"):
+    #         self.btnToggleHmLayout.setEnabled(False)
+    #         self.btnToggleHmLayout.setText("Side-by-side")
+    #
+    #     # reset middle tab and dropdown to Heatmap
+    #     tw = getattr(self.ui, "tabWidgetM", None)
+    #     if tw is not None:
+    #         tw.blockSignals(True)
+    #         tw.setCurrentIndex(0)
+    #         tw.blockSignals(False)
+    #     if hasattr(self, "tabSwitcherDropdown"):
+    #         self.tabSwitcherDropdown.blockSignals(True)
+    #         self.tabSwitcherDropdown.setCurrentIndex(0)
+    #         self.tabSwitcherDropdown.blockSignals(False)
+    #
+    #     # clear/blank out main web views
+    #     for w in ("web_view", "web_view2", "web_view_left", "web_view_right"):
+    #         if hasattr(self, w):
+    #             getattr(self, w).setUrl(QUrl())
+    #     self._show_watermark()
 
 
     # def open_project(self):
@@ -2790,40 +2733,40 @@ class MyMainWindow(QMainWindow):
             central = self.centralWidget().rect()
             self._create_proj_container.setGeometry(central)
 
-    def load_selected_by_index(self, idx: int):
-        try:
-            if idx < 0 or idx >= len(self.pkl_files):
-                return
-            if hasattr(self, 'btnDigsheetAbs'):
-                self.btnDigsheetAbs.setEnabled(False)
-            if hasattr(self.ui, 'tableWidgetDefect'):
-                self.ui.tableWidgetDefect.clearSelection()
-
-            pkl_path = self.pkl_files[idx]
-            name = os.path.splitext(os.path.basename(pkl_path))[0]
-            pipe_idx = self._extract_index(name)
-
-            # Show loading dialog
-            self.loading_dialog = ModernLoadingDialog(self)
-            self.loading_dialog.show()
-
-            # Create and start worker thread
-            self.loader_worker = PipeLoaderWorker(pkl_path, self.project_root, pipe_idx)
-
-            # Connect signals
-            self.loader_worker.progress_updated.connect(self.loading_dialog.update_progress)
-            self.loader_worker.time_estimate.connect(self.loading_dialog.update_time_estimate)
-            self.loader_worker.data_loaded.connect(self.on_data_loaded)
-            self.loader_worker.assets_loaded.connect(self.on_assets_loaded)
-            self.loader_worker.table_data_ready.connect(self.on_table_data_ready)
-            self.loader_worker.error_occurred.connect(self.on_loading_error)
-            self.loader_worker.finished.connect(self.on_loading_finished)
-
-            # Start the worker
-            self.loader_worker.start()
-
-        except Exception as e:
-            self.open_Error(f"load_selected_by_index error: {e}")
+    # def load_selected_by_index(self, idx: int):
+    #     try:
+    #         if idx < 0 or idx >= len(self.pkl_files):
+    #             return
+    #         if hasattr(self, 'btnDigsheetAbs'):
+    #             self.btnDigsheetAbs.setEnabled(False)
+    #         if hasattr(self.ui, 'tableWidgetDefect'):
+    #             self.ui.tableWidgetDefect.clearSelection()
+    #
+    #         pkl_path = self.pkl_files[idx]
+    #         name = os.path.splitext(os.path.basename(pkl_path))[0]
+    #         pipe_idx = self._extract_index(name)
+    #
+    #         # Show loading dialog
+    #         self.loading_dialog = ModernLoadingDialog(self)
+    #         self.loading_dialog.show()
+    #
+    #         # Create and start worker thread
+    #         self.loader_worker = PipeLoaderWorker(pkl_path, self.project_root, pipe_idx)
+    #
+    #         # Connect signals
+    #         self.loader_worker.progress_updated.connect(self.loading_dialog.update_progress)
+    #         self.loader_worker.time_estimate.connect(self.loading_dialog.update_time_estimate)
+    #         self.loader_worker.data_loaded.connect(self.on_data_loaded)
+    #         self.loader_worker.assets_loaded.connect(self.on_assets_loaded)
+    #         self.loader_worker.table_data_ready.connect(self.on_table_data_ready)
+    #         self.loader_worker.error_occurred.connect(self.on_loading_error)
+    #         self.loader_worker.finished.connect(self.on_loading_finished)
+    #
+    #         # Start the worker
+    #         self.loader_worker.start()
+    #
+    #     except Exception as e:
+    #         self.open_Error(f"load_selected_by_index error: {e}")
 
     def load_selected_pipe(self):
         if not self.project_is_open:
@@ -2867,86 +2810,86 @@ class MyMainWindow(QMainWindow):
         else:
             self.btnLoadPipe.setEnabled(False)
 
-    def on_data_loaded(self, df):
-        """Handle loaded DataFrame - runs on main thread"""
-        self.curr_data = df
-        self.header_list = list(df.columns)
+    # def on_data_loaded(self, df):
+    #     """Handle loaded DataFrame - runs on main thread"""
+    #     self.curr_data = df
+    #     self.header_list = list(df.columns)
+    #
+    #     # Use lightweight model instead of building QStandardItem rows
+    #     self.df_model = PandasModel(df)
+    #     self.proxy_model.setSourceModel(self.df_model)
+    #     self.ui.tableView.setModel(self.proxy_model)
+    #     self.ui.tableView.setSortingEnabled(True)
+    #
+    # def on_assets_loaded(self, assets):
+    #     """Handle loaded assets"""
+    #     self.hmap = assets.get("hmap")
+    #     self.hmap_r = assets.get("hmap_r")
+    #     self.heatmap_box = assets.get("heatmap_box")
+    #     self.lplot = assets.get("lplot")
+    #     self.lplot_r = assets.get("lplot_r")
+    #     self.pipe3d = assets.get("pipe3d")
+    #     self.prox_linechart = assets.get("prox_linechart")
+    #     self.hhmap = assets.get("hallsensor_heatmap")
+    #     self.phmap = assets.get("proximity_heatmap")
 
-        # Use lightweight model instead of building QStandardItem rows
-        self.df_model = PandasModel(df)
-        self.proxy_model.setSourceModel(self.df_model)
-        self.ui.tableView.setModel(self.proxy_model)
-        self.ui.tableView.setSortingEnabled(True)
+    # def on_table_data_ready(self, df):
+    #     """Handle processed table data"""
+    #     self.curr_data = df  # 👈 make sure we keep a reference for filtering later
+    #
+    #     if df is not None:
+    #         # 👇 populate the column filter dropdown with available columns
+    #
+    #         # Check if this is a PipeTally format or defects.csv format
+    #         if "Feature Type" in df.columns:
+    #             self._populate_defect_table_from_tally(df)
+    #         else:
+    #             self._populate_defect_table_from_csv(df)
+    #     else:
+    #         self._show_no_defects_message()
 
-    def on_assets_loaded(self, assets):
-        """Handle loaded assets"""
-        self.hmap = assets.get("hmap")
-        self.hmap_r = assets.get("hmap_r")
-        self.heatmap_box = assets.get("heatmap_box")
-        self.lplot = assets.get("lplot")
-        self.lplot_r = assets.get("lplot_r")
-        self.pipe3d = assets.get("pipe3d")
-        self.prox_linechart = assets.get("prox_linechart")
-        self.hhmap = assets.get("hallsensor_heatmap")
-        self.phmap = assets.get("proximity_heatmap")
+    # def on_loading_error(self, error_msg):
+    #     """Handle loading errors"""
+    #     if self.loading_dialog:
+    #         self.loading_dialog.close()
+    #     self.open_Error(f"Loading error: {error_msg}")
 
-    def on_table_data_ready(self, df):
-        """Handle processed table data"""
-        self.curr_data = df  # 👈 make sure we keep a reference for filtering later
-
-        if df is not None:
-            # 👇 populate the column filter dropdown with available columns
-
-            # Check if this is a PipeTally format or defects.csv format
-            if "Feature Type" in df.columns:
-                self._populate_defect_table_from_tally(df)
-            else:
-                self._populate_defect_table_from_csv(df)
-        else:
-            self._show_no_defects_message()
-
-    def on_loading_error(self, error_msg):
-        """Handle loading errors"""
-        if self.loading_dialog:
-            self.loading_dialog.close()
-        self.open_Error(f"Loading error: {error_msg}")
-
-    def on_loading_finished(self):
-        """Clean up when loading is complete"""
-        # If the batched table fill is still running, delay closing the dialog
-        if getattr(self, "_is_filling_table", False):
-            self._pending_close_loader = True
-        else:
-            if self.loading_dialog:
-                try:
-                    self.loading_dialog.close()
-                except Exception:
-                    pass
-                self.loading_dialog = None
-
-        if self.loader_worker:
-            self.loader_worker.deleteLater()
-            self.loader_worker = None
-
-        # Refresh the current view and topbars
-        self._refresh_current_view()
-        QTimer.singleShot(0, lambda : _arm_topbar(self))
-        QTimer.singleShot(0, lambda : _arm_main_topbar(self))
-        self.update_digsheet_button_state()
-        QTimer.singleShot(100, self.update_digsheet_button_state)
-        # 👇 keep Load button disabled after file load
-        self.btnLoadPipe.setEnabled(False)
-        # Reset dropdown to Heatmap when pipe loads
-        if hasattr(self, 'tabSwitcherDropdown'):
-            self.tabSwitcherDropdown.blockSignals(True)
-            self.tabSwitcherDropdown.setCurrentIndex(0)
-            self.tabSwitcherDropdown.blockSignals(False)
-
-        if hasattr(self, "btnOpenFilterDlg"):
-            self.btnOpenFilterDlg.setEnabled(True)
-
-        if hasattr(self, "tabSwitcherDropdown"):
-            self.tabSwitcherDropdown.setEnabled(True)
+    # def on_loading_finished(self):
+    #     """Clean up when loading is complete"""
+    #     # If the batched table fill is still running, delay closing the dialog
+    #     if getattr(self, "_is_filling_table", False):
+    #         self._pending_close_loader = True
+    #     else:
+    #         if self.loading_dialog:
+    #             try:
+    #                 self.loading_dialog.close()
+    #             except Exception:
+    #                 pass
+    #             self.loading_dialog = None
+    #
+    #     if self.loader_worker:
+    #         self.loader_worker.deleteLater()
+    #         self.loader_worker = None
+    #
+    #     # Refresh the current view and topbars
+    #     self._refresh_current_view()
+    #     QTimer.singleShot(0, lambda : _arm_topbar(self))
+    #     QTimer.singleShot(0, lambda : _arm_main_topbar(self))
+    #     self.update_digsheet_button_state()
+    #     QTimer.singleShot(100, self.update_digsheet_button_state)
+    #     # 👇 keep Load button disabled after file load
+    #     self.btnLoadPipe.setEnabled(False)
+    #     # Reset dropdown to Heatmap when pipe loads
+    #     if hasattr(self, 'tabSwitcherDropdown'):
+    #         self.tabSwitcherDropdown.blockSignals(True)
+    #         self.tabSwitcherDropdown.setCurrentIndex(0)
+    #         self.tabSwitcherDropdown.blockSignals(False)
+    #
+    #     if hasattr(self, "btnOpenFilterDlg"):
+    #         self.btnOpenFilterDlg.setEnabled(True)
+    #
+    #     if hasattr(self, "tabSwitcherDropdown"):
+    #         self.tabSwitcherDropdown.setEnabled(True)
 
     @staticmethod
     def _extract_index(text: str) -> str:
@@ -2954,281 +2897,281 @@ class MyMainWindow(QMainWindow):
         return m.group(0) if m else text
 
     # ✅ Updated _populate_defect_table_from_tally with "No Defects Found" logic
-    def _populate_defect_table_from_tally(self, df: pd.DataFrame):
-        """
-        Show PipeTally CSV in the bottom defect table.
-        - Keeps only Feature Type = Metal Loss
-        - Normalizes columns
-        - Fills table incrementally to avoid UI freeze
-        """
-        tw = self.ui.tableWidgetDefect
-        tw.clearSelection()
-
-        if df is None or df.empty:
-            self._show_no_defects_message()
-            return
-
-        # original_count = len(df)
-        # if "Feature Type" in df.columns:
-        #     df = df[df["Feature Type"].astype(str).str.strip().str.lower() == "metal loss"]
-
-        # if df.empty:
-        #     print(f"⚠️ No Metal Loss defects found (filtered from {original_count} rows)")
-        #     self._show_no_defects_message()
-        #     return
-
-        # original_count = len(df)
-        # if "Feature Type" in df.columns:
-        #     df = df[df["Feature Type"].astype(str).str.strip().str.lower() == "metal loss"]
-
-        # if df.empty:
-        #     print(f"⚠️ No Metal Loss defects found (filtered from {original_count} rows)")
-        #     self._show_no_defects_message()
-        #     return
-
-        # normalize column variants
-        variants = {
-            "s_no": "Defect_id",
-            "Dimensions  Classification": "Dimensions Classification",
-            "Depth % ": "Depth %",
-            "Psafe (ASME B31G) bar": "Psafe (ASME B31G) Barg",
-            "Pipe Length": "Pipe Length (mm)",
-            "Length": "Length (mm)",
-            "Width": "Width (mm)",
-            "WT": "WT (mm)",
-        }
-        for src, dst in variants.items():
-            if src in df.columns and dst not in df.columns:
-                df[dst] = df[src]
-
-        # ensure Defect_id exists
-        if "Defect_id" not in df.columns:
-            df = df.reset_index(drop=True)
-            df["Defect_id"] = np.arange(1, len(df) + 1)
-
-        desired_cols = [
-            "Defect_id","Abs. Distance (m)","Distance to U/S GW(m)","Pipe Number","Pipe Length (mm)","Feature Type",
-            "Feature Identification","Dimensions Classification","Orientation o' clock","WT (mm)","Length (mm)",
-            "Width (mm)","Depth %","Depth (mm)","Location","ERF (ASME B31G)","Psafe (ASME B31G) Barg",
-            "Latitude","Longitude" ,"Altitude","Comment","Empty"
-        ]
-        for col in desired_cols:
-            if col not in df.columns:
-                df[col] = ""
-
-        view = df[desired_cols].copy()
-
-        tw = self.ui.tableWidgetDefect
-        tw.clear()
-        tw.setRowCount(len(view))
-        tw.setColumnCount(len(view.columns))
-        tw.setHorizontalHeaderLabels([str(c) for c in view.columns])
-        tw.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # Set column widths
-        column_widths = {
-            'Defect_id': 150,
-            'Abs. Distance (m)': 150,
-            'Distance to U/S GW(m)': 150,
-            'Pipe Number': 150,
-            'Pipe Length (mm)': 150,
-            'Feature Type': 150,
-            'Feature Identification': 150,
-            'Dimensions Classification': 150,
-            'Orientation o\' clock': 150,
-            'WT (mm)': 150,
-            'Length (mm)': 150,
-            'Width (mm)': 150,
-            'Depth %': 150,
-            'Depth (mm)': 150,
-            'Location': 150,
-            'ERF (ASME B31G)': 150,
-            'Psafe (ASME B31G) Barg': 150,
-            'Latitude': 150,
-            'Longitude': 150,
-            'Altitude': 150,
-            'Comment': 150,
-            'Empty': 530
-        }
-
-        for c, col_name in enumerate(view.columns):
-            if col_name in column_widths:
-                tw.setColumnWidth(c, column_widths[col_name])
-            else:
-                tw.setColumnWidth(c, 100)
-
-        self._show_defects_table()
-        self._start_fill_qtablewidget_batched(view, chunk_size=300)
-
-        setup_table_scroll(self.ui.tableWidgetDefect)
-        QTimer.singleShot(150, self._refresh_table_scrollbars)
-
-
-    def _start_fill_qtablewidget_batched(self, df: pd.DataFrame, *, chunk_size: int = 200):
-        """Fill self.ui.tableWidgetDefect incrementally to keep UI responsive."""
-        tw = self.ui.tableWidgetDefect
-        columns = list(df.columns)
-
-        tw.clear()
-        tw.setColumnCount(len(columns))
-        tw.setHorizontalHeaderLabels([str(c) for c in columns])
-        tw.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
-        tw.setRowCount(len(df))            # preallocate
-        tw.setUpdatesEnabled(False)        # defer UI updates
-
-        # batching state
-        self._table_fill_row = 0
-        self._table_fill_df  = df
-        self._table_fill_chunk = max(50, int(chunk_size))
-        self._is_filling_table = True
-        self._pending_close_loader = False
-
-        # Start first batch
-        QTimer.singleShot(0, self._fill_tablewidget_chunk)
-
-    def _fill_tablewidget_chunk(self):
-        """Append a batch of rows to QTableWidget without freezing UI."""
-        tw = self.ui.tableWidgetDefect
-        df = self._table_fill_df
-        start = self._table_fill_row
-        end   = min(start + self._table_fill_chunk, len(df))
-
-        # Fill rows for this batch
-        for r in range(start, end):
-            row_vals = df.iloc[r].to_list()
-            for c, v in enumerate(row_vals):
-                if isinstance(v, float):
-                    text = f"{v:.6g}"
-                elif pd.isna(v):
-                    text = ""
-                else:
-                    text = str(v)
-                item = QTableWidgetItem(text)
-                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-
-                # Make items non-editable
-                item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-
-                tw.setItem(r, c, item)
-
-        self._table_fill_row = end
-
-        # update loader/progress
-        if self.loading_dialog:
-            done = end
-            total = len(df)
-            pct = int(100 * done / max(1, total))
-            self.loading_dialog.update_progress(pct, f"Preparing table ({done}/{total})...")
-            QtWidgets.QApplication.processEvents(QEventLoop.ProcessEventsFlag.AllEvents, 50)
-
-        if end >= len(df):
-            # finished
-            tw.setUpdatesEnabled(True)
-            tw.viewport().update()
-            header = tw.horizontalHeader()
-            header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-            header.setStretchLastSection(False)
-            self._is_filling_table = False
-
-            # Apply styling after table is filled
-            self._setup_table_styling()
-
-            # ✅ make the dropdown mirror the final table headers (== desired cols)
-            if not self._selected_columns:
-                self._selected_columns = set(self._current_headers_for_filter()) | set(self.BACKEND_LOCKED_COLS)
-            self.apply_column_filter()
+    # def _populate_defect_table_from_tally(self, df: pd.DataFrame):
+    #     """
+    #     Show PipeTally CSV in the bottom defect table.
+    #     - Keeps only Feature Type = Metal Loss
+    #     - Normalizes columns
+    #     - Fills table incrementally to avoid UI freeze
+    #     """
+    #     tw = self.ui.tableWidgetDefect
+    #     tw.clearSelection()
+    #
+    #     if df is None or df.empty:
+    #         self._show_no_defects_message()
+    #         return
+    #
+    #     # original_count = len(df)
+    #     # if "Feature Type" in df.columns:
+    #     #     df = df[df["Feature Type"].astype(str).str.strip().str.lower() == "metal loss"]
+    #
+    #     # if df.empty:
+    #     #     print(f"⚠️ No Metal Loss defects found (filtered from {original_count} rows)")
+    #     #     self._show_no_defects_message()
+    #     #     return
+    #
+    #     # original_count = len(df)
+    #     # if "Feature Type" in df.columns:
+    #     #     df = df[df["Feature Type"].astype(str).str.strip().str.lower() == "metal loss"]
+    #
+    #     # if df.empty:
+    #     #     print(f"⚠️ No Metal Loss defects found (filtered from {original_count} rows)")
+    #     #     self._show_no_defects_message()
+    #     #     return
+    #
+    #     # normalize column variants
+    #     variants = {
+    #         "s_no": "Defect_id",
+    #         "Dimensions  Classification": "Dimensions Classification",
+    #         "Depth % ": "Depth %",
+    #         "Psafe (ASME B31G) bar": "Psafe (ASME B31G) Barg",
+    #         "Pipe Length": "Pipe Length (mm)",
+    #         "Length": "Length (mm)",
+    #         "Width": "Width (mm)",
+    #         "WT": "WT (mm)",
+    #     }
+    #     for src, dst in variants.items():
+    #         if src in df.columns and dst not in df.columns:
+    #             df[dst] = df[src]
+    #
+    #     # ensure Defect_id exists
+    #     if "Defect_id" not in df.columns:
+    #         df = df.reset_index(drop=True)
+    #         df["Defect_id"] = np.arange(1, len(df) + 1)
+    #
+    #     desired_cols = [
+    #         "Defect_id","Abs. Distance (m)","Distance to U/S GW(m)","Pipe Number","Pipe Length (mm)","Feature Type",
+    #         "Feature Identification","Dimensions Classification","Orientation o' clock","WT (mm)","Length (mm)",
+    #         "Width (mm)","Depth %","Depth (mm)","Location","ERF (ASME B31G)","Psafe (ASME B31G) Barg",
+    #         "Latitude","Longitude" ,"Altitude","Comment","Empty"
+    #     ]
+    #     for col in desired_cols:
+    #         if col not in df.columns:
+    #             df[col] = ""
+    #
+    #     view = df[desired_cols].copy()
+    #
+    #     tw = self.ui.tableWidgetDefect
+    #     tw.clear()
+    #     tw.setRowCount(len(view))
+    #     tw.setColumnCount(len(view.columns))
+    #     tw.setHorizontalHeaderLabels([str(c) for c in view.columns])
+    #     tw.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
+    #
+    #     # Set column widths
+    #     column_widths = {
+    #         'Defect_id': 150,
+    #         'Abs. Distance (m)': 150,
+    #         'Distance to U/S GW(m)': 150,
+    #         'Pipe Number': 150,
+    #         'Pipe Length (mm)': 150,
+    #         'Feature Type': 150,
+    #         'Feature Identification': 150,
+    #         'Dimensions Classification': 150,
+    #         'Orientation o\' clock': 150,
+    #         'WT (mm)': 150,
+    #         'Length (mm)': 150,
+    #         'Width (mm)': 150,
+    #         'Depth %': 150,
+    #         'Depth (mm)': 150,
+    #         'Location': 150,
+    #         'ERF (ASME B31G)': 150,
+    #         'Psafe (ASME B31G) Barg': 150,
+    #         'Latitude': 150,
+    #         'Longitude': 150,
+    #         'Altitude': 150,
+    #         'Comment': 150,
+    #         'Empty': 530
+    #     }
+    #
+    #     for c, col_name in enumerate(view.columns):
+    #         if col_name in column_widths:
+    #             tw.setColumnWidth(c, column_widths[col_name])
+    #         else:
+    #             tw.setColumnWidth(c, 100)
+    #
+    #     self._show_defects_table()
+    #     self._start_fill_qtablewidget_batched(view, chunk_size=300)
+    #
+    #     setup_table_scroll(self.ui.tableWidgetDefect)
+    #     QTimer.singleShot(150, self._refresh_table_scrollbars)
 
 
-            if self.loading_dialog and self._pending_close_loader:
-                try:
-                    self.loading_dialog.close()
-                except Exception:
-                    pass
-                self.loading_dialog = None
+    # def _start_fill_qtablewidget_batched(self, df: pd.DataFrame, *, chunk_size: int = 200):
+    #     """Fill self.ui.tableWidgetDefect incrementally to keep UI responsive."""
+    #     tw = self.ui.tableWidgetDefect
+    #     columns = list(df.columns)
+    #
+    #     tw.clear()
+    #     tw.setColumnCount(len(columns))
+    #     tw.setHorizontalHeaderLabels([str(c) for c in columns])
+    #     tw.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
+    #     tw.setRowCount(len(df))            # preallocate
+    #     tw.setUpdatesEnabled(False)        # defer UI updates
+    #
+    #     # batching state
+    #     self._table_fill_row = 0
+    #     self._table_fill_df  = df
+    #     self._table_fill_chunk = max(50, int(chunk_size))
+    #     self._is_filling_table = True
+    #     self._pending_close_loader = False
+    #
+    #     # Start first batch
+    #     QTimer.singleShot(0, self._fill_tablewidget_chunk)
 
-            self.update_digsheet_button_state()
-            QTimer.singleShot(0, self._refresh_table_scrollbars)
-        else:
-            # schedule next chunk (async → UI stays alive)
-            QTimer.singleShot(0, self._fill_tablewidget_chunk)
+    # def _fill_tablewidget_chunk(self):
+    #     """Append a batch of rows to QTableWidget without freezing UI."""
+    #     tw = self.ui.tableWidgetDefect
+    #     df = self._table_fill_df
+    #     start = self._table_fill_row
+    #     end   = min(start + self._table_fill_chunk, len(df))
+    #
+    #     # Fill rows for this batch
+    #     for r in range(start, end):
+    #         row_vals = df.iloc[r].to_list()
+    #         for c, v in enumerate(row_vals):
+    #             if isinstance(v, float):
+    #                 text = f"{v:.6g}"
+    #             elif pd.isna(v):
+    #                 text = ""
+    #             else:
+    #                 text = str(v)
+    #             item = QTableWidgetItem(text)
+    #             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+    #
+    #             # Make items non-editable
+    #             item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+    #
+    #             tw.setItem(r, c, item)
+    #
+    #     self._table_fill_row = end
+    #
+    #     # update loader/progress
+    #     if self.loading_dialog:
+    #         done = end
+    #         total = len(df)
+    #         pct = int(100 * done / max(1, total))
+    #         self.loading_dialog.update_progress(pct, f"Preparing table ({done}/{total})...")
+    #         QtWidgets.QApplication.processEvents(QEventLoop.ProcessEventsFlag.AllEvents, 50)
+    #
+    #     if end >= len(df):
+    #         # finished
+    #         tw.setUpdatesEnabled(True)
+    #         tw.viewport().update()
+    #         header = tw.horizontalHeader()
+    #         header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+    #         header.setStretchLastSection(False)
+    #         self._is_filling_table = False
+    #
+    #         # Apply styling after table is filled
+    #         self._setup_table_styling()
+    #
+    #         # ✅ make the dropdown mirror the final table headers (== desired cols)
+    #         if not self._selected_columns:
+    #             self._selected_columns = set(self._current_headers_for_filter()) | set(self.BACKEND_LOCKED_COLS)
+    #         self.apply_column_filter()
+    #
+    #
+    #         if self.loading_dialog and self._pending_close_loader:
+    #             try:
+    #                 self.loading_dialog.close()
+    #             except Exception:
+    #                 pass
+    #             self.loading_dialog = None
+    #
+    #         self.update_digsheet_button_state()
+    #         QTimer.singleShot(0, self._refresh_table_scrollbars)
+    #     else:
+    #         # schedule next chunk (async → UI stays alive)
+    #         QTimer.singleShot(0, self._fill_tablewidget_chunk)
 
-    def _populate_defect_table_from_csv(self, df: pd.DataFrame):
-        tw = self.ui.tableWidgetDefect
-        tw.clearSelection()
-
-        if df is None or df.empty:
-            self._show_no_defects_message()
-            return
-
-        # Show table since we have data
-        self._show_defects_table()
-
-        header_indices = {
-            'Defect_id': 0,
-            'Absolute_Distance': 1,
-            'Upstream_Distance': 2,
-            'Feature_Type': 3,
-            'Dimension_Class': 4,
-            'Orientation': 5,
-            'WT': 6,
-            'Length': 7,
-            'Width': 8,
-            'Depth_Peak': 9
-        }
-        colmap_candidates = {
-            'Box Number': 'Defect_id',
-            'Defect_id': 'Defect_id',
-            'Absolute Distance': 'Absolute_Distance',
-            'Abs. Distance (m)': 'Absolute_Distance',
-            'Upstream': 'Upstream_Distance',
-            'Distance to U/S GW(m)': 'Upstream_Distance',
-            'Type': 'Feature_Type',
-            'Dimensions  Classification': 'Dimension_Class',
-            "Orientation o' clock": 'Orientation',
-            'Ori Val': 'Orientation',
-            'WT (mm)': 'WT',
-            'WT': 'WT',
-            'Width': 'Width',
-            'Breadth': 'Width',
-            'Peak Value': 'Depth_Peak',
-            'Depth % ': 'Depth_Peak',
-            'Depth %': 'Depth_Peak',
-            'Length': 'Length'
-        }
-        column_mapping = {}
-        for src, dst in colmap_candidates.items():
-            if src in df.columns:
-                column_mapping[src] = dst
-
-        num_rows = len(df)
-        num_cols = len(header_indices)
-        tw.setRowCount(num_rows)
-        tw.setColumnCount(num_cols)
-        tw.setHorizontalHeaderLabels(list(header_indices.keys()))
-
-        for r, (_, row) in enumerate(df.iterrows()):
-            for src, dst in column_mapping.items():
-                if dst in header_indices:
-                    c = header_indices[dst]
-                    v = row[src]
-                    if isinstance(v, float):
-                        v = f"{v:.2f}"
-                    item = QTableWidgetItem(str(v))
-                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-
-                    # Make items non-editable
-                    item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-
-                    tw.setItem(r, c, item)
-
-        # Apply styling
-        self._setup_table_styling()
-        self.update_digsheet_button_state()
-
-        # ✅ keep the dropdown in sync with the visible table headers
-        if not self._selected_columns:
-            self._selected_columns = set(self._current_headers_for_filter()) | set(self.BACKEND_LOCKED_COLS)
-        self.apply_column_filter()
+    # def _populate_defect_table_from_csv(self, df: pd.DataFrame):
+    #     tw = self.ui.tableWidgetDefect
+    #     tw.clearSelection()
+    #
+    #     if df is None or df.empty:
+    #         self._show_no_defects_message()
+    #         return
+    #
+    #     # Show table since we have data
+    #     self._show_defects_table()
+    #
+    #     header_indices = {
+    #         'Defect_id': 0,
+    #         'Absolute_Distance': 1,
+    #         'Upstream_Distance': 2,
+    #         'Feature_Type': 3,
+    #         'Dimension_Class': 4,
+    #         'Orientation': 5,
+    #         'WT': 6,
+    #         'Length': 7,
+    #         'Width': 8,
+    #         'Depth_Peak': 9
+    #     }
+    #     colmap_candidates = {
+    #         'Box Number': 'Defect_id',
+    #         'Defect_id': 'Defect_id',
+    #         'Absolute Distance': 'Absolute_Distance',
+    #         'Abs. Distance (m)': 'Absolute_Distance',
+    #         'Upstream': 'Upstream_Distance',
+    #         'Distance to U/S GW(m)': 'Upstream_Distance',
+    #         'Type': 'Feature_Type',
+    #         'Dimensions  Classification': 'Dimension_Class',
+    #         "Orientation o' clock": 'Orientation',
+    #         'Ori Val': 'Orientation',
+    #         'WT (mm)': 'WT',
+    #         'WT': 'WT',
+    #         'Width': 'Width',
+    #         'Breadth': 'Width',
+    #         'Peak Value': 'Depth_Peak',
+    #         'Depth % ': 'Depth_Peak',
+    #         'Depth %': 'Depth_Peak',
+    #         'Length': 'Length'
+    #     }
+    #     column_mapping = {}
+    #     for src, dst in colmap_candidates.items():
+    #         if src in df.columns:
+    #             column_mapping[src] = dst
+    #
+    #     num_rows = len(df)
+    #     num_cols = len(header_indices)
+    #     tw.setRowCount(num_rows)
+    #     tw.setColumnCount(num_cols)
+    #     tw.setHorizontalHeaderLabels(list(header_indices.keys()))
+    #
+    #     for r, (_, row) in enumerate(df.iterrows()):
+    #         for src, dst in column_mapping.items():
+    #             if dst in header_indices:
+    #                 c = header_indices[dst]
+    #                 v = row[src]
+    #                 if isinstance(v, float):
+    #                     v = f"{v:.2f}"
+    #                 item = QTableWidgetItem(str(v))
+    #                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+    #
+    #                 # Make items non-editable
+    #                 item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+    #
+    #                 tw.setItem(r, c, item)
+    #
+    #     # Apply styling
+    #     self._setup_table_styling()
+    #     self.update_digsheet_button_state()
+    #
+    #     # ✅ keep the dropdown in sync with the visible table headers
+    #     if not self._selected_columns:
+    #         self._selected_columns = set(self._current_headers_for_filter()) | set(self.BACKEND_LOCKED_COLS)
+    #     self.apply_column_filter()
 
     # Guarded tab change handler (prevents switching when no project and shows popup)
     # def _on_middle_tab_changed(self, index: int):
@@ -4328,53 +4271,53 @@ class MyMainWindow(QMainWindow):
     # ---------------------------
     # Digsheet enable logic + cursor/tooltip polish
     # ---------------------------
-    def _abs_col_candidates(self):
-        return ("Absolute_Distance", "Abs. Distance (m)", "Absolute Distance")
-
-    def _abs_col_index_silent(self) -> Optional[int]:
-        tw = self.ui.tableWidgetDefect
-        if tw.columnCount() == 0:
-            return None
-        for c in range(tw.columnCount()):
-            hdr = tw.horizontalHeaderItem(c)
-            name = hdr.text().strip() if hdr else ""
-            if name in self._abs_col_candidates():
-                return c
-        return 1 if tw.columnCount() > 1 else (0 if tw.columnCount() == 1 else None)
-
-    def _has_valid_abs_selection(self) -> bool:
-        tw = self.ui.tableWidgetDefect
-        # if tw.rowCount() == 0 or tw.columnCount() == 0:
-        #     return False
-        if not tw.isVisible() or tw.rowCount() == 0 or tw.columnCount() == 0:
-            return False
-
-        # ✅ Check if "no defects" message is showing
-        if hasattr(self, '_no_defects_container') and self._no_defects_container and self._no_defects_container.isVisible():
-            return False
-
-        abs_col = self._abs_col_index_silent()
-        if abs_col is None:
-            return False
-
-        sel_model = tw.selectionModel()
-        if sel_model is None:
-            return False
-
-        # Prefer row-based selection (what we configured). Fallback to generic indexes.
-        rows = [idx.row() for idx in sel_model.selectedRows()] or [i.row() for i in tw.selectedIndexes()]
-        rows = list(dict.fromkeys(rows))  # unique, order preserved
-
-        if len(rows) != 1:
-            return False
-
-        row = rows[0]
-        item = tw.item(row, abs_col)
-        return bool(item and item.text().strip())
-
-    def _is_graph_tab_ok(self) -> bool:
-        tab = self.ui.tabWidgetM.tabText(self.ui.tabWidgetM.currentIndex())
-        return tab in ("Heatmap", "3D Graph", "3D")
+    # def _abs_col_candidates(self):
+    #     return ("Absolute_Distance", "Abs. Distance (m)", "Absolute Distance")
+    #
+    # def _abs_col_index_silent(self) -> Optional[int]:
+    #     tw = self.ui.tableWidgetDefect
+    #     if tw.columnCount() == 0:
+    #         return None
+    #     for c in range(tw.columnCount()):
+    #         hdr = tw.horizontalHeaderItem(c)
+    #         name = hdr.text().strip() if hdr else ""
+    #         if name in self._abs_col_candidates():
+    #             return c
+    #     return 1 if tw.columnCount() > 1 else (0 if tw.columnCount() == 1 else None)
+    #
+    # def _has_valid_abs_selection(self) -> bool:
+    #     tw = self.ui.tableWidgetDefect
+    #     # if tw.rowCount() == 0 or tw.columnCount() == 0:
+    #     #     return False
+    #     if not tw.isVisible() or tw.rowCount() == 0 or tw.columnCount() == 0:
+    #         return False
+    #
+    #     # ✅ Check if "no defects" message is showing
+    #     if hasattr(self, '_no_defects_container') and self._no_defects_container and self._no_defects_container.isVisible():
+    #         return False
+    #
+    #     abs_col = self._abs_col_index_silent()
+    #     if abs_col is None:
+    #         return False
+    #
+    #     sel_model = tw.selectionModel()
+    #     if sel_model is None:
+    #         return False
+    #
+    #     # Prefer row-based selection (what we configured). Fallback to generic indexes.
+    #     rows = [idx.row() for idx in sel_model.selectedRows()] or [i.row() for i in tw.selectedIndexes()]
+    #     rows = list(dict.fromkeys(rows))  # unique, order preserved
+    #
+    #     if len(rows) != 1:
+    #         return False
+    #
+    #     row = rows[0]
+    #     item = tw.item(row, abs_col)
+    #     return bool(item and item.text().strip())
+    #
+    # def _is_graph_tab_ok(self) -> bool:
+    #     tab = self.ui.tabWidgetM.tabText(self.ui.tabWidgetM.currentIndex())
+    #     return tab in ("Heatmap", "3D Graph", "3D")
 
     def update_digsheet_button_state(self):
         if not self.project_is_open:
@@ -4385,8 +4328,8 @@ class MyMainWindow(QMainWindow):
         can_show = (
                 self.project_is_open
                 and isinstance(self.pipe_tally, pd.DataFrame)
-                and self._is_graph_tab_ok()
-                and self._has_valid_abs_selection()
+                and _is_graph_tab_ok(self)
+                and _has_valid_abs_selection(self)
         )
         self.btnDigsheetAbs.setEnabled(bool(can_show))
 
@@ -5104,6 +5047,41 @@ class MyMainWindow(QMainWindow):
             self.open_Error(e)
 
     #might be extras
+    def _setup_left_vertical_scrollbar_sync(self):
+        """Sync the custom left vertical scrollbar with tableWidgetDefect's internal vbar."""
+        tw = self.ui.tableWidgetDefect
+        inner_vbar = tw.verticalScrollBar()  # still exists even if hidden
+        left_vbar = self.left_vscrollbar
+
+        # Mirror range/page/single step from the table's scrollbar
+        def _apply_range():
+            left_vbar.blockSignals(True)
+            left_vbar.setRange(inner_vbar.minimum(), inner_vbar.maximum())
+            left_vbar.setPageStep(inner_vbar.pageStep())
+            left_vbar.setSingleStep(inner_vbar.singleStep())
+            left_vbar.setValue(inner_vbar.value())
+            left_vbar.blockSignals(False)
+
+        # When user drags the left bar -> scroll table
+        def _on_left_changed(v):
+            inner_vbar.setValue(v)
+
+        # When table scrolls (keyboard, wheel, selection, data fill, etc.) -> move left bar
+        def _on_inner_changed(v):
+            left_vbar.blockSignals(True)
+            left_vbar.setValue(v)
+            left_vbar.blockSignals(False)
+
+        def _on_inner_range_changed(_min, _max):
+            _apply_range()
+
+        # Connect both ways
+        left_vbar.valueChanged.connect(_on_left_changed)
+        inner_vbar.valueChanged.connect(_on_inner_changed)
+        inner_vbar.rangeChanged.connect(_on_inner_range_changed)
+
+        # Initial apply on next tick (table might not have full range yet)
+        QTimer.singleShot(0, _apply_range)
     def open_Ptal(self):
         try:
             file_path, _ = QFileDialog.getOpenFileName(
@@ -5153,6 +5131,34 @@ class MyMainWindow(QMainWindow):
             return
         self.load_selected_by_index(combo_idx)
 
+
+    def populate_column_filter(self, df: pd.DataFrame):
+        """Fill dropdown with all DataFrame columns (checkable)."""
+        model = self.columnFilter.model()
+        model.clear()
+
+        for col in df.columns:
+            it = QStandardItem(str(col))
+            # Make it user-checkable and enabled
+            it.setFlags(it.flags() | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
+            it.setData(Qt.CheckState.Checked, Qt.ItemDataRole.CheckStateRole)
+            model.appendRow(it)
+
+        # Update summary (e.g., "12 selected")
+        self._column_summary_text()
+
+    def set_loading(self, msg="Loading"):
+        self.current_message = msg
+        self.statusBar().showMessage(f'           Status:      {self.current_message}')
+        self._t0 = time.time()
+        self.timer.start(100)
+
+    def set_idle(self):
+        self.current_message = 'App running'
+        self.statusBar().showMessage(f'           Status:      {self.current_message}')
+        self.timer.stop()
+        self._t0 = None
+        self.right_status_label.setText("0.0s")
 
     # def _reset_ui_to_start_state(self):
     #     # mark app state

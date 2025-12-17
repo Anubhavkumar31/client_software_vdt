@@ -4,10 +4,11 @@ import time
 
 import pandas as pd
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QAbstractTableModel, QVariant
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QProgressBar, QHBoxLayout
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QProgressBar, QHBoxLayout, QMessageBox
 from glob import glob
 
 from main_section_view.helpers_temp import _arm_topbar, _arm_main_topbar
+from main_section_view.table_data_worker import on_table_data_ready_con
 
 
 class ModernLoadingDialog(QDialog):
@@ -331,6 +332,36 @@ class PipeLoaderWorker(QThread):
 
         return df
 
+
+def load_selected_pipe(self):
+    if not self.project_is_open:
+        QMessageBox.warning(self, "No Project", "Please open a project first.")
+        return
+
+    idx = self.ui.comboBoxPipe.currentIndex()
+    text = self.ui.comboBoxPipe.currentText().strip()
+
+    # ✅ If typed text matches an item, resolve index
+    if idx < 0 and text:
+        try:
+            idx = [self.ui.comboBoxPipe.itemText(i) for i in range(self.ui.comboBoxPipe.count())].index(text)
+        except ValueError:
+            QMessageBox.warning(self, "Invalid Selection", f"No pipe named '{text}' found.")
+            return
+
+    if idx < 0 or idx >= len(self.pkl_files):
+        QMessageBox.warning(self, "Invalid Selection", "Please select a valid pipe.")
+        return
+
+    if hasattr(self, "_select_pipe_container"):
+        self._select_pipe_container.hide()
+
+    self.btnLoadPipe.setEnabled(False)
+    # self.load_selected_by_index(idx)
+    load_selected_by_index(self, idx)
+    #self.btnLoadPipe.clicked.connect(self.load_selected_pipe)
+
+
 def load_selected_by_index(self, idx: int):
     try:
         if idx < 0 or idx >= len(self.pkl_files):
@@ -356,6 +387,7 @@ def load_selected_by_index(self, idx: int):
         self.loader_worker.time_estimate.connect(self.loading_dialog.update_time_estimate)
         self.loader_worker.data_loaded.connect(lambda df: on_data_loaded(self, df))
         self.loader_worker.assets_loaded.connect(lambda assets: on_assets_loaded(self, assets))
+        # self.loader_worker.table_data_ready.connect(lambda df: on_table_data_ready(self, df))
         self.loader_worker.table_data_ready.connect(lambda df: on_table_data_ready(self, df))
         self.loader_worker.error_occurred.connect(lambda error_msg: on_loading_error(self, error_msg))
         self.loader_worker.finished.connect(lambda : on_loading_finished(self))
@@ -394,19 +426,8 @@ def on_assets_loaded(self, assets):
 
 
 def on_table_data_ready(self, df):
-    """Handle processed table data"""
-    self.curr_data = df  # 👈 make sure we keep a reference for filtering later
+    on_table_data_ready_con(self, df)
 
-    if df is not None:
-        # 👇 populate the column filter dropdown with available columns
-
-        # Check if this is a PipeTally format or defects.csv format
-        if "Feature Type" in df.columns:
-            self._populate_defect_table_from_tally(df)
-        else:
-            self._populate_defect_table_from_csv(df)
-    else:
-        self._show_no_defects_message()
 
 
 def on_loading_error(self, error_msg):
@@ -452,3 +473,21 @@ def on_loading_finished(self):
 
     if hasattr(self, "tabSwitcherDropdown"):
         self.tabSwitcherDropdown.setEnabled(True)
+
+
+
+def load_next_pipe(self):
+    """Go to next pipe and load automatically"""
+    cb = self.ui.comboBoxPipe
+    idx = cb.currentIndex()
+    if idx < cb.count() - 1:  # not last
+        cb.setCurrentIndex(idx + 1)
+        load_selected_pipe(self)
+
+def load_prev_pipe(self):
+    """Go to previous pipe and load automatically"""
+    cb = self.ui.comboBoxPipe
+    idx = cb.currentIndex()
+    if idx > 0:  # not first
+        cb.setCurrentIndex(idx - 1)
+        load_selected_pipe(self)

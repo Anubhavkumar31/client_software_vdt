@@ -6,6 +6,7 @@ from PyQt6 import QtWidgets
 from PyQt6.QtWidgets import QMessageBox, QFileDialog
 
 from main_window.components.helper_func import _update_project_actions
+from menubar.File_menu.helper_func import _force_full_start_state
 
 
 def open_project(self):
@@ -31,7 +32,7 @@ def open_project(self):
 
         root = dlg.selectedFiles()[0]
         self.project_root = root
-        self._force_full_start_state()
+        _force_full_start_state(self)
 
         self.pipe_tally = None
         loaded_tally = _auto_load_pipe_tally(self, root)
@@ -90,7 +91,7 @@ def open_project(self):
                 self.btnToggleHmLayout.setText("Side-by-side")
 
             # Show overlay instead of auto-loading
-            self._show_select_pipe_message()
+            _show_select_pipe_message(self)
 
             # 👇 Force check so Load button activates if default pipe is already selected
             self.update_load_button_state(self.ui.comboBoxPipe.currentIndex())
@@ -209,3 +210,28 @@ def _auto_load_pipe_tally(self, root: str) -> bool:
             print(f"[pipe_tally] Failed to load {path}: {e}")
     self.pipe_tally = None
     return False
+
+
+
+def _show_select_pipe_message(self):
+    if hasattr(self, "_select_pipe_container"):
+        central = self.centralWidget().rect()
+
+        # Leave space for the pipe selection row (comboBox + Load button)
+        header_height = self.ui.comboBoxPipe.height() + 20
+
+        self._select_pipe_container.setGeometry(
+            0,
+            header_height,
+            central.width(),
+            central.height() - header_height
+        )
+        self._select_pipe_container.show()
+
+    # Hide other views
+    if hasattr(self.ui, "tableWidgetDefect"):
+        self.ui.tableWidgetDefect.hide()
+    if hasattr(self.ui, "tableView"):
+        self.ui.tableView.hide()
+
+    self.btnLoadPipe.setEnabled(False)

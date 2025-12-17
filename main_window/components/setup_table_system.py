@@ -2,6 +2,8 @@ from PIL.ImageQt import QPixmap
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QAbstractItemView, QWidget, QVBoxLayout, QFrame, QLabel, QSizePolicy
 
+from main_section_view.table_data_worker import _setup_table_styling
+
 
 def setup_table_scroll(table):
     from PyQt6.QtWidgets import QHeaderView, QAbstractItemView, QAbstractScrollArea
@@ -71,7 +73,7 @@ def setup_table_system(self):
     self._setup_select_pipe_label()
     _setup_create_project_label(self)
     _show_create_project_message(self)
-    self._setup_table_styling()
+    _setup_table_styling(self)
 
 
 def _setup_create_project_label(self):
