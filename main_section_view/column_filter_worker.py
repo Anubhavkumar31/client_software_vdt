@@ -1,6 +1,8 @@
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import QDialog
 
+from main_section_view.utils import _current_headers_for_filter, _refresh_table_scrollbars
+
 
 class ColumnFilterDialog(QDialog):
     def __init__(self, *, headers: list[str], checked: set[str], locked: set[str], parent=None):
@@ -95,7 +97,7 @@ class ColumnFilterDialog(QDialog):
 
 def open_column_filter_dialog_con(self):
     """Open column selector dialog and apply the result."""
-    headers = self._current_headers_for_filter()
+    headers = _current_headers_for_filter(self)
     locked = set(getattr(self, "BACKEND_LOCKED_COLS", set()))
 
     # default: first time, select everything that's not locked
@@ -119,7 +121,7 @@ def apply_column_filter(self):
 
     # If we have no selection yet, treat as 'show all'
     if not self._selected_columns:
-        self._selected_columns = set(self._current_headers_for_filter()) | locked
+        self._selected_columns = set(_current_headers_for_filter(self)) | locked
 
     names_to_keep = set(self._selected_columns) | locked
 
@@ -133,7 +135,7 @@ def apply_column_filter(self):
         for c, name in header_map.items():
             hide = (name not in names_to_keep) and (name not in locked)
             self.ui.tableWidgetDefect.setColumnHidden(c, hide)
-        QTimer.singleShot(0, self._refresh_table_scrollbars)
+        QTimer.singleShot(0, lambda : _refresh_table_scrollbars(self))
         return
 
     # Fallback to the top QTableView

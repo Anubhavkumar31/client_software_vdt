@@ -69,8 +69,8 @@ def setup_table_system(self):
     except: pass
     tw.cellClicked.connect(lambda *_: self.update_digsheet_button_state())
 
-    self._setup_no_defects_label()
-    self._setup_select_pipe_label()
+    _setup_no_defects_label(self)
+    _setup_select_pipe_label(self)
     _setup_create_project_label(self)
     _show_create_project_message(self)
     _setup_table_styling(self)
@@ -167,3 +167,112 @@ def _show_create_project_message(self):
         print("📋 Displaying 'Create the Project in File' message")
     except Exception as e:
         print(f"Error showing create project message: {e}")
+
+def _setup_select_pipe_label(self):
+    """Create a polished overlay asking user to select a pipe"""
+    central = self.centralWidget()
+    self._select_pipe_container = QWidget(central)
+    self._select_pipe_container.setGeometry(central.rect())
+    self._select_pipe_container.setStyleSheet("""
+        background-color: rgba(255, 255, 255, 180);  /* frosted background */
+    """)
+
+    layout = QVBoxLayout(self._select_pipe_container)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+    # --- Inner card widget ---
+    card = QFrame()
+    card.setFixedWidth(500)
+    card.setStyleSheet("""
+        QFrame {
+            background-color: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #d0d0d0;
+            padding: 30px;
+        }
+    """)
+    card_layout = QVBoxLayout(card)
+    card_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+    # Icon
+    icon_label = QLabel("📂")
+    icon_label.setStyleSheet("font-size: 42px;")
+    card_layout.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignCenter)
+
+    # Title
+    title = QLabel("No Pipe Selected")
+    title.setStyleSheet("""
+        font-size: 22pt;
+        font-weight: 600;
+        color: #2c3e50;
+    """)
+    card_layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignCenter)
+
+    # Subtitle
+    subtitle = QLabel("Please choose a pipe number from the list above to continue.")
+    subtitle.setWordWrap(True)
+    subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    subtitle.setStyleSheet("""
+        font-size: 12pt;
+        color: #555;
+        margin-top: 10px;
+    """)
+    card_layout.addWidget(subtitle)
+
+    # Hint / efficiency tip
+    hint = QLabel("💡 You can also type a pipe number directly in the box.")
+    hint.setWordWrap(True)
+    hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    hint.setStyleSheet("""
+        font-size: 10pt;
+        color: #888;
+        margin-top: 15px;
+    """)
+    card_layout.addWidget(hint)
+
+    layout.addWidget(card)
+    self._select_pipe_container.hide()
+
+def _setup_no_defects_label(self):
+    """Create and setup the 'No Defects Found' label with absolute positioning"""
+    # Create a container widget to control sizing
+    self._no_defects_container = QWidget()
+    self._no_defects_container.setMaximumSize(500, 200)
+    self._no_defects_container.setMinimumSize(400, 150)
+
+    # Set size policy to prevent expansion
+    self._no_defects_container.setSizePolicy(
+        QSizePolicy.Policy.Fixed,
+        QSizePolicy.Policy.Fixed
+    )
+
+    # Create the layout for the container
+    container_layout = QVBoxLayout(self._no_defects_container)
+    container_layout.setContentsMargins(0, 0, 0, 0)
+
+    # Create the actual label
+    self._no_defects_label = QLabel("No Defects Found in this Pipe")
+    self._no_defects_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    self._no_defects_label.setStyleSheet("""
+        QLabel {
+            font-size: 16pt;
+            color: #666666;
+            font-weight: bold;
+            background-color: #f8f8f8;
+            border: 2px dashed #cccccc;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 10px;
+        }
+    """)
+
+    container_layout.addWidget(self._no_defects_label)
+    self._no_defects_container.hide()
+
+    # Add to parent WITHOUT layout management
+    table_parent = self.ui.tableWidgetDefect.parentWidget()
+    if table_parent:
+        self._no_defects_container.setParent(table_parent)
+        # Position at specific coordinates (x=100, y=50)
+        self._no_defects_container.move(500, 50)  # ← TWEAK THESE VALUES

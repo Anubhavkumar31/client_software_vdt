@@ -5,6 +5,61 @@ from PyQt6.QtCore import Qt, QTimer, QEventLoop
 from PyQt6.QtWidgets import QTableWidgetItem, QHeaderView
 
 # from main_window.main_window import setup_table_scroll
+from main_section_view.utils import _current_headers_for_filter, _refresh_table_scrollbars
+
+
+def _toggle_table_visibility_con(self):
+    """Show/hide bottom defect table."""
+    self._table_hidden = not self._table_hidden
+
+    if self._table_hidden:
+        self.bottom_stack.hide()
+        self.btnToggleTable.setText("Show Table")
+        print("Table visibility toggled: Hidden")
+    else:
+        # Ensure the correct bottom page is visible (in case it's a QStackedWidget)
+        if hasattr(self, "defect_table_page") and self.bottom_stack.indexOf(self.defect_table_page) != -1:
+            self.bottom_stack.setCurrentWidget(self.defect_table_page)
+
+        self.bottom_stack.show()
+        self.btnToggleTable.setText("Hide Table")
+
+        # 🔹 Ensure bottom area has height when showing
+        if hasattr(self, "splitter"):
+            sizes = self.splitter.sizes()
+            if len(sizes) >= 2 and sizes[1] < 40:
+                total = max(sum(sizes), self.height())
+                bot = max(250, total // 3)
+                self.splitter.setSizes([total - bot, bot])
+
+        print("Table visibility toggled: Shown")
+        QTimer.singleShot(100, lambda : _refresh_table_scrollbars(self))
+        QTimer.singleShot(300, lambda : _reset_table_state(self))
+
+def _reset_table_state(self):
+    """Force reset of table state when re-entering a pipe."""
+    try:
+        tw = self.ui.tableWidgetDefect
+        if not tw:
+            return
+        # Reset batching state variables
+        self._is_filling_table = False
+        self._pending_close_loader = False
+        self._table_fill_df = None
+        self._table_fill_row = 0
+
+        # Force Qt to rebuild scroll region
+        tw.clearSelection()
+        tw.viewport().update()
+        tw.updateGeometry()
+        tw.verticalScrollBar().setValue(0)
+        tw.horizontalScrollBar().setValue(0)
+        tw.verticalScrollBar().update()
+        tw.horizontalScrollBar().update()
+        QTimer.singleShot(200, lambda : _refresh_table_scrollbars(self))
+        print("[DEBUG] Table state reset and scrollbars refreshed.")
+    except Exception as e:
+        print(f"[ERROR] Table reset failed: {e}")
 
 def setup_table_scroll(table):
     from PyQt6.QtWidgets import QHeaderView, QAbstractItemView, QAbstractScrollArea
@@ -142,7 +197,7 @@ def _populate_defect_table_from_tally(self, df: pd.DataFrame):
     _start_fill_qtablewidget_batched(self, view, chunk_size=300)
 
     setup_table_scroll(self.ui.tableWidgetDefect)
-    QTimer.singleShot(150, self._refresh_table_scrollbars)
+    QTimer.singleShot(150, lambda : _refresh_table_scrollbars(self))
 
 
 def _populate_defect_table_from_csv(self, df: pd.DataFrame):
@@ -220,8 +275,8 @@ def _populate_defect_table_from_csv(self, df: pd.DataFrame):
 
     # ✅ keep the dropdown in sync with the visible table headers
     if not self._selected_columns:
-        self._selected_columns = set(self._current_headers_for_filter()) | set(self.BACKEND_LOCKED_COLS)
-    self.apply_column_filter()
+        self._selected_columns = set(_current_headers_for_filter(self)) | set(self.BACKEND_LOCKED_COLS)
+    apply_column_filter(self)
 
 
 
@@ -240,8 +295,8 @@ def _show_defects_table(self):
         if hasattr(self, 'left_vscrollbar'):
             self.left_vscrollbar.show()
 
-        QTimer.singleShot(150, self._refresh_table_scrollbars)
-        QTimer.singleShot(200, self._force_table_scroll_update)
+        QTimer.singleShot(150, lambda : _refresh_table_scrollbars(self))
+        QTimer.singleShot(200, _force_table_scroll_update(self))
         QTimer.singleShot(250, self._reset_table_state)
 
 
@@ -249,6 +304,24 @@ def _show_defects_table(self):
         print("📊 Displaying defects table")
     except Exception as e:
         print(f"Error showing defects table: {e}")
+
+def _force_table_scroll_update(self):
+    """Force table to refresh layout and scroll range after re-showing."""
+    try:
+        tw = getattr(self.ui, "tableWidgetDefect", None)
+        if not tw:
+            return
+
+        tw.viewport().update()
+        tw.updateGeometry()
+        tw.resizeRowsToContents()
+
+        tw.horizontalScrollBar().setValue(0)
+        tw.verticalScrollBar().update()
+        tw.horizontalScrollBar().update()
+        print("[DEBUG] Table scroll recalculated.")
+    except Exception as e:
+        print(f"[ERROR] Scroll recalculation failed: {e}")
 
 
 def _start_fill_qtablewidget_batched(self, df: pd.DataFrame, *, chunk_size: int = 200):
@@ -323,8 +396,8 @@ def _fill_tablewidget_chunk(self):
 
         # ✅ make the dropdown mirror the final table headers (== desired cols)
         if not self._selected_columns:
-            self._selected_columns = set(self._current_headers_for_filter()) | set(self.BACKEND_LOCKED_COLS)
-        self.apply_column_filter()
+            self._selected_columns = set(_current_headers_for_filter(self)) | set(self.BACKEND_LOCKED_COLS)
+        apply_column_filter(self)
 
 
         if self.loading_dialog and self._pending_close_loader:
@@ -335,7 +408,7 @@ def _fill_tablewidget_chunk(self):
             self.loading_dialog = None
 
         self.update_digsheet_button_state()
-        QTimer.singleShot(0, self._refresh_table_scrollbars)
+        QTimer.singleShot(0, lambda : _refresh_table_scrollbars(self))
     else:
         # schedule next chunk (async → UI stays alive)
         QTimer.singleShot(0, lambda : _fill_tablewidget_chunk(self))
@@ -387,3 +460,38 @@ def _setup_table_styling(self):
                 min-width: 40px;
             }
         """)
+
+
+def apply_column_filter(self):
+    """Hide/show columns based on self._selected_columns + locked columns."""
+    locked = set(getattr(self, "BACKEND_LOCKED_COLS", set()))
+
+    # If we have no selection yet, treat as 'show all'
+    if not self._selected_columns:
+        self._selected_columns = set(_current_headers_for_filter(self)) | locked
+
+    names_to_keep = set(self._selected_columns) | locked
+
+    # Prefer bottom QTableWidgetDefect if it has columns
+    if hasattr(self.ui, "tableWidgetDefect") and self.ui.tableWidgetDefect.columnCount() > 0:
+        header_map = {
+            c: (self.ui.tableWidgetDefect.horizontalHeaderItem(c).text()
+                if self.ui.tableWidgetDefect.horizontalHeaderItem(c) else f"Col {c}")
+            for c in range(self.ui.tableWidgetDefect.columnCount())
+        }
+        for c, name in header_map.items():
+            hide = (name not in names_to_keep) and (name not in locked)
+            self.ui.tableWidgetDefect.setColumnHidden(c, hide)
+        QTimer.singleShot(0, lambda : _refresh_table_scrollbars(self))
+        return
+
+    # Fallback to the top QTableView
+    if hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
+        model = self.ui.tableView.model()
+        header_names = [str(model.headerData(c, Qt.Orientation.Horizontal)) for c in range(model.columnCount())]
+        for c, name in enumerate(header_names):
+            hide = (name not in names_to_keep) and (name not in locked)
+            self.ui.tableView.setColumnHidden(c, hide)
+
+
+

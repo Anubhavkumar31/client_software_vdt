@@ -10,8 +10,10 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import QMessageBox, QDialog
 
 from main_section_view.column_filter_worker import open_column_filter_dialog_con
+from main_section_view.digsheet_abs_worker import open_digsheet_by_abs_from_selection_con
 from main_section_view.helpers_temp import _on_middle_tab_changed, apply_column_filter
 from main_section_view.load_button_working import load_selected_by_index
+from main_section_view.table_data_worker import _toggle_table_visibility_con
 
 
 def resource_path(relative_path):
@@ -29,67 +31,8 @@ def _dump_tally_to_temp(df):
 
 #digsheet button connection to open with abs. distance
 def open_digsheet_by_abs_from_selection(self):
-    try:
-        if not self.project_is_open or not isinstance(self.pipe_tally, pd.DataFrame):
-            QMessageBox.warning(self, "No Pipe Tally", "Load a project/tally first.");
-            return
-        abs_text = _get_selected_abs_distance_from_defect_table(self)
-        if not abs_text: return
+    open_digsheet_by_abs_from_selection_con(self)
 
-        tally_pkl = _dump_tally_to_temp(self.pipe_tally)
-        dig_py_abs = resource_path(os.path.join("dig", "digsheet_abs.py"))
-        if not os.path.exists(dig_py_abs):
-            QMessageBox.critical(self, "Script not found", f"Missing: {dig_py_abs}");
-            return
-
-        # if getattr(sys, "frozen", False):
-        #     subprocess.Popen([sys.executable, "--run-digsheet-abs", tally_pkl, str(abs_text)])
-        # else:
-        #     subprocess.Popen([sys.executable, dig_py_abs, tally_pkl, str(abs_text)])
-        if getattr(sys, "frozen", False):
-            subprocess.Popen([
-                sys.executable,
-                "--run-digsheet-abs",
-                tally_pkl,
-                str(abs_text),
-                self.project_root  # ✅ Pass project root
-            ])
-        else:
-            subprocess.Popen([
-                sys.executable,
-                dig_py_abs,
-                tally_pkl,
-                str(abs_text),
-                self.project_root  # ✅ Pass project root
-            ])
-
-    except Exception as e:
-        self.open_Error(f"Error opening ABS-distance digsheet:\n{e}")
-
-def _get_selected_abs_distance_from_defect_table(self) -> Optional[str]:
-    tw = self.ui.tableWidgetDefect
-    if tw.rowCount() == 0 or tw.columnCount() == 0:
-        QMessageBox.warning(self, "No data", "Defect table is empty.")
-        return None
-
-    abs_col = self._abs_col_index_silent()
-    if abs_col is None:
-        QMessageBox.warning(self, "Missing column", "Could not find the Absolute Distance column.")
-        return None
-
-    sel_model = tw.selectionModel()
-    rows = [idx.row() for idx in sel_model.selectedRows()] or [i.row() for i in tw.selectedIndexes()]
-    rows = list(dict.fromkeys(rows))
-    if len(rows) != 1:
-        QMessageBox.information(self, "Select one row", "Please select exactly one row in the defect table.")
-        return None
-
-    item = tw.item(rows[0], abs_col)
-    if item is None or not item.text().strip():
-        QMessageBox.warning(self, "No Absolute Distance", "Selected row has empty Absolute Distance.")
-        return None
-
-    return item.text().strip()
 
 #load selected pipe button connection
 def load_selected_pipe(self):
@@ -161,32 +104,8 @@ def ondropdowntabchanged(self, index: int):
 
 #hide/show table button connection
 def _toggle_table_visibility(self):
-    """Show/hide bottom defect table."""
-    self._table_hidden = not self._table_hidden
+    _toggle_table_visibility_con(self)
 
-    if self._table_hidden:
-        self.bottom_stack.hide()
-        self.btnToggleTable.setText("Show Table")
-        print("Table visibility toggled: Hidden")
-    else:
-        # Ensure the correct bottom page is visible (in case it's a QStackedWidget)
-        if hasattr(self, "defect_table_page") and self.bottom_stack.indexOf(self.defect_table_page) != -1:
-            self.bottom_stack.setCurrentWidget(self.defect_table_page)
-
-        self.bottom_stack.show()
-        self.btnToggleTable.setText("Hide Table")
-
-        # 🔹 Ensure bottom area has height when showing
-        if hasattr(self, "splitter"):
-            sizes = self.splitter.sizes()
-            if len(sizes) >= 2 and sizes[1] < 40:
-                total = max(sum(sizes), self.height())
-                bot = max(250, total // 3)
-                self.splitter.setSizes([total - bot, bot])
-
-        print("Table visibility toggled: Shown")
-        QTimer.singleShot(100, self._refresh_table_scrollbars)
-        QTimer.singleShot(300, self._reset_table_state)
 
 #stack/horizontol button connection
 def _apply_heatmap_layout(self, mode: str = None):

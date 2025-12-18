@@ -1195,37 +1195,30 @@ class MyMainWindow(QMainWindow):
     #     # Apply to the other view
     #     target_view.apply_relayout(clean_payload)
 
-    def _refresh_table_scrollbars(self):
-        """Force scrollbar redraw for all tables."""
-        for tw in (getattr(self.ui, "tableWidgetDefect", None),
-                getattr(self.ui, "tableView", None)):
-            if tw:
-                hsb, vsb = tw.horizontalScrollBar(), tw.verticalScrollBar()
-                if hsb: hsb.update()
-                if vsb: vsb.update()
+    # def _refresh_table_scrollbars(self):
+    #     """Force scrollbar redraw for all tables."""
+    #     for tw in (getattr(self.ui, "tableWidgetDefect", None),
+    #             getattr(self.ui, "tableView", None)):
+    #         if tw:
+    #             hsb, vsb = tw.horizontalScrollBar(), tw.verticalScrollBar()
+    #             if hsb: hsb.update()
+    #             if vsb: vsb.update()
+    #
+    # def _current_headers_for_filter(self) -> list[str]:
+    #     """Mirror the same header source used by _refresh_column_filter_options()."""
+    #     headers = []
+    #     if hasattr(self.ui, "tableWidgetDefect") and self.ui.tableWidgetDefect.columnCount() > 0:
+    #         headers = [
+    #             (self.ui.tableWidgetDefect.horizontalHeaderItem(c).text()
+    #             if self.ui.tableWidgetDefect.horizontalHeaderItem(c) else f"Col {c}")
+    #             for c in range(self.ui.tableWidgetDefect.columnCount())
+    #         ]
+    #     elif hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
+    #         model = self.ui.tableView.model()
+    #         headers = [str(model.headerData(c, Qt.Orientation.Horizontal)) for c in range(model.columnCount())]
+    #     return headers
 
-    def _current_headers_for_filter(self) -> list[str]:
-        """Mirror the same header source used by _refresh_column_filter_options()."""
-        headers = []
-        if hasattr(self.ui, "tableWidgetDefect") and self.ui.tableWidgetDefect.columnCount() > 0:
-            headers = [
-                (self.ui.tableWidgetDefect.horizontalHeaderItem(c).text()
-                if self.ui.tableWidgetDefect.horizontalHeaderItem(c) else f"Col {c}")
-                for c in range(self.ui.tableWidgetDefect.columnCount())
-            ]
-        elif hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
-            model = self.ui.tableView.model()
-            headers = [str(model.headerData(c, Qt.Orientation.Horizontal)) for c in range(model.columnCount())]
-        return headers
 
-    def _currently_checked_in_dropdown(self) -> set[str]:
-        """Read the check state from the existing dropdown (_cf_model)."""
-        out = set()
-        for r in range(self._cf_model.rowCount()):
-            it = self._cf_model.item(r)
-            if it.checkState() == Qt.CheckState.Checked:
-                out.add(it.text())
-        return out
 
     # def open_column_filter_dialog(self):
     #     """Open column selector dialog and apply the result."""
@@ -1246,98 +1239,93 @@ class MyMainWindow(QMainWindow):
     #     self._selected_columns = set(dlg.selected_names()) | locked
     #     self.apply_column_filter()
 
-    def apply_column_filter(self):
-        """Hide/show columns based on self._selected_columns + locked columns."""
-        locked = set(getattr(self, "BACKEND_LOCKED_COLS", set()))
+    # def apply_column_filter(self):
+    #     """Hide/show columns based on self._selected_columns + locked columns."""
+    #     locked = set(getattr(self, "BACKEND_LOCKED_COLS", set()))
+    #
+    #     # If we have no selection yet, treat as 'show all'
+    #     if not self._selected_columns:
+    #         self._selected_columns = set(self._current_headers_for_filter()) | locked
+    #
+    #     names_to_keep = set(self._selected_columns) | locked
+    #
+    #     # Prefer bottom QTableWidgetDefect if it has columns
+    #     if hasattr(self.ui, "tableWidgetDefect") and self.ui.tableWidgetDefect.columnCount() > 0:
+    #         header_map = {
+    #             c: (self.ui.tableWidgetDefect.horizontalHeaderItem(c).text()
+    #                 if self.ui.tableWidgetDefect.horizontalHeaderItem(c) else f"Col {c}")
+    #             for c in range(self.ui.tableWidgetDefect.columnCount())
+    #         }
+    #         for c, name in header_map.items():
+    #             hide = (name not in names_to_keep) and (name not in locked)
+    #             self.ui.tableWidgetDefect.setColumnHidden(c, hide)
+    #         QTimer.singleShot(0, self._refresh_table_scrollbars)
+    #         return
+    #
+    #     # Fallback to the top QTableView
+    #     if hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
+    #         model = self.ui.tableView.model()
+    #         header_names = [str(model.headerData(c, Qt.Orientation.Horizontal)) for c in range(model.columnCount())]
+    #         for c, name in enumerate(header_names):
+    #             hide = (name not in names_to_keep) and (name not in locked)
+    #             self.ui.tableView.setColumnHidden(c, hide)
 
-        # If we have no selection yet, treat as 'show all'
-        if not self._selected_columns:
-            self._selected_columns = set(self._current_headers_for_filter()) | locked
+    # def _on_column_item_pressed(self, index):
+    #     """Toggle the check state; keep popup open and update summary."""
+    #     item = self._cf_model.itemFromIndex(index)
+    #     if not item:
+    #         return
+    #     item.setCheckState(
+    #         Qt.CheckState.Unchecked if item.checkState() == Qt.CheckState.Checked else Qt.CheckState.Checked
+    #     )
+    #     self._update_column_summary()
+    #     # keep popup open for multi-select
+    #     QTimer.singleShot(0, self.columnFilter.showPopup)
 
-        names_to_keep = set(self._selected_columns) | locked
 
-        # Prefer bottom QTableWidgetDefect if it has columns
-        if hasattr(self.ui, "tableWidgetDefect") and self.ui.tableWidgetDefect.columnCount() > 0:
-            header_map = {
-                c: (self.ui.tableWidgetDefect.horizontalHeaderItem(c).text()
-                    if self.ui.tableWidgetDefect.horizontalHeaderItem(c) else f"Col {c}")
-                for c in range(self.ui.tableWidgetDefect.columnCount())
-            }
-            for c, name in header_map.items():
-                hide = (name not in names_to_keep) and (name not in locked)
-                self.ui.tableWidgetDefect.setColumnHidden(c, hide)
-            QTimer.singleShot(0, self._refresh_table_scrollbars)
-            return
 
-        # Fallback to the top QTableView
-        if hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
-            model = self.ui.tableView.model()
-            header_names = [str(model.headerData(c, Qt.Orientation.Horizontal)) for c in range(model.columnCount())]
-            for c, name in enumerate(header_names):
-                hide = (name not in names_to_keep) and (name not in locked)
-                self.ui.tableView.setColumnHidden(c, hide)
-
-    def _on_column_item_pressed(self, index):
-        """Toggle the check state; keep popup open and update summary."""
-        item = self._cf_model.itemFromIndex(index)
-        if not item:
-            return
-        item.setCheckState(
-            Qt.CheckState.Unchecked if item.checkState() == Qt.CheckState.Checked else Qt.CheckState.Checked
-        )
-        self._update_column_summary()
-        # keep popup open for multi-select
-        QTimer.singleShot(0, self.columnFilter.showPopup)
-
-    def _column_summary_text(self):
-        """Show 'N selected' in the combobox line edit."""
-        m = self.columnFilter.model()
-        checked = sum(1 for i in range(m.rowCount()) if m.item(i).checkState() == Qt.CheckState.Checked)
-        if self.columnFilter.isEditable() and self.columnFilter.lineEdit():
-            self.columnFilter.lineEdit().setText(f"{checked} selected" if checked else "None")
-
-    def _setup_no_defects_label(self):
-        """Create and setup the 'No Defects Found' label with absolute positioning"""
-        # Create a container widget to control sizing
-        self._no_defects_container = QWidget()
-        self._no_defects_container.setMaximumSize(500, 200)
-        self._no_defects_container.setMinimumSize(400, 150)
-
-        # Set size policy to prevent expansion
-        self._no_defects_container.setSizePolicy(
-            QSizePolicy.Policy.Fixed,
-            QSizePolicy.Policy.Fixed
-        )
-
-        # Create the layout for the container
-        container_layout = QVBoxLayout(self._no_defects_container)
-        container_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Create the actual label
-        self._no_defects_label = QLabel("No Defects Found in this Pipe")
-        self._no_defects_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._no_defects_label.setStyleSheet("""
-            QLabel {
-                font-size: 16pt;
-                color: #666666;
-                font-weight: bold;
-                background-color: #f8f8f8;
-                border: 2px dashed #cccccc;
-                border-radius: 10px;
-                padding: 20px;
-                margin: 10px;
-            }
-        """)
-
-        container_layout.addWidget(self._no_defects_label)
-        self._no_defects_container.hide()
-
-        # Add to parent WITHOUT layout management
-        table_parent = self.ui.tableWidgetDefect.parentWidget()
-        if table_parent:
-            self._no_defects_container.setParent(table_parent)
-            # Position at specific coordinates (x=100, y=50)
-            self._no_defects_container.move(500, 50)  # ← TWEAK THESE VALUES
+    # def _setup_no_defects_label(self):
+    #     """Create and setup the 'No Defects Found' label with absolute positioning"""
+    #     # Create a container widget to control sizing
+    #     self._no_defects_container = QWidget()
+    #     self._no_defects_container.setMaximumSize(500, 200)
+    #     self._no_defects_container.setMinimumSize(400, 150)
+    #
+    #     # Set size policy to prevent expansion
+    #     self._no_defects_container.setSizePolicy(
+    #         QSizePolicy.Policy.Fixed,
+    #         QSizePolicy.Policy.Fixed
+    #     )
+    #
+    #     # Create the layout for the container
+    #     container_layout = QVBoxLayout(self._no_defects_container)
+    #     container_layout.setContentsMargins(0, 0, 0, 0)
+    #
+    #     # Create the actual label
+    #     self._no_defects_label = QLabel("No Defects Found in this Pipe")
+    #     self._no_defects_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    #     self._no_defects_label.setStyleSheet("""
+    #         QLabel {
+    #             font-size: 16pt;
+    #             color: #666666;
+    #             font-weight: bold;
+    #             background-color: #f8f8f8;
+    #             border: 2px dashed #cccccc;
+    #             border-radius: 10px;
+    #             padding: 20px;
+    #             margin: 10px;
+    #         }
+    #     """)
+    #
+    #     container_layout.addWidget(self._no_defects_label)
+    #     self._no_defects_container.hide()
+    #
+    #     # Add to parent WITHOUT layout management
+    #     table_parent = self.ui.tableWidgetDefect.parentWidget()
+    #     if table_parent:
+    #         self._no_defects_container.setParent(table_parent)
+    #         # Position at specific coordinates (x=100, y=50)
+    #         self._no_defects_container.move(500, 50)  # ← TWEAK THESE VALUES
 
     # def _setup_table_styling(self):
     #     """Setup bold headers and row numbers for tables"""
@@ -1388,178 +1376,170 @@ class MyMainWindow(QMainWindow):
 
 
 
-    def _restore_all_columns(self):
-        """Show all columns again (useful when closing a project)."""
-        if hasattr(self.ui, "tableWidgetDefect"):
-            for c in range(self.ui.tableWidgetDefect.columnCount()):
-                self.ui.tableWidgetDefect.setColumnHidden(c, False)
-        if hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
-            model = self.ui.tableView.model()
-            for c in range(model.columnCount()):
-                self.ui.tableView.setColumnHidden(c, False)
 
-    def _refresh_column_filter_options(self):
-        headers = []
-        if hasattr(self.ui, "tableWidgetDefect") and self.ui.tableWidgetDefect.columnCount() > 0:
-            headers = [
-                (self.ui.tableWidgetDefect.horizontalHeaderItem(c).text()
-                if self.ui.tableWidgetDefect.horizontalHeaderItem(c) else f"Col {c}")
-                for c in range(self.ui.tableWidgetDefect.columnCount())
-            ]
-        elif hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
-            model = self.ui.tableView.model()
-            headers = [str(model.headerData(c, Qt.Orientation.Horizontal)) for c in range(model.columnCount())]
 
-        self._cf_model.clear()
-        for name in headers:
-            if name in self.BACKEND_LOCKED_COLS:
-                continue  # ← don't show in dropdown, but still exists in table
-            it = QStandardItem(name)
-            it.setCheckable(True)
-            it.setCheckState(Qt.CheckState.Checked)
-            it.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-            self._cf_model.appendRow(it)
+    # def _refresh_column_filter_options(self):
+    #     headers = []
+    #     if hasattr(self.ui, "tableWidgetDefect") and self.ui.tableWidgetDefect.columnCount() > 0:
+    #         headers = [
+    #             (self.ui.tableWidgetDefect.horizontalHeaderItem(c).text()
+    #             if self.ui.tableWidgetDefect.horizontalHeaderItem(c) else f"Col {c}")
+    #             for c in range(self.ui.tableWidgetDefect.columnCount())
+    #         ]
+    #     elif hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
+    #         model = self.ui.tableView.model()
+    #         headers = [str(model.headerData(c, Qt.Orientation.Horizontal)) for c in range(model.columnCount())]
+    #
+    #     self._cf_model.clear()
+    #     for name in headers:
+    #         if name in self.BACKEND_LOCKED_COLS:
+    #             continue  # ← don't show in dropdown, but still exists in table
+    #         it = QStandardItem(name)
+    #         it.setCheckable(True)
+    #         it.setCheckState(Qt.CheckState.Checked)
+    #         it.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+    #         self._cf_model.appendRow(it)
+    #
+    #     self._update_column_summary()
+    #
+    # def _update_column_summary(self):
+    #     """Show 'All' / 'None' / 'N selected' in the combo line edit."""
+    #     total = self._cf_model.rowCount()
+    #     selected = sum(1 for r in range(total) if self._cf_model.item(r).checkState() == Qt.CheckState.Checked)
+    #     if not self.columnFilter.isEditable() or not self.columnFilter.lineEdit():
+    #         return
+    #     if selected == 0:
+    #         self.columnFilter.lineEdit().setText("None")
+    #     elif selected == total:
+    #         self.columnFilter.lineEdit().setText("All")
+    #     else:
+    #         self.columnFilter.lineEdit().setText(f"{selected} selected")
 
-        self._update_column_summary()
+    # def _setup_select_pipe_label(self):
+    #     """Create a polished overlay asking user to select a pipe"""
+    #     central = self.centralWidget()
+    #     self._select_pipe_container = QWidget(central)
+    #     self._select_pipe_container.setGeometry(central.rect())
+    #     self._select_pipe_container.setStyleSheet("""
+    #         background-color: rgba(255, 255, 255, 180);  /* frosted background */
+    #     """)
+    #
+    #     layout = QVBoxLayout(self._select_pipe_container)
+    #     layout.setContentsMargins(0, 0, 0, 0)
+    #     layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    #
+    #     # --- Inner card widget ---
+    #     card = QFrame()
+    #     card.setFixedWidth(500)
+    #     card.setStyleSheet("""
+    #         QFrame {
+    #             background-color: #ffffff;
+    #             border-radius: 16px;
+    #             border: 1px solid #d0d0d0;
+    #             padding: 30px;
+    #         }
+    #     """)
+    #     card_layout = QVBoxLayout(card)
+    #     card_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    #
+    #     # Icon
+    #     icon_label = QLabel("📂")
+    #     icon_label.setStyleSheet("font-size: 42px;")
+    #     card_layout.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignCenter)
+    #
+    #     # Title
+    #     title = QLabel("No Pipe Selected")
+    #     title.setStyleSheet("""
+    #         font-size: 22pt;
+    #         font-weight: 600;
+    #         color: #2c3e50;
+    #     """)
+    #     card_layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignCenter)
+    #
+    #     # Subtitle
+    #     subtitle = QLabel("Please choose a pipe number from the list above to continue.")
+    #     subtitle.setWordWrap(True)
+    #     subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    #     subtitle.setStyleSheet("""
+    #         font-size: 12pt;
+    #         color: #555;
+    #         margin-top: 10px;
+    #     """)
+    #     card_layout.addWidget(subtitle)
+    #
+    #     # Hint / efficiency tip
+    #     hint = QLabel("💡 You can also type a pipe number directly in the box.")
+    #     hint.setWordWrap(True)
+    #     hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    #     hint.setStyleSheet("""
+    #         font-size: 10pt;
+    #         color: #888;
+    #         margin-top: 15px;
+    #     """)
+    #     card_layout.addWidget(hint)
+    #
+    #     layout.addWidget(card)
+    #     self._select_pipe_container.hide()
 
-    def _update_column_summary(self):
-        """Show 'All' / 'None' / 'N selected' in the combo line edit."""
-        total = self._cf_model.rowCount()
-        selected = sum(1 for r in range(total) if self._cf_model.item(r).checkState() == Qt.CheckState.Checked)
-        if not self.columnFilter.isEditable() or not self.columnFilter.lineEdit():
-            return
-        if selected == 0:
-            self.columnFilter.lineEdit().setText("None")
-        elif selected == total:
-            self.columnFilter.lineEdit().setText("All")
-        else:
-            self.columnFilter.lineEdit().setText(f"{selected} selected")
+    # # ✅ Helper methods for showing/hiding message vs table
+    # def _show_no_defects_message(self):
+    #     try:
+    #         if hasattr(self, '_no_defects_container'):
+    #             self._no_defects_container.show()
+    #         if hasattr(self.ui, 'tableWidgetDefect'):
+    #             self.ui.tableWidgetDefect.clearSelection()
+    #             self.ui.tableWidgetDefect.hide()
+    #         if hasattr(self, 'table_scrollbar'):
+    #             self.table_scrollbar.hide()
+    #
+    #         if hasattr(self, 'left_vscrollbar'):
+    #             self.left_vscrollbar.hide()
+    #
+    #     except Exception as e:
+    #         print(f"Error showing no defects message: {e}")
 
-    def _setup_select_pipe_label(self):
-        """Create a polished overlay asking user to select a pipe"""
-        central = self.centralWidget()
-        self._select_pipe_container = QWidget(central)
-        self._select_pipe_container.setGeometry(central.rect())
-        self._select_pipe_container.setStyleSheet("""
-            background-color: rgba(255, 255, 255, 180);  /* frosted background */
-        """)
+    # def _force_table_scroll_update(self):
+    #     """Force table to refresh layout and scroll range after re-showing."""
+    #     try:
+    #         tw = getattr(self.ui, "tableWidgetDefect", None)
+    #         if not tw:
+    #             return
+    #
+    #         tw.viewport().update()
+    #         tw.updateGeometry()
+    #         tw.resizeRowsToContents()
+    #
+    #         tw.horizontalScrollBar().setValue(0)
+    #         tw.verticalScrollBar().update()
+    #         tw.horizontalScrollBar().update()
+    #         print("[DEBUG] Table scroll recalculated.")
+    #     except Exception as e:
+    #         print(f"[ERROR] Scroll recalculation failed: {e}")
 
-        layout = QVBoxLayout(self._select_pipe_container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # --- Inner card widget ---
-        card = QFrame()
-        card.setFixedWidth(500)
-        card.setStyleSheet("""
-            QFrame {
-                background-color: #ffffff;
-                border-radius: 16px;
-                border: 1px solid #d0d0d0;
-                padding: 30px;
-            }
-        """)
-        card_layout = QVBoxLayout(card)
-        card_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # Icon
-        icon_label = QLabel("📂")
-        icon_label.setStyleSheet("font-size: 42px;")
-        card_layout.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        # Title
-        title = QLabel("No Pipe Selected")
-        title.setStyleSheet("""
-            font-size: 22pt;
-            font-weight: 600;
-            color: #2c3e50;
-        """)
-        card_layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        # Subtitle
-        subtitle = QLabel("Please choose a pipe number from the list above to continue.")
-        subtitle.setWordWrap(True)
-        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle.setStyleSheet("""
-            font-size: 12pt;
-            color: #555;
-            margin-top: 10px;
-        """)
-        card_layout.addWidget(subtitle)
-
-        # Hint / efficiency tip
-        hint = QLabel("💡 You can also type a pipe number directly in the box.")
-        hint.setWordWrap(True)
-        hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        hint.setStyleSheet("""
-            font-size: 10pt;
-            color: #888;
-            margin-top: 15px;
-        """)
-        card_layout.addWidget(hint)
-
-        layout.addWidget(card)
-        self._select_pipe_container.hide()
-
-    # ✅ Helper methods for showing/hiding message vs table
-    def _show_no_defects_message(self):
-        try:
-            if hasattr(self, '_no_defects_container'):
-                self._no_defects_container.show()
-            if hasattr(self.ui, 'tableWidgetDefect'):
-                self.ui.tableWidgetDefect.clearSelection()
-                self.ui.tableWidgetDefect.hide()
-            if hasattr(self, 'table_scrollbar'):
-                self.table_scrollbar.hide()
-
-            if hasattr(self, 'left_vscrollbar'):
-                self.left_vscrollbar.hide()
-
-        except Exception as e:
-            print(f"Error showing no defects message: {e}")
-
-    def _force_table_scroll_update(self):
-        """Force table to refresh layout and scroll range after re-showing."""
-        try:
-            tw = getattr(self.ui, "tableWidgetDefect", None)
-            if not tw:
-                return
-
-            tw.viewport().update()
-            tw.updateGeometry()
-            tw.resizeRowsToContents()
-
-            tw.horizontalScrollBar().setValue(0)
-            tw.verticalScrollBar().update()
-            tw.horizontalScrollBar().update()
-            print("[DEBUG] Table scroll recalculated.")
-        except Exception as e:
-            print(f"[ERROR] Scroll recalculation failed: {e}")
-
-    def _reset_table_state(self):
-        """Force reset of table state when re-entering a pipe."""
-        try:
-            tw = self.ui.tableWidgetDefect
-            if not tw:
-                return
-            # Reset batching state variables
-            self._is_filling_table = False
-            self._pending_close_loader = False
-            self._table_fill_df = None
-            self._table_fill_row = 0
-
-            # Force Qt to rebuild scroll region
-            tw.clearSelection()
-            tw.viewport().update()
-            tw.updateGeometry()
-            tw.verticalScrollBar().setValue(0)
-            tw.horizontalScrollBar().setValue(0)
-            tw.verticalScrollBar().update()
-            tw.horizontalScrollBar().update()
-            QTimer.singleShot(200, self._refresh_table_scrollbars)
-            print("[DEBUG] Table state reset and scrollbars refreshed.")
-        except Exception as e:
-            print(f"[ERROR] Table reset failed: {e}")
+    # def _reset_table_state(self):
+    #     """Force reset of table state when re-entering a pipe."""
+    #     try:
+    #         tw = self.ui.tableWidgetDefect
+    #         if not tw:
+    #             return
+    #         # Reset batching state variables
+    #         self._is_filling_table = False
+    #         self._pending_close_loader = False
+    #         self._table_fill_df = None
+    #         self._table_fill_row = 0
+    #
+    #         # Force Qt to rebuild scroll region
+    #         tw.clearSelection()
+    #         tw.viewport().update()
+    #         tw.updateGeometry()
+    #         tw.verticalScrollBar().setValue(0)
+    #         tw.horizontalScrollBar().setValue(0)
+    #         tw.verticalScrollBar().update()
+    #         tw.horizontalScrollBar().update()
+    #         QTimer.singleShot(200, self._refresh_table_scrollbars)
+    #         print("[DEBUG] Table state reset and scrollbars refreshed.")
+    #     except Exception as e:
+    #         print(f"[ERROR] Table reset failed: {e}")
 
     # def _show_defects_table(self):
     #     try:
@@ -2219,52 +2199,52 @@ class MyMainWindow(QMainWindow):
     #     # Initial setup nudge
     #     QTimer.singleShot(100, lambda: table_inner_hbar.setValue(table_inner_hbar.value()))
 
-    def _refresh_table_scrollbars(self):
-        """Comprehensive table scrollbar refresh after container resize"""
-        try:
-            # For tableWidgetDefect (QTableWidget)
-            if hasattr(self.ui, 'tableWidgetDefect'):
-                tw = self.ui.tableWidgetDefect
-                # Force scroll mode and policy
-                tw.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
-                tw.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
-
-                # Set scroll speed
-                tw.verticalScrollBar().setSingleStep(15)
-
-                # Force geometry updates
-                tw.viewport().update()
-                tw.updateGeometry()
-                tw.resizeRowsToContents()
-
-                # Force scrollbar range recalculation
-                vsb = tw.verticalScrollBar()
-                vsb.update()
-                # Trigger a fake scroll to force range update
-                current_val = vsb.value()
-                vsb.setValue(min(current_val + 1, vsb.maximum()))
-                vsb.setValue(current_val)
-
-            # For tableView (QTableView with model)
-            if hasattr(self.ui, 'tableView'):
-                tv = self.ui.tableView
-                tv.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
-                tv.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
-
-                # Set scroll speed
-                tv.verticalScrollBar().setSingleStep(15)
-
-                tv.viewport().update()
-                tv.updateGeometry()
-
-                vsb = tv.verticalScrollBar()
-                vsb.update()
-                current_val = vsb.value()
-                vsb.setValue(min(current_val + 1, vsb.maximum()))
-                vsb.setValue(current_val)
-
-        except Exception as e:
-            print(f"Error refreshing table scrollbars: {e}")
+    # def _refresh_table_scrollbars(self):
+    #     """Comprehensive table scrollbar refresh after container resize"""
+    #     try:
+    #         # For tableWidgetDefect (QTableWidget)
+    #         if hasattr(self.ui, 'tableWidgetDefect'):
+    #             tw = self.ui.tableWidgetDefect
+    #             # Force scroll mode and policy
+    #             tw.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+    #             tw.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+    #
+    #             # Set scroll speed
+    #             tw.verticalScrollBar().setSingleStep(15)
+    #
+    #             # Force geometry updates
+    #             tw.viewport().update()
+    #             tw.updateGeometry()
+    #             tw.resizeRowsToContents()
+    #
+    #             # Force scrollbar range recalculation
+    #             vsb = tw.verticalScrollBar()
+    #             vsb.update()
+    #             # Trigger a fake scroll to force range update
+    #             current_val = vsb.value()
+    #             vsb.setValue(min(current_val + 1, vsb.maximum()))
+    #             vsb.setValue(current_val)
+    #
+    #         # For tableView (QTableView with model)
+    #         if hasattr(self.ui, 'tableView'):
+    #             tv = self.ui.tableView
+    #             tv.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+    #             tv.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+    #
+    #             # Set scroll speed
+    #             tv.verticalScrollBar().setSingleStep(15)
+    #
+    #             tv.viewport().update()
+    #             tv.updateGeometry()
+    #
+    #             vsb = tv.verticalScrollBar()
+    #             vsb.update()
+    #             current_val = vsb.value()
+    #             vsb.setValue(min(current_val + 1, vsb.maximum()))
+    #             vsb.setValue(current_val)
+    #
+    #     except Exception as e:
+    #         print(f"Error refreshing table scrollbars: {e}")
 
     def _show_watermark(self):
         try:
@@ -2716,8 +2696,6 @@ class MyMainWindow(QMainWindow):
         except Exception:
             pass
 
-
-
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if hasattr(self, "_select_pipe_container") and self._select_pipe_container.isVisible():
@@ -2891,10 +2869,10 @@ class MyMainWindow(QMainWindow):
     #     if hasattr(self, "tabSwitcherDropdown"):
     #         self.tabSwitcherDropdown.setEnabled(True)
 
-    @staticmethod
-    def _extract_index(text: str) -> str:
-        m = re.search(r'\d+', text)
-        return m.group(0) if m else text
+    # @staticmethod
+    # def _extract_index(text: str) -> str:
+    #     m = re.search(r'\d+', text)
+    #     return m.group(0) if m else text
 
     # ✅ Updated _populate_defect_table_from_tally with "No Defects Found" logic
     # def _populate_defect_table_from_tally(self, df: pd.DataFrame):
@@ -5082,6 +5060,7 @@ class MyMainWindow(QMainWindow):
 
         # Initial apply on next tick (table might not have full range yet)
         QTimer.singleShot(0, _apply_range)
+
     def open_Ptal(self):
         try:
             file_path, _ = QFileDialog.getOpenFileName(
@@ -5125,27 +5104,33 @@ class MyMainWindow(QMainWindow):
 
         print(f"Table visibility toggled: {'Hidden' if self._table_hidden else 'Shown'}")
 
-
     def on_combo_index_changed(self, combo_idx: int):
         if not self.project_is_open or combo_idx < 0:
             return
         self.load_selected_by_index(combo_idx)
 
 
-    def populate_column_filter(self, df: pd.DataFrame):
-        """Fill dropdown with all DataFrame columns (checkable)."""
-        model = self.columnFilter.model()
-        model.clear()
-
-        for col in df.columns:
-            it = QStandardItem(str(col))
-            # Make it user-checkable and enabled
-            it.setFlags(it.flags() | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
-            it.setData(Qt.CheckState.Checked, Qt.ItemDataRole.CheckStateRole)
-            model.appendRow(it)
-
-        # Update summary (e.g., "12 selected")
-        self._column_summary_text()
+    # def populate_column_filter(self, df: pd.DataFrame):
+    #     """Fill dropdown with all DataFrame columns (checkable)."""
+    #     model = self.columnFilter.model()
+    #     model.clear()
+    #
+    #     for col in df.columns:
+    #         it = QStandardItem(str(col))
+    #         # Make it user-checkable and enabled
+    #         it.setFlags(it.flags() | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
+    #         it.setData(Qt.CheckState.Checked, Qt.ItemDataRole.CheckStateRole)
+    #         model.appendRow(it)
+    #
+    #     # Update summary (e.g., "12 selected")
+    #     self._column_summary_text()
+    #
+    # def _column_summary_text(self):
+    #     """Show 'N selected' in the combobox line edit."""
+    #     m = self.columnFilter.model()
+    #     checked = sum(1 for i in range(m.rowCount()) if m.item(i).checkState() == Qt.CheckState.Checked)
+    #     if self.columnFilter.isEditable() and self.columnFilter.lineEdit():
+    #         self.columnFilter.lineEdit().setText(f"{checked} selected" if checked else "None")
 
     def set_loading(self, msg="Loading"):
         self.current_message = msg
@@ -5159,6 +5144,16 @@ class MyMainWindow(QMainWindow):
         self.timer.stop()
         self._t0 = None
         self.right_status_label.setText("0.0s")
+
+    def _restore_all_columns(self):
+        """Show all columns again (useful when closing a project)."""
+        if hasattr(self.ui, "tableWidgetDefect"):
+            for c in range(self.ui.tableWidgetDefect.columnCount()):
+                self.ui.tableWidgetDefect.setColumnHidden(c, False)
+        if hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
+            model = self.ui.tableView.model()
+            for c in range(model.columnCount()):
+                self.ui.tableView.setColumnHidden(c, False)
 
     # def _reset_ui_to_start_state(self):
     #     # mark app state
@@ -5247,3 +5242,13 @@ class MyMainWindow(QMainWindow):
     #         except Exception:
     #             pass
     #     self.update_digsheet_button_state()
+
+
+    # def _currently_checked_in_dropdown(self) -> set[str]:
+    #     """Read the check state from the existing dropdown (_cf_model)."""
+    #     out = set()
+    #     for r in range(self._cf_model.rowCount()):
+    #         it = self._cf_model.item(r)
+    #         if it.checkState() == Qt.CheckState.Checked:
+    #             out.add(it.text())
+    #     return out

@@ -373,7 +373,7 @@ def load_selected_by_index(self, idx: int):
 
         pkl_path = self.pkl_files[idx]
         name = os.path.splitext(os.path.basename(pkl_path))[0]
-        pipe_idx = self._extract_index(name)
+        pipe_idx = _extract_index(self, name)
 
         # Show loading dialog
         self.loading_dialog = ModernLoadingDialog(self)
@@ -491,3 +491,8 @@ def load_prev_pipe(self):
     if idx > 0:  # not first
         cb.setCurrentIndex(idx - 1)
         load_selected_pipe(self)
+
+@staticmethod
+def _extract_index(self, text: str) -> str:
+    m = re.search(r'\d+', text)
+    return m.group(0) if m else text
