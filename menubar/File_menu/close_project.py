@@ -1,14 +1,15 @@
 from PyQt6.QtCore import QUrl
 from PyQt6.QtWidgets import QMessageBox
 
-from main_window.components.helper_func import _update_project_actions
+from main_section_view.utils import _toggle_plot_ui
+from main_window.components.helper_func import _update_project_actions, _close_graphs_view
 from menubar.File_menu.helper_func import _force_full_start_state
 
 
 def close_project(self):
     try:
         # 1) Stop any secondary views / background loaders
-        self._close_graphs_view()
+        _close_graphs_view(self)
         try:
             if getattr(self, "loader_worker", None) and self.loader_worker.isRunning():
                 self.loader_worker.requestInterruption()
@@ -95,7 +96,7 @@ def close_project(self):
         if hasattr(self, "bottom_stack"):
             self.bottom_stack.setCurrentIndex(0)  # hide table pane
         self._show_watermark()
-        self._toggle_plot_ui(False)
+        _toggle_plot_ui(self, False)
 
         if hasattr(self, "_select_pipe_container") and self._select_pipe_container:
             self._select_pipe_container.hide()

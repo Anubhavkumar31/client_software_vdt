@@ -4,6 +4,7 @@ import pandas as pd
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QAction
 
+from main_section_view.utils import _toggle_plot_ui
 from main_window.components.helper_func import _update_project_actions
 
 
@@ -24,7 +25,7 @@ def setup_initial_ui_state(self):
     app opens in a clean, stable, predictable state.
     -------------------------------------------------------------
     """
-    self._toggle_plot_ui(False)
+    _toggle_plot_ui(self, False)
     _update_project_actions(self)
 
     self.setStyleSheet("QMainWindow { background-color: #FFFFFF; color: #000000; }")

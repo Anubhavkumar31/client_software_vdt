@@ -5,6 +5,8 @@ import importlib.util
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QHBoxLayout, QLabel
+
+from main_window.components.helper_func import _close_graphs_view
 from ui.graphs_ui import GraphApp
 
 def resource_path(relative_path):
@@ -65,7 +67,7 @@ def open_graphs(self):
                 border: 1.5px solid #cccccc;
             }
         """)
-        back_btn.clicked.connect(self._close_graphs_view)
+        back_btn.clicked.connect(lambda :_close_graphs_view(self))
         title = QLabel("Graphs")
         title.setStyleSheet("font-weight: 600; font-size: 14pt;")
         header.addWidget(back_btn);

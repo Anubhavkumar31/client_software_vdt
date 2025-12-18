@@ -20,6 +20,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6 import QtWidgets
 from main_section_view.helpers_temp import _arm_topbar
+from main_section_view.utils import _apply_heatmap_layout
+
 SCROLLBAR_STYLE = """
 QScrollBar:vertical {
     background: #2b2b2b;
@@ -691,7 +693,7 @@ def _build_main_section(self):
     self.top_hsplit.addWidget(self.right_scroll)
     dual_lay.addWidget(self.top_hsplit)
 
-    QTimer.singleShot(0, self._apply_heatmap_layout)
+    QTimer.singleShot(0, lambda : _apply_heatmap_layout(self))
 
     # ----------------------------------------------------------------------
     # TOP STACK (Single Chart / Dual Heatmaps)

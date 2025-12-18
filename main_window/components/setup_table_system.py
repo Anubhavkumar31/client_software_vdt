@@ -3,6 +3,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QAbstractItemView, QWidget, QVBoxLayout, QFrame, QLabel, QSizePolicy
 
 from main_section_view.table_data_worker import _setup_table_styling
+from main_section_view.utils import update_digsheet_button_state
 
 
 def setup_table_scroll(table):
@@ -63,11 +64,11 @@ def setup_table_system(self):
 
     try: tw.itemSelectionChanged.disconnect()
     except: pass
-    tw.itemSelectionChanged.connect(self.update_digsheet_button_state)
+    tw.itemSelectionChanged.connect(lambda : update_digsheet_button_state(self))
 
     try: tw.cellClicked.disconnect()
     except: pass
-    tw.cellClicked.connect(lambda *_: self.update_digsheet_button_state())
+    tw.cellClicked.connect(lambda *_: update_digsheet_button_state(self))
 
     _setup_no_defects_label(self)
     _setup_select_pipe_label(self)

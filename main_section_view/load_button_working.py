@@ -3,12 +3,13 @@ import re
 import time
 
 import pandas as pd
-from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QAbstractTableModel, QVariant
+from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QAbstractTableModel, QVariant, QUrl
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QProgressBar, QHBoxLayout, QMessageBox
 from glob import glob
 
-from main_section_view.helpers_temp import _arm_topbar, _arm_main_topbar
+from main_section_view.helpers_temp import _arm_topbar, _arm_main_topbar, tab_switcher2
 from main_section_view.table_data_worker import on_table_data_ready_con
+from main_section_view.utils import update_digsheet_button_state
 
 
 class ModernLoadingDialog(QDialog):
@@ -455,11 +456,11 @@ def on_loading_finished(self):
         self.loader_worker = None
 
     # Refresh the current view and topbars
-    self._refresh_current_view()
+    _refresh_current_view(self)
     QTimer.singleShot(0, lambda : _arm_topbar(self))
     QTimer.singleShot(0, lambda : _arm_main_topbar(self))
-    self.update_digsheet_button_state()
-    QTimer.singleShot(100, self.update_digsheet_button_state)
+    update_digsheet_button_state(self)
+    QTimer.singleShot(100, lambda : update_digsheet_button_state(self))
     # 👇 keep Load button disabled after file load
     self.btnLoadPipe.setEnabled(False)
     # Reset dropdown to Heatmap when pipe loads
@@ -496,3 +497,14 @@ def load_prev_pipe(self):
 def _extract_index(self, text: str) -> str:
     m = re.search(r'\d+', text)
     return m.group(0) if m else text
+
+def _refresh_current_view(self):
+    """Force the current tab to re-render with latest asset paths."""
+    try:
+        # Clear both views to avoid showing stale content
+        self.web_view.setUrl(QUrl())
+        self.web_view2.setUrl(QUrl())
+    except Exception:
+        pass
+    # Let the event loop breathe, then render the right thing for the active tab
+    QTimer.singleShot(0, lambda: tab_switcher2(self))

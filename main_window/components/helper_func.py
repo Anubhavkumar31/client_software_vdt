@@ -61,3 +61,67 @@ def _update_generate_actions(self):
     # Update Digsheet actions (both standard and ABS-based)
     if hasattr(self.ui, 'actionStandard'):  # Standard digsheet
         self.ui.actionStandard.setEnabled(self.project_is_open and has_pipe_tally)
+
+
+def _close_graphs_view(self):
+    try:
+        if self.centralWidget() is self._central_original:
+            return
+        graphs_central = self.takeCentralWidget()
+        if graphs_central is not None:
+            graphs_central.deleteLater()
+        if self._central_original is not None:
+            if self._central_original.parent() is not self:
+                self._central_original.setParent(self)
+            self.setCentralWidget(self._central_original)
+        self._graphs_widget = None
+        self._central_graphs = None
+    except Exception as e:
+        print("⚠️ _close_graphs_view:", e)
+
+
+def create_instances(self):
+    self.child_windows = {}
+
+    self._central_original = self.centralWidget()
+    self._central_graphs = None
+    self._graphs_widget = None
+
+    self.project_is_open = False
+    self.project_root = None
+    self.pkl_files = []
+    self.curr_data = None
+    self.header_list = []
+    self.pipe_tally = None
+    self.prox_linechart = None
+
+    self.hmap = None
+    self.hmap_r = None
+    self.lplot = None
+    self.lplot_r = None
+    self.pipe3d = None
+    self.heatmap_box = None
+    self._hscroll_ready = False  # gate to avoid big first jump
+    self._hscroll_ready_main = False  # gate for main web view scrollbar
+    # --- Splitter limits (pixels) ---
+    self._min_top_h = 220  # top pane (charts) must be at least this tall
+    self._min_bottom_h = 250  # bottom pane (tables/proximity) must be at least this tall
+    self._max_top_h = None  # or set e.g. 900
+    self._max_bottom_h = None  # or set e.g. 900
+    self._right_margin_px = 300
+    self._hscroll_ready_table = False  # gate for table scrollbar... # guard state
+    self._reverting_tab = False
+    self._last_allowed_tab_index = 0
+    self._ui_ready = False  # set true after first layout/show
+    self._selected_columns: set[str] = set()
+    self.hhmap = None  # hallsensor_heatmap*.html
+    self.phmap = None  # proximity_heatmap*.html
+    self._hm_layout_mode = "vertical"  # "horizontal" = side-by-side, "vertical" = stacked
+    self.hm_left_ratio = 0.40  # 50-50 split in side-by-side mode
+
+    # ✅ Initialize "No Defects Found" label
+    self._no_defects_label = None
+
+    # Threading setup
+    self.loader_worker = None
+    self.loading_dialog = None

@@ -1,11 +1,32 @@
 import numpy as np
 import pandas as pd
 from PyQt6 import QtWidgets
-from PyQt6.QtCore import Qt, QTimer, QEventLoop
+from PyQt6.QtCore import Qt, QTimer, QEventLoop, QSortFilterProxyModel
+from PyQt6.QtGui import QStandardItemModel
 from PyQt6.QtWidgets import QTableWidgetItem, QHeaderView
 
 # from main_window.main_window import setup_table_scroll
-from main_section_view.utils import _current_headers_for_filter, _refresh_table_scrollbars
+from main_section_view.utils import _current_headers_for_filter, _refresh_table_scrollbars, BACKEND_LOCKED_COLS, \
+    update_digsheet_button_state
+
+
+def _setup_table_models_and_behavior(self):
+    self.model = QStandardItemModel(self)
+    self.proxy_model = QSortFilterProxyModel(self)
+    self.proxy_model.setSourceModel(self.model)
+    self.ui.tableView.setModel(self.proxy_model)
+
+    # after other attrs like self.prox_linechart = None
+    self._scroll_scale = 3  # try 5–10; higher => gentler/longer scroll
+    setup_table_scroll(self.ui.tableView)
+    # ✅ Prevent the tables from auto-resizing to content (so scrollbars appear)
+    self.ui.tableWidgetDefect.setSizeAdjustPolicy(
+        QtWidgets.QAbstractScrollArea.SizeAdjustPolicy.AdjustIgnored
+    )
+    self.ui.tableView.setSizeAdjustPolicy(
+        QtWidgets.QAbstractScrollArea.SizeAdjustPolicy.AdjustIgnored
+    )
+
 
 
 def _toggle_table_visibility_con(self):
@@ -271,11 +292,11 @@ def _populate_defect_table_from_csv(self, df: pd.DataFrame):
 
     # Apply styling
     _setup_table_styling(self)
-    self.update_digsheet_button_state()
+    update_digsheet_button_state(self)
 
     # ✅ keep the dropdown in sync with the visible table headers
     if not self._selected_columns:
-        self._selected_columns = set(_current_headers_for_filter(self)) | set(self.BACKEND_LOCKED_COLS)
+        self._selected_columns = set(_current_headers_for_filter(self)) | set(BACKEND_LOCKED_COLS)
     apply_column_filter(self)
 
 
@@ -396,7 +417,7 @@ def _fill_tablewidget_chunk(self):
 
         # ✅ make the dropdown mirror the final table headers (== desired cols)
         if not self._selected_columns:
-            self._selected_columns = set(_current_headers_for_filter(self)) | set(self.BACKEND_LOCKED_COLS)
+            self._selected_columns = set(_current_headers_for_filter(self)) | set(BACKEND_LOCKED_COLS)
         apply_column_filter(self)
 
 
@@ -407,7 +428,7 @@ def _fill_tablewidget_chunk(self):
                 pass
             self.loading_dialog = None
 
-        self.update_digsheet_button_state()
+        update_digsheet_button_state(self)
         QTimer.singleShot(0, lambda : _refresh_table_scrollbars(self))
     else:
         # schedule next chunk (async → UI stays alive)

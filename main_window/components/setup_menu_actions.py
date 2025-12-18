@@ -1,5 +1,6 @@
 from main_section_view.helpers_temp import _on_middle_tab_changed, syncdropdownwithtabs, _connect_guarded_graph_controls
 from main_section_view.load_button_working import load_prev_pipe, load_next_pipe
+from main_section_view.utils import update_load_button_state
 from menubar.File_menu.close_project import close_project
 from menubar.File_menu.open_project import open_project
 from menubar.File_menu.quit_app import quit_app
@@ -32,7 +33,7 @@ def setup_menu_actions(self):
     setup_actions(self)
 
     # load button state on depend on whats in pipe number selection dropdown
-    self.ui.comboBoxPipe.currentIndexChanged.connect(self.update_load_button_state)
+    self.ui.comboBoxPipe.currentIndexChanged.connect(lambda idx: update_load_button_state(self, idx))
 
     #heatmap/linechart/3dgraph guarded connections
     _connect_guarded_graph_controls(self)

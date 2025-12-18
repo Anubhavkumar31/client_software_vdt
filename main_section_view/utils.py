@@ -1,8 +1,13 @@
-from PyQt6.QtCore import Qt, QTimer
+import pandas as pd
+from PyQt6.QtCore import Qt, QTimer, QUrl, QEvent
 
 #used by column_filter_worker and table_data_worker
 from PyQt6.QtGui import QStandardItem
-from PyQt6.QtWidgets import QAbstractItemView
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtWidgets import QAbstractItemView, QMessageBox, QDialog
+
+from main_section_view.digsheet_abs_worker import _is_graph_tab_ok, _has_valid_abs_selection
+
 
 
 def _current_headers_for_filter(self) -> list[str]:
@@ -124,4 +129,154 @@ def _show_no_defects_message(self):
         print(f"Error showing no defects message: {e}")
 
 
+def _toggle_plot_ui(self, enabled: bool):
+    tab_names = {"Heatmap", "LineChart", "Line Chart", "Line Plot", "3D Graph", "3D"}
+    tw = self.ui.tabWidgetM
+    for i in range(tw.count()):
+        if tw.tabText(i) in tab_names:
+            tw.setTabEnabled(i, enabled)
+    try:
+        self.update_digsheet_button_state()
+    except Exception:
+        pass
 
+
+BACKEND_LOCKED_COLS = {"Empty"}  # for styling purpose this is takin extra ,DONT REMOVE IT FROM THE SET
+
+
+def _apply_heatmap_layout(self, mode: str = None):
+    """Apply horizontal (side-by-side) or vertical (stacked) layout for dual heatmaps"""
+    # Use provided mode or fall back to current mode
+    if mode is None:
+        mode = getattr(self, '_hm_layout_mode', 'horizontal')
+
+    # Safety checks
+    if not hasattr(self, 'top_hsplit'):
+        print("Warning: top_hsplit not found, skipping layout change")
+        return
+
+    self._hm_layout_mode = mode
+
+    # Change splitter orientation
+    if mode == "horizontal":
+        self.top_hsplit.setOrientation(Qt.Orientation.Horizontal)
+        if hasattr(self, 'btnToggleHmLayout'):
+            self.btnToggleHmLayout.setText("stack" if mode == "horizontal" else "side-by-side")
+        # Apply 50-50 split
+        total = self.top_hsplit.width()
+        left = int(total * 0.38)
+        right = total - left
+        self.top_hsplit.setSizes([left, right])
+    else:  # vertical
+        self.top_hsplit.setOrientation(Qt.Orientation.Vertical)
+        if hasattr(self, 'btnToggleHmLayout'):
+            self.btnToggleHmLayout.setText("Side-by-side")
+        # Apply 50-50 split
+        total = self.top_hsplit.height()
+        top = (total // 2) - 95
+        bottom = total - top
+        self.top_hsplit.setSizes([top, bottom])
+
+    print(f"Heatmap layout changed to: {mode}")
+
+
+
+def _show_disabled_digsheet_hint(self):
+    QMessageBox.information(
+        self,
+        "Digsheet",
+        "Please choose <b>Absolute Distance</b> from the defect table below to generate the digsheet."
+    )
+
+def _project_required_popup(self):
+    QMessageBox.information(
+        self,
+        "Project Required",
+        "Please create project before proceeding further."
+    )
+
+def _project_gate_targets(self):
+    names = [
+        "btnHeatmap", "btnLinechart", "btn3D",
+        "toolButtonHeatmap", "toolButtonLine", "toolButton3D", "toolButtonXYZ",
+    ]
+    widgets = [self.btnDigsheetAbs]
+    for n in names:
+        w = getattr(self.ui, n, None)
+        if w is not None:
+            widgets.append(w)
+    return [w for w in widgets if hasattr(w, "mapFromGlobal")]
+
+def eventFilter(self, obj, ev):
+    try:
+        # Intercept mid tab bar clicks when no project (so repeated clicks also show popup)
+        if obj is self.mid_tabbar and ev.type() == QEvent.Type.MouseButtonPress:
+            if self._ui_ready and not self.project_is_open:
+                self._project_required_popup()
+                return True  # consume
+
+        if ev.type() == QEvent.Type.MouseButtonPress:
+            # PROJECT GATE for widget buttons
+            if self._ui_ready and not self.project_is_open:
+                if hasattr(ev, "globalPosition"):
+                    gp = ev.globalPosition().toPoint()
+                else:
+                    gp = ev.globalPos()
+                for w in self._project_gate_targets():
+                    if w and w.isVisible():
+                        local = w.mapFromGlobal(gp)
+                        if w.rect().contains(local):
+                            self._project_required_popup()
+                            return True  # consume
+
+            # DISABLED DIGSHEET HINT
+            btn = getattr(self, "btnDigsheetAbs", None)
+            if btn is not None and btn.isVisible() and not btn.isEnabled():
+                if hasattr(ev, "globalPosition"):
+                    gp = ev.globalPosition().toPoint()
+                else:
+                    gp = ev.globalPos()
+                local = btn.mapFromGlobal(gp)
+                if btn.rect().contains(local):
+                    self._show_disabled_digsheet_hint()
+                    return True  # consume
+    except Exception:
+        pass
+    return super().eventFilter(obj, ev)
+
+
+def update_digsheet_button_state(self):
+    if not self.project_is_open:
+        self.btnDigsheetAbs.setEnabled(False)
+        self.btnDigsheetAbs.setCursor(Qt.CursorShape.ForbiddenCursor)
+        self.btnDigsheetAbs.setToolTip("Create a project first to enable Digsheet generation.")
+        return
+    can_show = (
+            self.project_is_open
+            and isinstance(self.pipe_tally, pd.DataFrame)
+            and _is_graph_tab_ok(self)
+            and _has_valid_abs_selection(self)
+    )
+    self.btnDigsheetAbs.setEnabled(bool(can_show))
+
+    if can_show:
+        self.btnDigsheetAbs.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btnDigsheetAbs.setToolTip("Click to generate Digsheet for the selected Absolute Distance.")
+    else:
+        self.btnDigsheetAbs.setCursor(Qt.CursorShape.ForbiddenCursor)
+        self.btnDigsheetAbs.setToolTip("Select an Absolute Distance cell in the table below to enable.")
+
+
+def update_load_button_state(self, idx: int):
+    if not hasattr(self, "btnLoadPipe"):
+        return
+
+    text = self.ui.comboBoxPipe.currentText().strip()
+    items = [self.ui.comboBoxPipe.itemText(i) for i in range(self.ui.comboBoxPipe.count())]
+
+    # ✅ Enable Load if: a valid index OR a valid typed text
+    if self.project_is_open and (idx >= 0 or text in items):
+        self.btnLoadPipe.setEnabled(True)
+        # ❌ Do NOT hide overlay here anymore
+    else:
+        self.btnLoadPipe.setEnabled(False)

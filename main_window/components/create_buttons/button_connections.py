@@ -64,24 +64,6 @@ def load_selected_pipe(self):
     #self.btnLoadPipe.clicked.connect(self.load_selected_pipe)
 
 #filter button connection
-# def open_column_filter_dialog(self):
-#     """Open column selector dialog and apply the result."""
-#     headers = self._current_headers_for_filter()
-#     locked = set(getattr(self, "BACKEND_LOCKED_COLS", set()))
-#
-#     # default: first time, select everything that's not locked
-#     if not self._selected_columns:
-#         checked = set(h for h in headers if h not in locked)
-#     else:
-#         checked = set(h for h in self._selected_columns if h in headers and h not in locked)
-#
-#     dlg = ColumnFilterDialog(headers=headers, checked=checked, locked=locked, parent=self)
-#     if dlg.exec() != QDialog.DialogCode.Accepted:
-#         return
-#
-#     # persist + apply (locked are always enforced)
-#     self._selected_columns = set(dlg.selected_names()) | locked
-#     apply_column_filter(self)
 def open_column_filter_dialog(self):
     open_column_filter_dialog_con(self)
 

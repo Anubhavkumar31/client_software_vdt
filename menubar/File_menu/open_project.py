@@ -5,6 +5,7 @@ import pandas as pd
 from PyQt6 import QtWidgets
 from PyQt6.QtWidgets import QMessageBox, QFileDialog
 
+from main_section_view.utils import _toggle_plot_ui
 from main_window.components.helper_func import _update_project_actions
 from menubar.File_menu.helper_func import _force_full_start_state
 
@@ -21,7 +22,7 @@ def open_project(self):
         dlg.setWindowTitle("Select Project Folder (PKLs + pipe_* folders)")
         if dlg.exec() != QFileDialog.DialogCode.Accepted:
             self.project_is_open = False
-            self._toggle_plot_ui(False)
+            _toggle_plot_ui(self, False)
             self._show_watermark()
             _update_project_actions(self)
 
@@ -80,7 +81,7 @@ def open_project(self):
         if self.pkl_files:
             self.project_is_open = True
             _hide_create_project_message(self)
-            self._toggle_plot_ui(True)
+            _toggle_plot_ui(self, True)
             _force_heatmap_start(self)
             # 🔹 Force-enable Heatmap control buttons since Heatmap is the first visible tab
             if hasattr(self, "btnToggleTable"):
@@ -97,7 +98,7 @@ def open_project(self):
             self.update_load_button_state(self.ui.comboBoxPipe.currentIndex())
         else:
             self.project_is_open = False
-            self._toggle_plot_ui(False)
+            _toggle_plot_ui(self, False)
             self._show_watermark()
             QMessageBox.warning(self, "No PKLs", "No .pkl files found in the selected folder.")
 
@@ -108,7 +109,7 @@ def open_project(self):
         _update_project_actions(self)
     except Exception as e:
         self.project_is_open = False
-        self._toggle_plot_ui(False)
+        _toggle_plot_ui(self, False)
         self._show_watermark()
         _update_project_actions(self)
 

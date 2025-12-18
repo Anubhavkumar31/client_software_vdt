@@ -4,6 +4,7 @@ from PyQt6.QtCore import QTimer, Qt, QUrl, pyqtSignal
 from PyQt6.QtWebEngineCore import QWebEnginePage
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 
+from main_section_view.utils import update_digsheet_button_state
 from ui.graphs_ui import GraphApp
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QMessageBox, QDialog
@@ -181,7 +182,7 @@ def _on_middle_tab_changed(self, index: int):
         QTimer.singleShot(100, lambda : _reset_splitter_ratio(self, 0.45))
 
     tab_switcher2(self)
-    self.update_digsheet_button_state()
+    update_digsheet_button_state(self)
 
 def syncdropdownwithtabs(self, index: int):
     """Sync dropdown when tab changes from other sources"""
@@ -318,7 +319,40 @@ def apply_column_filter(self):
             self.ui.tableView.setColumnHidden(c, hide)
 
 
+def _apply_heatmap_layout(self, mode: str = None):
+    """Apply horizontal (side-by-side) or vertical (stacked) layout for dual heatmaps"""
+    # Use provided mode or fall back to current mode
+    if mode is None:
+        mode = getattr(self, '_hm_layout_mode', 'horizontal')
 
+    # Safety checks
+    if not hasattr(self, 'top_hsplit'):
+        print("Warning: top_hsplit not found, skipping layout change")
+        return
+
+    self._hm_layout_mode = mode
+
+    # Change splitter orientation
+    if mode == "horizontal":
+        self.top_hsplit.setOrientation(Qt.Orientation.Horizontal)
+        if hasattr(self, 'btnToggleHmLayout'):
+            self.btnToggleHmLayout.setText("stack" if mode == "horizontal" else "side-by-side")
+        # Apply 50-50 split
+        total = self.top_hsplit.width()
+        left = int(total * 0.38)
+        right = total - left
+        self.top_hsplit.setSizes([left, right])
+    else:  # vertical
+        self.top_hsplit.setOrientation(Qt.Orientation.Vertical)
+        if hasattr(self, 'btnToggleHmLayout'):
+            self.btnToggleHmLayout.setText("Side-by-side")
+        # Apply 50-50 split
+        total = self.top_hsplit.height()
+        top = (total // 2) - 95
+        bottom = total - top
+        self.top_hsplit.setSizes([top, bottom])
+
+    print(f"Heatmap layout changed to: {mode}")
 
 
 #tab_switcher used in on middle tab changed and its helper func
@@ -340,19 +374,19 @@ def tab_switcher2(self, *_):
 
             # Load both heatmaps into the splitter
             if self.hhmap and hasattr(self, 'web_view_left'):
-                self._load_scrollable_chart(self.web_view_left, self.hhmap, min_w=2200, min_h=1400)
+                _load_scrollable_chart(self, self.web_view_left, self.hhmap, min_w=2200, min_h=1400)
             else:
                 if hasattr(self, 'web_view_left'):
                     self.web_view_left.setUrl(QUrl())
 
             if self.phmap and hasattr(self, 'web_view_right'):
-                self._load_scrollable_chart(self.web_view_right, self.phmap, min_w=2200, min_h=1400)
+                _load_scrollable_chart(self, self.web_view_right, self.phmap, min_w=2200, min_h=1400)
             else:
                 if hasattr(self, 'web_view_right'):
                     self.web_view_right.setUrl(QUrl())
 
             # Apply the current layout mode
-            self._apply_heatmap_layout(self._hm_layout_mode)
+            _apply_heatmap_layout(self, self._hm_layout_mode)
             # --- 🔄 Synchronize zoom/pan between both heatmaps ---
             try:
                 if hasattr(self, "web_view_left") and hasattr(self, "web_view_right"):
@@ -380,12 +414,12 @@ def tab_switcher2(self, *_):
 
         elif tab in ("LineChart", "Line Chart", "Line Plot"):
             if self.lplot:
-                self._load_scrollable_chart(self.web_view, self.lplot, min_w=2200, min_h=1400)
+                _load_scrollable_chart(self, self.web_view, self.lplot, min_w=2200, min_h=1400)
             else:
                 self.web_view.setUrl(QUrl())
             if self.prox_linechart and os.path.exists(self.prox_linechart):
                 self.bottom_stack.setCurrentIndex(2)
-                self._load_scrollable_chart(self.web_view2, self.prox_linechart, min_w=2000, min_h=900)
+                _load_scrollable_chart(self, self.web_view2, self.prox_linechart, min_w=2000, min_h=900)
                 QTimer.singleShot(0, lambda : _arm_topbar(self))
                 QTimer.singleShot(120, lambda : _arm_topbar(self))  # small safety nudge
                 QTimer.singleShot(500, lambda: _setup_web_view_scrollbars(self, self.web_view2))
@@ -398,7 +432,7 @@ def tab_switcher2(self, *_):
         elif tab in ("3D Graph", "3D"):
             if self.pipe3d:
                 try:
-                    self._load_scrollable_chart(self.web_view, self.pipe3d, min_w=2200, min_h=1400)
+                    _load_scrollable_chart(self, self.web_view, self.pipe3d, min_w=2200, min_h=1400)
                 except AttributeError:
                     self.web_view.setUrl(QUrl.fromLocalFile(self.pipe3d))
             else:
@@ -408,9 +442,109 @@ def tab_switcher2(self, *_):
             # Setup scrollbar for 3D graph
             QTimer.singleShot(100, lambda : _arm_main_topbar(self))
 
-        self.update_digsheet_button_state()
+        update_digsheet_button_state(self)
     except Exception as e:
         self.open_Error(e)
+
+
+
+
+
+
+
+
+def _load_scrollable_chart(self, view: QWebEngineView, html_path: str, min_w: int = 2200, min_h: int = 1400):
+    if not html_path or not os.path.exists(html_path):
+        view.setUrl(QUrl())
+        return
+    effective_min_w = max(0, min_w - self._right_margin_px)
+
+    safe = html_path.replace('\\', '/')
+    wrapper = f"""<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+* {{
+    scrollbar-width: auto !important;
+    -webkit-appearance: auto !important;
+}}
+html, body {{ 
+    height: 100%; 
+    margin: 0; 
+    overflow: hidden;
+}}
+.wrap {{ 
+    height: 100vh; 
+    width: 100vw; 
+    overflow: scroll !important;
+    overflow-x: scroll !important;
+    overflow-y: scroll !important;
+    scrollbar-width: auto !important;
+    -ms-overflow-style: scrollbar !important;
+}}
+.wrap::-webkit-scrollbar {{
+    width: 18px !important;
+    height: 18px !important;
+    background: #f5f5f5 !important;
+    display: block !important;
+}}
+.wrap::-webkit-scrollbar-track {{
+    background: #e0e0e0 !important;
+    border: 1px solid #ccc !important;
+}}
+.wrap::-webkit-scrollbar-thumb {{
+    background: #666 !important;
+    border: 2px solid #999 !important;
+    border-radius: 2px !important;
+}}
+.wrap::-webkit-scrollbar-thumb:hover {{
+    background: #333 !important;
+}}
+.wrap::-webkit-scrollbar-corner {{
+    background: #e0e0e0 !important;
+}}
+iframe {{ 
+    border: 0; 
+    width: {effective_min_w}px !important; 
+    height: {min_h}px !important;
+    min-width: {effective_min_w}px !important;
+    min-height: {min_h}px !important;
+    display: block;
+}}
+</style>
+</head>
+<body>
+<div class="wrap" id="scrollContainer">
+<iframe sandbox="allow-scripts allow-same-origin allow-forms" src="file:///{safe}"></iframe>
+</div>
+<script>
+// Force scrollbars to be visible
+document.addEventListener('DOMContentLoaded', function() {{
+const container = document.getElementById('scrollContainer');
+
+// Force a reflow to ensure scrollbars appear
+container.style.overflow = 'hidden';
+setTimeout(() => {{
+    container.style.overflow = 'scroll';
+    container.style.overflowX = 'scroll';
+    container.style.overflowY = 'scroll';
+}}, 10);
+
+// Trigger scroll to force scrollbar appearance
+container.scrollLeft = 1;
+container.scrollTop = 1;
+setTimeout(() => {{
+    container.scrollLeft = 0;
+    container.scrollTop = 0;
+}}, 100);
+}});
+</script>
+</body>
+</html>"""
+    base = QUrl.fromLocalFile(os.path.dirname(html_path) + os.sep)
+    view.setHtml(wrapper, base)
+
 
 
 def _arm_topbar(self, virtual_max: int = 2000):

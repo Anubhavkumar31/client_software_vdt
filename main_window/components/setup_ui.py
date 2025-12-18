@@ -55,3 +55,33 @@ def setup_ui(self):
             self.removeToolBar(tb)
             tb.setParent(None)
             tb.deleteLater()
+
+    menubar_design(self)
+
+
+def menubar_design(self):
+    self.menuBar().setStyleSheet("""
+        QMenuBar {
+            background-color: #000000;
+            color: white;
+        }
+        QMenuBar::item {
+            background: transparent;
+            padding: 4px 12px;
+        }
+        QMenuBar::item:selected {
+            background: #333333;
+            color: white;
+        }
+
+        /* Dropdown menus stay white */
+        QMenu {
+            background-color: #ffffff;
+            color: black;
+            border: 1px solid #cccccc;
+        }
+        QMenu::item:selected {
+            background: #c0c0c0;
+            color: #000000;
+        }
+    """)
