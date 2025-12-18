@@ -75,22 +75,22 @@ def setup_actions(self):
     a.action_Manual.triggered.connect(lambda: open_manual(self))
     a.action_About.triggered.connect(lambda: open_About(self))
 
+    if hasattr(a, "pushButtonNext"): a.pushButtonNext.clicked.connect(lambda : load_next_pipe(self))
+    if hasattr(a, "pushButtonPrev"): a.pushButtonPrev.clicked.connect(lambda : load_prev_pipe(self))
 
 
     #extra
-    a.action_Final_Report.triggered.connect(self.open_Report)
-    a.action_Assessment.triggered.connect(self.open_Assessment)
-    a.action_Cluster.triggered.connect(self.open_Cluster)
-    a.actionMetal_Loss_Distribution_MLD.triggered.connect(self.open_CMLD)
-    a.actionDepth_Based_Anomalies_Distribution_DBAD.triggered.connect(self.open_DBAD)
-    a.actionERF_Based_Anomalies_Distribution_E_AD.triggered.connect(self.open_EAD)
-    a.action_Custom.triggered.connect(self.add_plot_custom)
-    a.action_Telemetry.triggered.connect(self.add_plot_tele)
-    a.actionAnomalies_Distribution.triggered.connect(self.add_plot_ad)
-    a.action_DefectDetect.triggered.connect(self.draw_boxes_v2)
-    if hasattr(a, "pushButtonNext"): a.pushButtonNext.clicked.connect(lambda : load_next_pipe(self))
-    if hasattr(a, "pushButtonPrev"): a.pushButtonPrev.clicked.connect(lambda : load_prev_pipe(self))
-    a.actionAdmin_Panel.triggered.connect(self.open_Admin)
+    # a.action_Final_Report.triggered.connect(self.open_Report)
+    # a.action_Assessment.triggered.connect(self.open_Assessment)
+    # a.action_Cluster.triggered.connect(self.open_Cluster)
+    # a.actionMetal_Loss_Distribution_MLD.triggered.connect(self.open_CMLD)
+    # a.actionDepth_Based_Anomalies_Distribution_DBAD.triggered.connect(self.open_DBAD)
+    # a.actionERF_Based_Anomalies_Distribution_E_AD.triggered.connect(self.open_EAD)
+    # a.action_Custom.triggered.connect(self.add_plot_custom)
+    # a.action_Telemetry.triggered.connect(self.add_plot_tele)
+    # a.actionAnomalies_Distribution.triggered.connect(self.add_plot_ad)
+    # a.action_DefectDetect.triggered.connect(self.draw_boxes_v2)
+    # a.actionAdmin_Panel.triggered.connect(self.open_Admin)
 
 
 
