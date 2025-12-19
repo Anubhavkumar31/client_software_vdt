@@ -1,12 +1,11 @@
 import pandas as pd
-from PyQt6.QtCore import Qt, QTimer, QUrl, QEvent
+from PyQt6.QtCore import Qt, QEvent
 
 #used by column_filter_worker and table_data_worker
 from PyQt6.QtGui import QStandardItem
-from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWidgets import QAbstractItemView, QMessageBox, QDialog
+from PyQt6.QtWidgets import QAbstractItemView, QMessageBox
 
-from main_section_view.digsheet_abs_worker import _is_graph_tab_ok, _has_valid_abs_selection
+from main_section_view.workers.digsheet_abs_worker import _is_graph_tab_ok, _has_valid_abs_selection
 
 
 

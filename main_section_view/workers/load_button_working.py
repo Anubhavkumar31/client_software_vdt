@@ -8,9 +8,37 @@ from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QProgressBar, QHBoxLay
 from glob import glob
 
 from main_section_view.helpers_temp import _arm_topbar, _arm_main_topbar, tab_switcher2
-from main_section_view.table_data_worker import on_table_data_ready_con
+from main_section_view.workers.table_data_worker import on_table_data_ready_con
 from main_section_view.utils import update_digsheet_button_state
 
+
+def load_selected_pipe_con(self):
+    if not self.project_is_open:
+        QMessageBox.warning(self, "No Project", "Please open a project first.")
+        return
+
+    idx = self.ui.comboBoxPipe.currentIndex()
+    text = self.ui.comboBoxPipe.currentText().strip()
+
+    # ✅ If typed text matches an item, resolve index
+    if idx < 0 and text:
+        try:
+            idx = [self.ui.comboBoxPipe.itemText(i) for i in range(self.ui.comboBoxPipe.count())].index(text)
+        except ValueError:
+            QMessageBox.warning(self, "Invalid Selection", f"No pipe named '{text}' found.")
+            return
+
+    if idx < 0 or idx >= len(self.pkl_files):
+        QMessageBox.warning(self, "Invalid Selection", "Please select a valid pipe.")
+        return
+
+    if hasattr(self, "_select_pipe_container"):
+        self._select_pipe_container.hide()
+
+    self.btnLoadPipe.setEnabled(False)
+    # self.load_selected_by_index(idx)
+    load_selected_by_index(self, idx)
+    #self.btnLoadPipe.clicked.connect(self.load_selected_pipe)
 
 class ModernLoadingDialog(QDialog):
     def __init__(self, parent=None):
@@ -292,30 +320,7 @@ class PipeLoaderWorker(QThread):
 
         return None
 
-    # def _process_table_data(self, df):
-    #     if df is None or df.empty:
-    #         return None
 
-    #     # Check if this is a PipeTally file (has Feature Type column) or defects.csv
-    #     if "Feature Type" in df.columns:
-    #         # Filter Metal Loss defects
-    #         original_count = len(df)
-    #         df = df[df["Feature Type"].astype(str).str.strip().str.lower() == "metal loss"]
-
-    #         if df.empty:
-    #             return None
-
-    #         # Round numeric columns
-    #         numeric_columns = [
-    #             'Depth %', 'Depth (mm)', 'ERF (ASME B31G)', 'Psafe (ASME B31G) Barg',
-    #             'Abs. Distance (m)', 'Distance to U/S GW(m)', 'Length (mm)',
-    #             'Width (mm)', 'WT (mm)', 'Pipe Length (mm)'
-    #         ]
-    #         for col in numeric_columns:
-    #             if col in df.columns:
-    #                 df[col] = pd.to_numeric(df[col], errors='coerce').round(3)
-
-    #     return df
     def _process_table_data(self, df):
         """Return full PipeTally data without filtering or skipping."""
         if df is None or df.empty:

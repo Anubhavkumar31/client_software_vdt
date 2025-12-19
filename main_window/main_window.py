@@ -25,7 +25,7 @@ from reportlab.pdfgen import canvas  # noqa
 
 #helper functions imports
 from main_section_view.build_main_section import _build_main_section
-from main_section_view.table_data_worker import _setup_table_models_and_behavior
+from main_section_view.workers.table_data_worker import _setup_table_models_and_behavior
 from main_window.components.create_buttons.buttons.comboBoxpipe import comboBoxPipe_setup
 from main_window.components.create_buttons.setup_buttons import setup_buttons
 from main_window.components.helper_func import create_instances

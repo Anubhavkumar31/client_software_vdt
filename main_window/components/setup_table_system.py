@@ -2,7 +2,7 @@ from PIL.ImageQt import QPixmap
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QAbstractItemView, QWidget, QVBoxLayout, QFrame, QLabel, QSizePolicy
 
-from main_section_view.table_data_worker import _setup_table_styling
+from main_section_view.workers.table_data_worker import _setup_table_styling
 from main_section_view.utils import update_digsheet_button_state
 
 
