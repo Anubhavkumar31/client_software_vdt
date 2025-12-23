@@ -1,3 +1,5 @@
+from PyQt6.QtWidgets import QMessageBox
+
 from main_section_view.helpers_temp import _on_middle_tab_changed, syncdropdownwithtabs, _connect_guarded_graph_controls
 from main_section_view.workers.load_button_working import load_prev_pipe, load_next_pipe
 from main_section_view.utils import update_load_button_state
@@ -47,6 +49,25 @@ def setup_menu_actions(self):
     self.ui.tabWidgetM.currentChanged.connect(lambda index: syncdropdownwithtabs(self, index))
 
 
+from test_main import ExcelDualAxisZoomChart
+
+
+def open_customplot(self):
+    if not self.project_is_open:
+        QMessageBox.information(
+            self,
+            "Project Required",
+            "Please create or open a project first."
+        )
+        return
+    if not hasattr(self, "_custom_plot_window"):
+        self._custom_plot_window = ExcelDualAxisZoomChart(self)
+
+    self._custom_plot_window.show()
+    self._custom_plot_window.raise_()
+    self._custom_plot_window.activateWindow()
+
+
 
 def setup_actions(self):
     a = self.ui
@@ -60,6 +81,7 @@ def setup_actions(self):
     #View section
     a.action_ERF.triggered.connect(lambda: open_ERF(self))
     a.action_XYZ.triggered.connect(lambda: open_XYZ(self))
+    a.action_customplot.triggered.connect(lambda : open_customplot(self))
     a.action_graphs.triggered.connect(lambda: open_graphs(self))
     # self.ui.action_Export_Table.triggered.connect(self.gen_data)
 

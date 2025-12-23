@@ -1206,6 +1206,7 @@ QMenuBar::item:pressed {
     <addaction name="action_Pipe_Locator"/>
     <addaction name="action_ERF"/>
     <addaction name="action_XYZ"/>
+    <addaction name="action_customplot"/>
     <addaction name="separator"/>
     <!-- <addaction name="menuPlots"/> -->
     <addaction name="action_graphs"/>
@@ -1560,6 +1561,21 @@ QToolButton::menu-arrow:open {
    </property>
    <property name="text">
     <string>&amp;X&amp;YZ Mapping</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+Alt+X</string>
+   </property>
+  </action>
+  <action name="action_customplot">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/custom_plot.png</normaloff>icons/custom_plot.png</iconset>
+   </property>
+   <property name="text">
+    <string>Custom Plot</string>
    </property>
    <property name="shortcut">
     <string>Meta+Alt+X</string>
