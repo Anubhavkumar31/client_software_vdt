@@ -1,0 +1,361 @@
+
+
+import sys
+import json
+import math
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QWidget,
+    QVBoxLayout, QHBoxLayout, QGroupBox,
+    QLineEdit, QPushButton, QRadioButton,
+    QMessageBox, QLabel, QGridLayout
+)
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtGui import QDoubleValidator
+from PyQt6.QtCore import Qt
+
+
+# ================= ECHARTS HTML =================
+ECHART_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+html, body { width:100%; height:100%; margin:0; }
+#chart { width:100%; height:100%; }
+</style>
+</head>
+<body>
+<div id="chart"></div>
+
+<script>
+let chart = null;
+
+function initChart(theme) {
+    if (chart) chart.dispose();
+    chart = echarts.init(document.getElementById("chart"), theme);
+}
+
+function renderChart(data) {
+    if (!chart || !data) return;
+
+    chart.setOption({
+        tooltip: { trigger: "axis" },
+        legend: { data: ["Depth% vs Axial Length", "Actual Defect"] },
+        xAxis: { type: "value", name: "Axial Length (mm)" },
+        yAxis: { type: "value", name: "Depth (%)", max: 100 },
+        dataZoom: [
+            { type: "inside", xAxisIndex: 0 },
+            { type: "slider", xAxisIndex: 0, bottom: 20, height: 22 }
+        ],
+        series: [
+            { name: "Depth% vs Axial Length", type: "line", smooth: true, showSymbol: false, data: data.profile },
+            { name: "Actual Defect", type: "scatter", symbolSize: 12, data: [[data.L, data.depth_pct]] }
+        ]
+    }, true);
+}
+
+window.initChart = initChart;
+window.renderChart = renderChart;
+window.onresize = () => chart && chart.resize();
+</script>
+</body>
+</html>
+"""
+
+
+# ================= MAIN WINDOW =================
+class ERFWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("ERF Calculator")
+        # self.resize(1200, 900)
+        self.resize(450, 900)
+        self.theme = "dark"
+        self.last_chart_payload = None
+
+        central = QWidget()
+        self.setCentralWidget(central)
+        root = QVBoxLayout(central)
+        root.setSpacing(14)
+
+        # ================= STANDARD =================
+        std_layout = QHBoxLayout()
+        self.rb_asme = QRadioButton("ASME B31G")
+        self.rb_mod = QRadioButton("Mod B31G")
+        self.rb_dnv = QRadioButton("DNV-RP-F101")
+        self.rb_shell = QRadioButton("SHELL 92")
+        self.rb_asme.setChecked(True)
+
+        for rb in (self.rb_asme, self.rb_mod, self.rb_dnv, self.rb_shell):
+            std_layout.addWidget(rb)
+
+        root.addWidget(self.make_section("Assessment Standard", std_layout))
+
+        # ================= INPUT PARAMETERS (3×3 GRID) =================
+        v = QDoubleValidator()
+
+        self.od_D = QLineEdit(); self.od_D.setValidator(v)
+        self.thickness_T = QLineEdit(); self.thickness_T.setValidator(v)
+        self.smys = QLineEdit(); self.smys.setValidator(v)
+
+        self.uts = QLineEdit(); self.uts.setValidator(v)
+        self.dp = QLineEdit(); self.dp.setValidator(v)
+        self.df = QLineEdit(); self.df.setValidator(v)
+
+        self.maop = QLineEdit(); self.maop.setValidator(v)
+        self.length_L = QLineEdit(); self.length_L.setValidator(v)
+        self.depth_d = QLineEdit(); self.depth_d.setValidator(v)
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(20)
+        grid.setVerticalSpacing(12)
+
+        def cell(label, widget):
+            box = QVBoxLayout()
+            lbl = QLabel(label)
+            lbl.setStyleSheet("font-size:11px;")
+            box.addWidget(lbl)
+            box.addWidget(widget)
+            return box
+
+        grid.addLayout(cell("Outside Diameter (mm)", self.od_D), 0, 0)
+        grid.addLayout(cell("Wall Thickness (mm)", self.thickness_T), 0, 1)
+        grid.addLayout(cell("SMYS (MPa)", self.smys), 0, 2)
+
+        grid.addLayout(cell("UTS (MPa)", self.uts), 1, 0)
+        grid.addLayout(cell("DP (MPa)", self.dp), 1, 1)
+        grid.addLayout(cell("DF", self.df), 1, 2)
+
+        grid.addLayout(cell("MAOP (MPa)", self.maop), 2, 0)
+        grid.addLayout(cell("Axial Length (mm)", self.length_L), 2, 1)
+        grid.addLayout(cell("Depth (mm)", self.depth_d), 2, 2)
+
+        root.addWidget(self.make_section("Input Parameters", grid))
+
+        # ================= RESULTS =================
+        res_grid = QGridLayout()
+        self.erf_out = QLineEdit(); self.erf_out.setReadOnly(True)
+        self.safe_p_out = QLineEdit(); self.safe_p_out.setReadOnly(True)
+
+        res_grid.addLayout(cell("ERF", self.erf_out), 0, 0)
+        res_grid.addLayout(cell("Safe Operating Pressure (MPa)", self.safe_p_out), 0, 1)
+
+        root.addWidget(self.make_section("Results", res_grid))
+
+        # ================= ACTIONS =================
+        actions = QHBoxLayout()
+        self.calc_btn = QPushButton("Calculate")
+        self.reset_btn = QPushButton("Reset")
+        self.theme_btn = QPushButton("☀ Light Mode")
+
+        self.calc_btn.clicked.connect(self.calculate_erf)
+        self.reset_btn.clicked.connect(self.reset_fields)
+        self.theme_btn.clicked.connect(self.toggle_theme)
+
+        actions.addWidget(self.calc_btn)
+        actions.addWidget(self.reset_btn)
+        actions.addStretch()
+        actions.addWidget(self.theme_btn)
+
+        root.addLayout(actions)
+
+        # ================= CHART =================
+        self.web = QWebEngineView()
+        self.web.setMinimumHeight(360)
+        self.web.setHtml(ECHART_HTML)
+        self.web.loadFinished.connect(self.on_web_ready)
+
+        root.addWidget(self.web, 1)
+
+        self.apply_theme()
+
+    # ================= SECTION BUILDER =================
+    def make_section(self, title, content_layout):
+        container = QWidget()
+        v = QVBoxLayout(container)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(6)
+
+        header = QLabel(title)
+        header.setObjectName("sectionHeader")
+
+        body = QGroupBox()
+        body.setLayout(content_layout)
+
+        v.addWidget(header)
+        v.addWidget(body)
+        return container
+
+    # ================= WEB READY =================
+    def on_web_ready(self):
+        self.web.page().runJavaScript(f"initChart('{self.theme}')")
+
+    # ================= THEME =================
+    def toggle_theme(self):
+        self.theme = "light" if self.theme == "dark" else "dark"
+        self.theme_btn.setText("☀ Light Mode" if self.theme == "dark" else "🌙 Dark Mode")
+        self.apply_theme()
+        self.web.page().runJavaScript(f"initChart('{self.theme}')")
+
+        if self.last_chart_payload:
+            self.web.page().runJavaScript(
+                f"renderChart({json.dumps(self.last_chart_payload)})"
+            )
+
+    def apply_theme(self):
+        if self.theme == "dark":
+            self.setStyleSheet("""
+            QWidget { background:#0f172a; color:#e5e7eb; }
+            QLabel#sectionHeader { color:#94a3b8; font-weight:600; padding:6px 4px; }
+            QGroupBox { border:1px solid #1f2937; border-radius:6px; padding:10px; }
+            QLineEdit { background:#020617; border:1px solid #1f2937; padding:8px; }
+            QPushButton { padding:8px 14px; }
+            """)
+        else:
+            self.setStyleSheet("""
+            QWidget { background:#f8fafc; color:#0f172a; }
+            QLabel#sectionHeader { color:#475569; font-weight:600; padding:6px 4px; }
+            QGroupBox { border:1px solid #cbd5f5; border-radius:6px; padding:10px; }
+            QLineEdit { background:#ffffff; border:1px solid #cbd5f5; padding:8px; }
+            QPushButton { padding:8px 14px; }
+            """)
+
+    # ================= ERF DISPATCH =================
+    def calculate_erf(self):
+        if self.rb_asme.isChecked():
+            self.calculate_asme_b31g()
+        elif self.rb_mod.isChecked():
+            self.calculate_mod_b31g()
+        elif self.rb_dnv.isChecked():
+            self.calculate_dnv_f101()
+        else:
+            self.calculate_shell_92()
+
+    # ================= STANDARD METHODS =================
+    def calculate_asme_b31g(self):
+        self._common_erf()
+
+
+    def calculate_mod_b31g(self):
+        print("mod b31g selected and its erf getting calculated")
+        try:
+            # -------- inputs --------
+            D = float(self.od_D.text())
+            t = float(self.thickness_T.text())
+            SMYS = float(self.smys.text())
+            MAOP = float(self.maop.text())
+            L = float(self.length_L.text())
+            d = float(self.depth_d.text()) / 1000.0  # mm → m not needed, keep ratio
+
+            # -------- Modified B31G math --------
+            # 1) Flow stress
+            sigma_f = 1.1 * SMYS
+
+            # 2) Folias factor (Modified B31G)
+            M = math.sqrt(1 + 0.6275 * (L / math.sqrt(D * t)) ** 2)
+
+            # 3) Remaining strength factor
+            rsf = (1 - 0.85 * (d / t)) / (1 - (0.85 * (d / t)) / M)
+
+            # 4) Failure pressure
+            Pf = (2 * sigma_f * t / D) * rsf
+
+            # 5) Safe operating pressure
+            Psafe = Pf / 1.39
+
+            # 6) ERF
+            ERF = MAOP / Psafe
+
+            # -------- UI outputs --------
+            self.erf_out.setText(f"{ERF:.4f}")
+            self.safe_p_out.setText(f"{Psafe:.4f}")
+
+            self._render_chart(L,d,t)
+
+
+        except Exception:
+            QMessageBox.critical(self, "Error", "Please enter valid numeric values")
+
+    def calculate_dnv_f101(self):
+        self._common_erf()
+
+    def calculate_shell_92(self):
+        self._common_erf()
+
+    # ================= COMMON ERF =================
+    def _render_chart(self, L, d, t):
+        # -------- renderChart hook (UNCHANGED) --------
+        x = list(range(0, int(max(500, L * 1.3)), 10))
+        profile = [[i, 100 / (1 + i / 150)] for i in x]
+
+        payload = {
+            "profile": profile,
+            "L": L,
+            "depth_pct": (d / t) * 100
+        }
+
+        self.last_chart_payload = payload
+        self.web.page().runJavaScript(
+            f"renderChart({json.dumps(payload)})"
+        )
+    def _common_erf(self):
+        try:
+            L = float(self.length_L.text())
+            d = float(self.depth_d.text()) / 1000.0
+            D = float(self.od_D.text())
+            T = float(self.thickness_T.text())
+            SMYS = float(self.smys.text())
+            MAOP = float(self.maop.text())
+
+            flow_stress = 1.1 * SMYS
+            z_factor = (L * L) / (D * T)
+            M = math.sqrt(1 + 0.8 * z_factor)
+            y = 1 - (2 / 3) * (d / T)
+            z = 1 - ((2 / 3) * (d / T)) / M
+            k = y / z
+
+            Estimated_failure_stress_level_SF = flow_stress * k
+            estimate_failure_pressure = (2 * Estimated_failure_stress_level_SF * T) / D
+            safe_operating_pressure = estimate_failure_pressure / 1.39
+            ERF = MAOP / safe_operating_pressure
+
+            self.erf_out.setText(f"{ERF:.4f}")
+            self.safe_p_out.setText(f"{safe_operating_pressure:.4f}")
+
+            x = list(range(0, int(max(500, L * 1.3)), 10))
+            profile = [[i, 100 / (1 + i / 150)] for i in x]
+
+            payload = {
+                "profile": profile,
+                "L": L,
+                "depth_pct": (d / T) * 100
+            }
+
+            self.last_chart_payload = payload
+            self.web.page().runJavaScript(
+                f"renderChart({json.dumps(payload)})"
+            )
+
+        except Exception:
+            QMessageBox.critical(self, "Error", "Please enter valid numeric values")
+
+    def reset_fields(self):
+        for f in (
+            self.od_D, self.thickness_T, self.smys, self.uts,
+            self.dp, self.df, self.maop,
+            self.length_L, self.depth_d
+        ):
+            f.clear()
+        self.erf_out.clear()
+        self.safe_p_out.clear()
+        self.last_chart_payload = None
+
+
+# ================= RUN =================
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    win = ERFWindow()
+    win.show()
+    sys.exit(app.exec())
