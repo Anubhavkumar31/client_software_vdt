@@ -67,7 +67,7 @@ window.onresize = () => chart && chart.resize();
 
 # ================= MAIN WINDOW =================
 class ERFWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, project_root=None):
         super().__init__()
         self.setWindowTitle("ERF Calculator")
         # self.resize(1200, 900)
@@ -108,6 +108,9 @@ class ERFWindow(QMainWindow):
         self.length_L = QLineEdit(); self.length_L.setValidator(v)
         self.depth_d = QLineEdit(); self.depth_d.setValidator(v)
 
+        self.smts = QLineEdit(); self.smts.setValidator(v)
+        self.p_op = QLineEdit(); self.p_op.setValidator(v)
+
         grid = QGridLayout()
         grid.setHorizontalSpacing(20)
         grid.setVerticalSpacing(12)
@@ -132,7 +135,10 @@ class ERFWindow(QMainWindow):
         grid.addLayout(cell("Axial Length (mm)", self.length_L), 2, 1)
         grid.addLayout(cell("Depth (mm)", self.depth_d), 2, 2)
 
-        root.addWidget(self.make_section("Input Parameters", grid))
+        grid.addLayout(cell("SMTS (MPa)", self.smts), 3,0)
+        grid.addLayout(cell("P-op (MPa)", self.p_op), 3, 1)
+
+        root.addWidget(self.make_section("Pipeline Parameters", grid))
 
         # ================= RESULTS =================
         res_grid = QGridLayout()
@@ -140,7 +146,7 @@ class ERFWindow(QMainWindow):
         self.safe_p_out = QLineEdit(); self.safe_p_out.setReadOnly(True)
 
         res_grid.addLayout(cell("ERF", self.erf_out), 0, 0)
-        res_grid.addLayout(cell("Safe Operating Pressure (MPa)", self.safe_p_out), 0, 1)
+        res_grid.addLayout(cell("Psafe (MPa)", self.safe_p_out), 0, 1)
 
         root.addWidget(self.make_section("Results", res_grid))
 
@@ -186,6 +192,7 @@ class ERFWindow(QMainWindow):
 
         v.addWidget(header)
         v.addWidget(body)
+
         return container
 
     # ================= WEB READY =================
@@ -229,12 +236,13 @@ class ERFWindow(QMainWindow):
         elif self.rb_mod.isChecked():
             self.calculate_mod_b31g()
         elif self.rb_dnv.isChecked():
-            self.calculate_dnv_f101()
+            self.calculate_dnv_rp_f101_erf()
         else:
             self.calculate_shell_92()
 
     # ================= STANDARD METHODS =================
     def calculate_asme_b31g(self):
+        print("asme b31g")
         self._common_erf()
 
 
@@ -278,11 +286,78 @@ class ERFWindow(QMainWindow):
         except Exception:
             QMessageBox.critical(self, "Error", "Please enter valid numeric values")
 
-    def calculate_dnv_f101(self):
-        self._common_erf()
 
+    def calculate_dnv_rp_f101_erf(self, offshore=True):
+        print("dnv rp f101")
+
+        # -------- inputs --------
+        D = float(self.od_D.text())
+        t = float(self.thickness_T.text())
+        SMTS = float(self.smts.text())
+        P_op = float(self.p_op.text())
+        L = float(self.length_L.text())
+        d = float(self.depth_d.text()) / 1000.0  # mm → m not needed, keep ratio
+
+        F1 = 0.90
+        F2 = 0.67 if offshore else 0.72
+        F = F1 * F2
+
+        Q = math.sqrt(1 + 0.31 * (L / (D * t)) ** 2)
+
+        P_fail = (2 * SMTS * t / (D - t)) * ((1 - d / t) / (1 - d / (t * Q)))
+
+        Psafe = F * P_fail
+
+        ERF = P_op / Psafe
+
+        # -------- UI outputs --------
+        self.erf_out.setText(f"{ERF:.4f}")
+        self.safe_p_out.setText(f"{Psafe:.4f}")
+
+        self._render_chart(L, d, t)
+        return ERF
+
+    # def calculate_shell_92(self):
+    #     self._common_erf()
     def calculate_shell_92(self):
-        self._common_erf()
+        print("shell 92")
+        try:
+            D = float(self.od_D.text())
+            t = float(self.thickness_T.text())
+            SMYS = float(self.smys.text())
+            MAOP = float(self.maop.text())
+            L = float(self.length_L.text())
+            d = float(self.depth_d.text()) / 1000.0
+
+            # Shell-92
+            sigma_f = 1.15 * SMYS
+            M = math.sqrt(1 + 0.31 * (L / math.sqrt(D * t)) ** 2)
+            rsf = (1 - 0.9 * (d / t)) / (1 - (0.9 * (d / t)) / M)
+
+            Pf = (2 * sigma_f * t / D) * rsf
+            Psafe = Pf / 1.5
+            ERF = MAOP / Psafe
+
+            self.erf_out.setText(f"{ERF:.4f}")
+            self.safe_p_out.setText(f"{Psafe:.4f}")
+
+            # chart hook
+            x = list(range(0, int(max(500, L * 1.3)), 10))
+            profile = [[i, 100 / (1 + i / 150)] for i in x]
+
+            payload = {
+                "profile": profile,
+                "L": L,
+                "depth_pct": (d / t) * 100
+            }
+
+            self.last_chart_payload = payload
+            self.web.page().runJavaScript(
+                f"renderChart({json.dumps(payload)})"
+            )
+
+        except Exception:
+            QMessageBox.critical(self, "Error", "Please enter valid numeric values")
 
     # ================= COMMON ERF =================
     def _render_chart(self, L, d, t):
