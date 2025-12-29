@@ -1523,7 +1523,7 @@ QToolButton::menu-arrow:open {
   </action>
   <action name="action_Pipe_Locator">
    <property name="enabled">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="icon">
     <iconset>

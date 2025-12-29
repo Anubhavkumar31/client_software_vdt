@@ -125,3 +125,20 @@ def create_instances(self):
     # Threading setup
     self.loader_worker = None
     self.loading_dialog = None
+
+    self._unit_columns = {
+        "Abs. Distance": "m",
+        "Distance to U/S GW": "m",
+        "Pipe Length": "mm",
+        "WT": "mm",
+        "Width": "mm",
+        "Length": "mm",
+        "Depth": "mm",
+    }
+    self._unit_factor = {
+        "m": 1.0,
+        "cm": 100.0,
+        "mm": 1000.0,
+        "km": 0.001,
+        "feet": 3.28084,
+    }

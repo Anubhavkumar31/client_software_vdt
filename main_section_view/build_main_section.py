@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6 import QtWidgets
 from main_section_view.helpers_temp import _arm_topbar
-from main_section_view.utils import _apply_heatmap_layout
+from main_section_view.utils import _apply_heatmap_layout, _refresh_table_scrollbars
 
 SCROLLBAR_STYLE = """
 QScrollBar:vertical {
@@ -1039,7 +1039,7 @@ def _build_main_section(self):
         if getattr(self, "_hscroll_ready_main", False):
             _apply_main_fixed_range()
 
-        QTimer.singleShot(10, self._refresh_table_scrollbars)
+        QTimer.singleShot(10, lambda : _refresh_table_scrollbars(self))
 
     self.splitter.splitterMoved.connect(_on_splitter_moved)
 

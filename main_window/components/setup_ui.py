@@ -41,7 +41,7 @@ def setup_ui(self):
     self.ui.setupUi(self)
     # Hide unwanted menu actions
     if hasattr(self.ui, "action_Pipe_Locator"):
-        self.ui.action_Pipe_Locator.setVisible(False)
+        self.ui.action_Pipe_Locator.setVisible(True)
 
     if hasattr(self.ui, "action_ERF"):
         self.ui.action_ERF.setVisible(True)
