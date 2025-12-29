@@ -315,8 +315,7 @@ class ERFWindow(QMainWindow):
         self._render_chart(L, d, t)
         return ERF
 
-    # def calculate_shell_92(self):
-    #     self._common_erf()
+
     def calculate_shell_92(self):
         print("shell 92")
         try:

@@ -29,6 +29,7 @@ from main_window.main_window import MyMainWindow
 
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-logging --log-level=3 --disable-features=AccessibilityAriaVirtualContent"
 
+
 # main.py
 import sys
 import os
