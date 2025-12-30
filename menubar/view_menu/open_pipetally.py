@@ -269,7 +269,6 @@ class PipeTallyViewer(QMainWindow):
 
 
 
-
 if __name__ == "__main__":
     df = pd.read_excel(EXCEL_PATH)
 

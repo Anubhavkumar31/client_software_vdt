@@ -98,9 +98,9 @@ class ERFWindow(QMainWindow):
         self.thickness_T = QLineEdit(); self.thickness_T.setValidator(v)
         self.smys = QLineEdit(); self.smys.setValidator(v)
 
-        self.uts = QLineEdit(); self.uts.setValidator(v)
-        self.dp = QLineEdit(); self.dp.setValidator(v)
-        self.df = QLineEdit(); self.df.setValidator(v)
+        # self.uts = QLineEdit(); self.uts.setValidator(v)
+        # self.dp = QLineEdit(); self.dp.setValidator(v)
+        # self.df = QLineEdit(); self.df.setValidator(v)
 
         self.maop = QLineEdit(); self.maop.setValidator(v)
         self.length_L = QLineEdit(); self.length_L.setValidator(v)
@@ -125,9 +125,9 @@ class ERFWindow(QMainWindow):
         grid.addLayout(cell("Wall Thickness (mm)", self.thickness_T), 0, 1)
         grid.addLayout(cell("SMYS (MPa)", self.smys), 0, 2)
 
-        grid.addLayout(cell("UTS (MPa)", self.uts), 1, 0)
-        grid.addLayout(cell("DP (MPa)", self.dp), 1, 1)
-        grid.addLayout(cell("DF", self.df), 1, 2)
+        # grid.addLayout(cell("UTS (MPa)", self.uts), 1, 0)
+        # grid.addLayout(cell("DP (MPa)", self.dp), 1, 1)
+        # grid.addLayout(cell("DF", self.df), 1, 2)
 
         grid.addLayout(cell("MAOP (MPa)", self.maop), 2, 0)
         grid.addLayout(cell("Axial Length (mm)", self.length_L), 2, 1)
@@ -253,7 +253,7 @@ class ERFWindow(QMainWindow):
             SMYS = float(self.smys.text())
             MAOP = float(self.maop.text())
             L = float(self.length_L.text())
-            d = float(self.depth_d.text()) / 1000.0  # mm → m not needed, keep ratio
+            d = float(self.depth_d.text()) # mm → m not needed, keep ratio
 
             # -------- Modified B31G math --------
             # 1) Flow stress
@@ -294,7 +294,7 @@ class ERFWindow(QMainWindow):
         SMTS = float(self.smts.text())
         P_op = float(self.p_op.text())
         L = float(self.length_L.text())
-        d = float(self.depth_d.text()) / 1000.0  # mm → m not needed, keep ratio
+        d = float(self.depth_d.text())   # mm → m not needed, keep ratio
 
         F1 = 0.90
         F2 = 0.67 if offshore else 0.72
@@ -324,7 +324,7 @@ class ERFWindow(QMainWindow):
             SMYS = float(self.smys.text())
             MAOP = float(self.maop.text())
             L = float(self.length_L.text())
-            d = float(self.depth_d.text()) / 1000.0
+            d = float(self.depth_d.text())
 
             # Shell-92
             sigma_f = 1.15 * SMYS
@@ -375,7 +375,7 @@ class ERFWindow(QMainWindow):
     def _common_erf(self):
         try:
             L = float(self.length_L.text())
-            d = float(self.depth_d.text()) / 1000.0
+            d = float(self.depth_d.text())
             D = float(self.od_D.text())
             T = float(self.thickness_T.text())
             SMYS = float(self.smys.text())
@@ -413,10 +413,19 @@ class ERFWindow(QMainWindow):
         except Exception:
             QMessageBox.critical(self, "Error", "Please enter valid numeric values")
 
+    # def reset_fields(self):
+    #     for f in (
+    #         self.od_D, self.thickness_T, self.smys, self.uts,
+    #         self.dp, self.df, self.maop,
+    #         self.length_L, self.depth_d
+    #     ):
+    #         f.clear()
+    #     self.erf_out.clear()
+    #     self.safe_p_out.clear()
+    #     self.last_chart_payload = None
     def reset_fields(self):
         for f in (
-            self.od_D, self.thickness_T, self.smys, self.uts,
-            self.dp, self.df, self.maop,
+            self.od_D, self.thickness_T, self.smys, self.maop,
             self.length_L, self.depth_d
         ):
             f.clear()
