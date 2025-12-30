@@ -14,6 +14,9 @@ from pathlib import Path
 from typing import Optional
 from PyQt6.QtWidgets import QPushButton
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene
+from PyQt6.QtGui import QPen, QPolygonF
+from PyQt6.QtCore import QPointF
 
 
 try:
@@ -129,6 +132,1533 @@ class PandasModel(QAbstractTableModel):
 
 
 
+
+# from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QPushButton
+# from PyQt6.QtGui import QPen, QPolygonF, QPainter
+# from PyQt6.QtCore import Qt, QPointF, pyqtSignal
+# import pandas as pd
+# import math
+#
+#
+# class PipeLocatorWidget(QGraphicsView):
+#     """
+#     Pipe Locator (Production / Heatmap-like)
+#     ----------------------------------------
+#     • WHITE rows   → WELD
+#     • ORANGE rows  → FEATURES
+#     • Weld  → very small vertical line ABOVE pipe + distance text
+#     • Feature → blue arrow BELOW pipe + feature name
+#     • Long pipe with horizontal scrollbar
+#     • Mouse drag pan
+#     • Cursor-centric zoom (Ctrl + Mouse Wheel)
+#     • Back button
+#     """
+#
+#     backRequested = pyqtSignal()   # 🔙 back button signal
+#
+#     def __init__(self, pipe_tally: pd.DataFrame, parent=None):
+#         super().__init__(parent)
+#
+#         self.df = pipe_tally.copy()
+#
+#         # ---------------- GRAPHICS SETUP ----------------
+#         self.scene = QGraphicsScene(self)
+#         self.setScene(self.scene)
+#         self.setRenderHint(QPainter.RenderHint.Antialiasing)
+#
+#         # Scroll / pan behaviour
+#         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+#         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+#         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+#         self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+#
+#         # 🔥 HEATMAP-LIKE ZOOM (MOST IMPORTANT)
+#         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+#         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+#
+#         self.setMinimumHeight(270)
+#
+#         # Zoom control
+#         self._zoom = 1.0
+#         self._zoom_step = 1.25
+#         self._zoom_min = 0.4
+#         self._zoom_max = 6.0
+#
+#         # Back button
+#         self._add_back_button()
+#
+#         # Prepare + draw
+#         self._prepare_data()
+#         self._draw_pipe()
+#
+#     # -------------------------------------------------
+#     # BACK BUTTON
+#     # -------------------------------------------------
+#     def _add_back_button(self):
+#         self.back_btn = QPushButton("← Back", self)
+#         self.back_btn.setFixedSize(70, 26)
+#         self.back_btn.move(10, 10)
+#         self.back_btn.raise_()
+#         self.back_btn.clicked.connect(self.backRequested.emit)
+#
+#     # -------------------------------------------------
+#     # DATA PREPARATION (Pipe_Tally_8inch logic)
+#     # -------------------------------------------------
+#     def _prepare_data(self):
+#         df = self.df
+#
+#         # WHITE row = weld (Feature Type empty / NaN)
+#         if "Feature Type" in df.columns:
+#             df["__is_weld__"] = (
+#                 df["Feature Type"].isna() |
+#                 (df["Feature Type"].astype(str).str.strip() == "")
+#             )
+#         else:
+#             df["__is_weld__"] = False
+#
+#         # Label (NaN-safe)
+#         def label(row):
+#             dist = row.get("Abs. Distance (m)")
+#
+#             if row["__is_weld__"]:
+#                 if dist is None or (isinstance(dist, float) and math.isnan(dist)):
+#                     return "Weld"
+#                 return f"{int(round(dist))} m"
+#
+#             return str(
+#                 row.get("Feature Type")
+#                 or row.get("Type")
+#                 or "Feature"
+#             )
+#
+#         df["__label__"] = df.apply(label, axis=1)
+#
+#         # Remove rows that cannot be drawn
+#         df = df[pd.notna(df["Abs. Distance (m)"])]
+#
+#         self.df = df
+#
+#     # -------------------------------------------------
+#     # DRAW PIPE LOCATOR
+#     # -------------------------------------------------
+#     def _draw_pipe(self):
+#         self.scene.clear()
+#
+#         if self.df.empty:
+#             return
+#
+#         max_dist = int(self.df["Abs. Distance (m)"].max())
+#
+#         scale = 10.0           # pixels per meter
+#         pipe_y = 140
+#         pipe_len_px = max_dist * scale
+#
+#         # ---------------- PIPE LINE ----------------
+#         self.scene.addLine(
+#             0,
+#             pipe_y,
+#             pipe_len_px,
+#             pipe_y,
+#             QPen(Qt.GlobalColor.black, 3)
+#         )
+#
+#         # ---------------- WELDS ----------------
+#         welds = self.df[self.df["__is_weld__"]]
+#         for _, r in welds.iterrows():
+#             x = float(r["Abs. Distance (m)"]) * scale
+#
+#             # very small vertical line ABOVE pipe
+#             self.scene.addLine(
+#                 x,
+#                 pipe_y - 8,
+#                 x,
+#                 pipe_y - 1,
+#                 QPen(Qt.GlobalColor.black, 2)
+#             )
+#
+#             # distance text above
+#             t = self.scene.addText(r["__label__"])
+#             t.setDefaultTextColor(Qt.GlobalColor.black)
+#             t.setPos(x - 18, pipe_y - 34)
+#
+#         # ---------------- FEATURES ----------------
+#         feats = self.df[~self.df["__is_weld__"]]
+#         for _, r in feats.iterrows():
+#             x = float(r["Abs. Distance (m)"]) * scale
+#
+#             # blue arrow BELOW pipe
+#             arrow = QPolygonF([
+#                 QPointF(x, pipe_y + 18),
+#                 QPointF(x - 7, pipe_y + 34),
+#                 QPointF(x + 7, pipe_y + 34),
+#             ])
+#             self.scene.addPolygon(
+#                 arrow,
+#                 QPen(Qt.GlobalColor.blue),
+#                 Qt.GlobalColor.blue
+#             )
+#
+#             # feature name below arrow
+#             t = self.scene.addText(r["__label__"])
+#             t.setDefaultTextColor(Qt.GlobalColor.blue)
+#             t.setPos(x - 35, pipe_y + 38)
+#
+#         # Big scene = smooth scroll
+#         self.setSceneRect(0, 0, pipe_len_px + 400, 320)
+#
+#     # -------------------------------------------------
+#     # HEATMAP-LIKE ZOOM + SCROLL
+#     # -------------------------------------------------
+#     def wheelEvent(self, event):
+#         # 🔍 Ctrl + wheel → cursor-centric zoom
+#         if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
+#             zoom_factor = self._zoom_step if event.angleDelta().y() > 0 else (1 / self._zoom_step)
+#             new_zoom = self._zoom * zoom_factor
+#
+#             if self._zoom_min <= new_zoom <= self._zoom_max:
+#                 self.scale(zoom_factor, zoom_factor)
+#                 self._zoom = new_zoom
+#
+#             event.accept()
+#             return
+#
+#         # 🖱 Normal wheel → horizontal scroll
+#         bar = self.horizontalScrollBar()
+#         bar.setValue(bar.value() - event.angleDelta().y())
+#         event.accept()
+
+
+
+# from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QPushButton, QGraphicsPolygonItem
+# from PyQt6.QtGui import QPen, QPolygonF, QPainter
+# from PyQt6.QtCore import Qt, QPointF, pyqtSignal
+# import pandas as pd
+# import math
+#
+#
+# class PipeLocatorWidget(QGraphicsView):
+#     """
+#     Pipe Locator (Final – Click Based Labels)
+#     ----------------------------------------
+#     • WHITE rows   → WELD
+#     • ORANGE rows  → FEATURES
+#     • Weld  → small vertical line ABOVE pipe + distance text
+#     • Feature → blue arrow BELOW pipe
+#     • Feature name:
+#         - NOT shown by default
+#         - shown ONLY when that arrow is clicked
+#     • Ctrl + Mouse wheel → cursor-centric zoom
+#     • Mouse wheel → horizontal scroll
+#     • Mouse drag → pan
+#     • ← Back / ✕ / ESC → go to previous view
+#     """
+#
+#     backRequested = pyqtSignal()
+#
+#     def __init__(self, pipe_tally: pd.DataFrame, parent=None):
+#         super().__init__(parent)
+#
+#         self.df = pipe_tally.copy()
+#         self.scene = QGraphicsScene(self)
+#         self.setScene(self.scene)
+#         self.setRenderHint(QPainter.RenderHint.Antialiasing)
+#
+#         # Scroll / pan
+#         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+#         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+#         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+#         self.setInteractive(True)
+#         self.setMouseTracking(True)
+#
+#         # 🔥 TRUE heatmap-like zoom
+#         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+#         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+#
+#         # Zoom control
+#         self._zoom = 1.0
+#         self._zoom_step = 1.25
+#         self._zoom_min = 0.4
+#         self._zoom_max = 6.0
+#
+#         self.setMinimumHeight(280)
+#
+#         # Track selected label
+#         self._active_label = None
+#
+#         self._add_buttons()
+#         self._prepare_data()
+#         self._draw_pipe()
+#
+#     # -------------------------------------------------
+#     # BACK / CLOSE / ESC
+#     # -------------------------------------------------
+#     def _add_buttons(self):
+#         self.back_btn = QPushButton("← Back", self)
+#         self.back_btn.setFixedSize(70, 26)
+#         self.back_btn.move(10, 10)
+#         self.back_btn.clicked.connect(self.backRequested.emit)
+#         self.back_btn.raise_()
+#
+#         self.close_btn = QPushButton("✕", self)
+#         self.close_btn.setFixedSize(26, 26)
+#         self.close_btn.clicked.connect(self.backRequested.emit)
+#         self.close_btn.raise_()
+#
+#     def resizeEvent(self, event):
+#         super().resizeEvent(event)
+#         self.close_btn.move(self.width() - 36, 10)
+#
+#     def keyPressEvent(self, event):
+#         if event.key() == Qt.Key.Key_Escape:
+#             self.backRequested.emit()
+#             event.accept()
+#             return
+#         super().keyPressEvent(event)
+#
+#     # -------------------------------------------------
+#     # DATA PREP
+#     # -------------------------------------------------
+#     def _prepare_data(self):
+#         df = self.df
+#
+#         if "Feature Type" in df.columns:
+#             df["__is_weld__"] = (
+#                 df["Feature Type"].isna() |
+#                 (df["Feature Type"].astype(str).str.strip() == "")
+#             )
+#         else:
+#             df["__is_weld__"] = False
+#
+#         def label(row):
+#             dist = row.get("Abs. Distance (m)")
+#             if row["__is_weld__"]:
+#                 if dist is None or (isinstance(dist, float) and math.isnan(dist)):
+#                     return "Weld"
+#                 return f"{int(round(dist))} m"
+#             return str(row.get("Feature Type") or "Feature")
+#
+#         df["__label__"] = df.apply(label, axis=1)
+#         df = df[pd.notna(df["Abs. Distance (m)"])]
+#         self.df = df
+#
+#     # -------------------------------------------------
+#     # DRAW PIPE
+#     # -------------------------------------------------
+#     def _draw_pipe(self):
+#         self.scene.clear()
+#         self._active_label = None
+#
+#         max_dist = int(self.df["Abs. Distance (m)"].max())
+#         scale = 10.0
+#         pipe_y = 150
+#
+#         # Pipe
+#         self.scene.addLine(
+#             0, pipe_y,
+#             max_dist * scale, pipe_y,
+#             QPen(Qt.GlobalColor.black, 3)
+#         )
+#
+#         # Welds
+#         for _, r in self.df[self.df["__is_weld__"]].iterrows():
+#             x = r["Abs. Distance (m)"] * scale
+#             self.scene.addLine(
+#                 x, pipe_y - 8, x, pipe_y - 1,
+#                 QPen(Qt.GlobalColor.black, 2)
+#             )
+#             t = self.scene.addText(r["__label__"])
+#             t.setDefaultTextColor(Qt.GlobalColor.black)
+#             t.setPos(x - 18, pipe_y - 36)
+#
+#         # Features (CLICK-ONLY LABEL)
+#         for _, r in self.df[~self.df["__is_weld__"]].iterrows():
+#             x = r["Abs. Distance (m)"] * scale
+#
+#             arrow = QGraphicsPolygonItem(QPolygonF([
+#                 QPointF(x, pipe_y + 18),
+#                 QPointF(x - 7, pipe_y + 34),
+#                 QPointF(x + 7, pipe_y + 34),
+#             ]))
+#             arrow.setBrush(Qt.GlobalColor.blue)
+#             arrow.setPen(QPen(Qt.GlobalColor.blue))
+#             arrow.setData(0, r["__label__"])   # store label
+#             arrow.setData(1, x)               # store x
+#             arrow.setData(2, pipe_y)
+#             arrow.setFlag(QGraphicsPolygonItem.GraphicsItemFlag.ItemIsSelectable)
+#
+#             self.scene.addItem(arrow)
+#
+#         self.setSceneRect(0, 0, max_dist * scale + 400, 330)
+#
+#     # -------------------------------------------------
+#     # CLICK HANDLER (SHOW ONLY ONE LABEL)
+#     # -------------------------------------------------
+#     def mousePressEvent(self, event):
+#         super().mousePressEvent(event)
+#
+#         item = self.itemAt(event.position().toPoint())
+#         if isinstance(item, QGraphicsPolygonItem):
+#             # remove old label
+#             if self._active_label:
+#                 self.scene.removeItem(self._active_label)
+#                 self._active_label = None
+#
+#             label = item.data(0)
+#             x = item.data(1)
+#             pipe_y = item.data(2)
+#
+#             t = self.scene.addText(label)
+#             t.setDefaultTextColor(Qt.GlobalColor.blue)
+#             t.setPos(x - 35, pipe_y + 52)
+#             self._active_label = t
+#
+#     # -------------------------------------------------
+#     # TRUE HEATMAP-LIKE ZOOM + SCROLL
+#     # -------------------------------------------------
+#     def wheelEvent(self, event):
+#         delta = event.angleDelta().y()
+#
+#         # Ctrl + wheel → zoom at cursor (NO redraw)
+#         if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+#             factor = self._zoom_step if delta > 0 else (1 / self._zoom_step)
+#             new_zoom = self._zoom * factor
+#
+#             if self._zoom_min <= new_zoom <= self._zoom_max:
+#                 self.scale(factor, factor)
+#                 self._zoom = new_zoom
+#
+#             event.accept()
+#             return
+#
+#         # Normal wheel → horizontal scroll
+#         hbar = self.horizontalScrollBar()
+#         hbar.setValue(hbar.value() - delta)
+#         event.accept()
+
+
+# from PyQt6.QtWidgets import (
+#     QGraphicsView, QGraphicsScene, QPushButton,
+#     QGraphicsPolygonItem, QLineEdit, QLabel
+# )
+# from PyQt6.QtGui import QPen, QPolygonF, QPainter
+# from PyQt6.QtCore import Qt, QPointF, pyqtSignal
+# import pandas as pd
+# import math
+#
+#
+# class PipeLocatorWidget(QGraphicsView):
+#     """
+#     Pipe Locator – FINAL (Range Filter + Click Label)
+#     ------------------------------------------------
+#     • Start–End distance filter
+#     • WHITE rows   → WELD
+#     • ORANGE rows  → FEATURES
+#     • Weld  → small vertical line ABOVE pipe + distance text
+#     • Feature → blue arrow BELOW pipe
+#     • Feature name → shown ONLY when arrow clicked
+#     • Ctrl + Mouse wheel → cursor-centric zoom
+#     • Mouse wheel → horizontal scroll
+#     • Mouse drag → pan
+#     • ← Back / ✕ / ESC → go to previous view
+#     """
+#
+#     backRequested = pyqtSignal()
+#
+#     def __init__(self, pipe_tally: pd.DataFrame, parent=None):
+#         super().__init__(parent)
+#
+#         # ---------- DATA ----------
+#         self._df_full = pipe_tally.copy()   # full data (never modified)
+#         self.df = pipe_tally.copy()         # filtered data
+#         self._range = None                  # (start, end)
+#
+#         # ---------- GRAPHICS ----------
+#         self.scene = QGraphicsScene(self)
+#         self.setScene(self.scene)
+#         self.setRenderHint(QPainter.RenderHint.Antialiasing)
+#
+#         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+#         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+#         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+#         self.setInteractive(True)
+#         self.setMouseTracking(True)
+#
+#         # 🔥 true heatmap-like zoom
+#         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+#         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+#
+#         self._zoom = 1.0
+#         self._zoom_step = 1.25
+#         self._zoom_min = 0.4
+#         self._zoom_max = 6.0
+#
+#         self._active_label = None
+#         self.setMinimumHeight(300)
+#
+#         # UI
+#         self._add_buttons()
+#         self._add_range_filter()
+#
+#         # prepare + draw
+#         self._prepare_data()
+#         self._draw_pipe()
+#
+#     # -------------------------------------------------
+#     # BACK / CLOSE / ESC  (ALL SAME = BACK)
+#     # -------------------------------------------------
+#     def _add_buttons(self):
+#         self.back_btn = QPushButton("← Back", self)
+#         self.back_btn.setFixedSize(70, 26)
+#         self.back_btn.move(10, 10)
+#         self.back_btn.clicked.connect(self.backRequested.emit)
+#         self.back_btn.raise_()
+#
+#         self.close_btn = QPushButton("✕", self)
+#         self.close_btn.setFixedSize(26, 26)
+#         self.close_btn.clicked.connect(self.backRequested.emit)
+#         self.close_btn.raise_()
+#
+#     def resizeEvent(self, event):
+#         super().resizeEvent(event)
+#         self.close_btn.move(self.width() - 36, 10)
+#
+#     def keyPressEvent(self, event):
+#         if event.key() == Qt.Key.Key_Escape:
+#             self.backRequested.emit()
+#             event.accept()
+#             return
+#         super().keyPressEvent(event)
+#
+#     # -------------------------------------------------
+#     # RANGE FILTER UI
+#     # -------------------------------------------------
+#     def _add_range_filter(self):
+#         self.lbl_start = QLabel("Start (m):", self)
+#         self.lbl_start.move(100, 12)
+#
+#         self.start_edit = QLineEdit(self)
+#         self.start_edit.setFixedWidth(70)
+#         self.start_edit.move(165, 10)
+#
+#         self.lbl_end = QLabel("End (m):", self)
+#         self.lbl_end.move(245, 12)
+#
+#         self.end_edit = QLineEdit(self)
+#         self.end_edit.setFixedWidth(70)
+#         self.end_edit.move(300, 10)
+#
+#         self.apply_btn = QPushButton("Apply", self)
+#         self.apply_btn.move(380, 9)
+#         self.apply_btn.clicked.connect(self._apply_range_filter)
+#
+#         self.reset_btn = QPushButton("Reset", self)
+#         self.reset_btn.move(450, 9)
+#         self.reset_btn.clicked.connect(self._reset_range_filter)
+#
+#         for w in (
+#             self.lbl_start, self.start_edit,
+#             self.lbl_end, self.end_edit,
+#             self.apply_btn, self.reset_btn
+#         ):
+#             w.raise_()
+#
+#     # -------------------------------------------------
+#     # APPLY / RESET RANGE  (🔥 FIXED)
+#     # -------------------------------------------------
+#     def _apply_range_filter(self):
+#         try:
+#             start = float(self.start_edit.text())
+#             end = float(self.end_edit.text())
+#             if start >= end:
+#                 return
+#         except ValueError:
+#             return
+#
+#         self._range = (start, end)
+#
+#         df = self._df_full
+#         df = df[
+#             (df["Abs. Distance (m)"] >= start) &
+#             (df["Abs. Distance (m)"] <= end)
+#         ]
+#
+#         self.df = df.copy()
+#
+#         # 🔥 IMPORTANT: rebuild metadata columns
+#         self._prepare_data()
+#
+#         self._draw_pipe()
+#
+#     def _reset_range_filter(self):
+#         self._range = None
+#         self.df = self._df_full.copy()
+#
+#         # 🔥 IMPORTANT
+#         self._prepare_data()
+#
+#         self._draw_pipe()
+#
+#     # -------------------------------------------------
+#     # DATA PREPARATION (ALWAYS CREATES __is_weld__)
+#     # -------------------------------------------------
+#     def _prepare_data(self):
+#         df = self.df
+#
+#         if "Feature Type" in df.columns:
+#             df["__is_weld__"] = (
+#                 df["Feature Type"].isna() |
+#                 (df["Feature Type"].astype(str).str.strip() == "")
+#             )
+#         else:
+#             df["__is_weld__"] = False
+#
+#         def make_label(row):
+#             dist = row.get("Abs. Distance (m)")
+#             if row["__is_weld__"]:
+#                 if dist is None or (isinstance(dist, float) and math.isnan(dist)):
+#                     return "Weld"
+#                 return f"{int(round(dist))} m"
+#             return str(row.get("Feature Type") or "Feature")
+#
+#         df["__label__"] = df.apply(make_label, axis=1)
+#
+#         df.dropna(subset=["Abs. Distance (m)"], inplace=True)
+#
+#         self.df = df
+#
+#     # -------------------------------------------------
+#     # DRAW PIPE (RANGE-AWARE)
+#     # -------------------------------------------------
+#     def _draw_pipe(self):
+#         self.scene.clear()
+#         self._active_label = None
+#
+#         if self.df.empty:
+#             return
+#
+#         if self._range:
+#             start, end = self._range
+#         else:
+#             start = 0.0
+#             end = self.df["Abs. Distance (m)"].max()
+#
+#         scale = 10.0
+#         pipe_y = 160
+#         pipe_len_px = (end - start) * scale
+#
+#         # Pipe
+#         self.scene.addLine(
+#             0, pipe_y,
+#             pipe_len_px, pipe_y,
+#             QPen(Qt.GlobalColor.black, 3)
+#         )
+#
+#         # Welds
+#         for _, r in self.df[self.df["__is_weld__"]].iterrows():
+#             x = (r["Abs. Distance (m)"] - start) * scale
+#             self.scene.addLine(
+#                 x, pipe_y - 8,
+#                 x, pipe_y - 1,
+#                 QPen(Qt.GlobalColor.black, 2)
+#             )
+#             t = self.scene.addText(r["__label__"])
+#             t.setDefaultTextColor(Qt.GlobalColor.black)
+#             t.setPos(x - 18, pipe_y - 36)
+#
+#         # Features (CLICK ONLY)
+#         for _, r in self.df[~self.df["__is_weld__"]].iterrows():
+#             x = (r["Abs. Distance (m)"] - start) * scale
+#
+#             arrow = QGraphicsPolygonItem(QPolygonF([
+#                 QPointF(x, pipe_y + 18),
+#                 QPointF(x - 7, pipe_y + 34),
+#                 QPointF(x + 7, pipe_y + 34),
+#             ]))
+#             arrow.setBrush(Qt.GlobalColor.blue)
+#             arrow.setPen(QPen(Qt.GlobalColor.blue))
+#             arrow.setData(0, r["__label__"])
+#             arrow.setData(1, x)
+#             arrow.setData(2, pipe_y)
+#             arrow.setFlag(QGraphicsPolygonItem.GraphicsItemFlag.ItemIsSelectable)
+#             self.scene.addItem(arrow)
+#
+#         self.setSceneRect(0, 0, pipe_len_px + 400, 360)
+#
+#     # -------------------------------------------------
+#     # CLICK → SHOW ONLY ONE FEATURE NAME
+#     # -------------------------------------------------
+#     def mousePressEvent(self, event):
+#         super().mousePressEvent(event)
+#
+#         item = self.itemAt(event.position().toPoint())
+#         if isinstance(item, QGraphicsPolygonItem):
+#             if self._active_label:
+#                 self.scene.removeItem(self._active_label)
+#                 self._active_label = None
+#
+#             label = item.data(0)
+#             x = item.data(1)
+#             pipe_y = item.data(2)
+#
+#             t = self.scene.addText(label)
+#             t.setDefaultTextColor(Qt.GlobalColor.blue)
+#             t.setPos(x - 35, pipe_y + 52)
+#             self._active_label = t
+#
+#     # -------------------------------------------------
+#     # TRUE HEATMAP-LIKE ZOOM + SCROLL
+#     # -------------------------------------------------
+#     def wheelEvent(self, event):
+#         delta = event.angleDelta().y()
+#
+#         # Ctrl + wheel → zoom at cursor
+#         if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+#             factor = self._zoom_step if delta > 0 else (1 / self._zoom_step)
+#             new_zoom = self._zoom * factor
+#
+#             if self._zoom_min <= new_zoom <= self._zoom_max:
+#                 self.scale(factor, factor)
+#                 self._zoom = new_zoom
+#
+#             event.accept()
+#             return
+#
+#         # Normal wheel → horizontal scroll
+#         hbar = self.horizontalScrollBar()
+#         hbar.setValue(hbar.value() - delta)
+#         event.accept()
+
+
+# from PyQt6.QtWidgets import (
+#     QGraphicsView, QGraphicsScene, QPushButton,
+#     QGraphicsPolygonItem, QLineEdit, QLabel
+# )
+# from PyQt6.QtGui import QPen, QPolygonF, QPainter
+# from PyQt6.QtCore import Qt, QPointF, pyqtSignal
+# import pandas as pd
+# import math
+#
+#
+# class PipeLocatorWidget(QGraphicsView):
+#     """
+#     Pipe Locator – FINAL (Dynamic Zoom Scale)
+#     ----------------------------------------
+#     • Range filter (Start–End)
+#     • Weld distance spreads on zoom
+#     • Weld labels staggered (no overlap)
+#     • Feature label shown only on click
+#     • Ctrl + Mouse wheel → cursor-centric zoom
+#     • Mouse wheel → horizontal scroll
+#     • Mouse drag → pan
+#     • Back / ✕ / ESC → previous view
+#     """
+#
+#     backRequested = pyqtSignal()
+#
+#     def __init__(self, pipe_tally: pd.DataFrame, parent=None):
+#         super().__init__(parent)
+#
+#         # -------- DATA --------
+#         self._df_full = pipe_tally.copy()
+#         self.df = pipe_tally.copy()
+#         self._range = None
+#
+#         # -------- GRAPHICS --------
+#         self.scene = QGraphicsScene(self)
+#         self.setScene(self.scene)
+#         self.setRenderHint(QPainter.RenderHint.Antialiasing)
+#
+#         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+#         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+#         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+#         self.setInteractive(True)
+#         self.setMouseTracking(True)
+#
+#         # cursor-centric zoom
+#         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+#         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+#
+#         # zoom control
+#         self._zoom = 1.0
+#         self._zoom_step = 1.25
+#         self._zoom_min = 0.4
+#         self._zoom_max = 8.0
+#
+#         self._active_label = None
+#         self.setMinimumHeight(320)
+#
+#         # UI
+#         self._add_buttons()
+#         self._add_range_filter()
+#
+#         self._prepare_data()
+#         self._draw_pipe()
+#
+#     # -------------------------------------------------
+#     # BACK / CLOSE / ESC
+#     # -------------------------------------------------
+#     def _add_buttons(self):
+#         self.back_btn = QPushButton("← Back", self)
+#         self.back_btn.setFixedSize(70, 26)
+#         self.back_btn.move(10, 10)
+#         self.back_btn.clicked.connect(self.backRequested.emit)
+#         self.back_btn.raise_()
+#
+#         self.close_btn = QPushButton("✕", self)
+#         self.close_btn.setFixedSize(26, 26)
+#         self.close_btn.clicked.connect(self.backRequested.emit)
+#         self.close_btn.raise_()
+#
+#     def resizeEvent(self, event):
+#         super().resizeEvent(event)
+#         self.close_btn.move(self.width() - 36, 10)
+#
+#     def keyPressEvent(self, event):
+#         if event.key() == Qt.Key.Key_Escape:
+#             self.backRequested.emit()
+#             event.accept()
+#             return
+#         super().keyPressEvent(event)
+#
+#     # -------------------------------------------------
+#     # RANGE FILTER UI
+#     # -------------------------------------------------
+#     def _add_range_filter(self):
+#         self.lbl_start = QLabel("Start (m):", self)
+#         self.lbl_start.move(100, 12)
+#
+#         self.start_edit = QLineEdit(self)
+#         self.start_edit.setFixedWidth(70)
+#         self.start_edit.move(165, 10)
+#
+#         self.lbl_end = QLabel("End (m):", self)
+#         self.lbl_end.move(245, 12)
+#
+#         self.end_edit = QLineEdit(self)
+#         self.end_edit.setFixedWidth(70)
+#         self.end_edit.move(300, 10)
+#
+#         self.apply_btn = QPushButton("Apply", self)
+#         self.apply_btn.move(380, 9)
+#         self.apply_btn.clicked.connect(self._apply_range_filter)
+#
+#         self.reset_btn = QPushButton("Reset", self)
+#         self.reset_btn.move(450, 9)
+#         self.reset_btn.clicked.connect(self._reset_range_filter)
+#
+#         for w in (
+#             self.lbl_start, self.start_edit,
+#             self.lbl_end, self.end_edit,
+#             self.apply_btn, self.reset_btn
+#         ):
+#             w.raise_()
+#
+#     def _apply_range_filter(self):
+#         try:
+#             start = float(self.start_edit.text())
+#             end = float(self.end_edit.text())
+#             if start >= end:
+#                 return
+#         except ValueError:
+#             return
+#
+#         self._range = (start, end)
+#         self.df = self._df_full[
+#             (self._df_full["Abs. Distance (m)"] >= start) &
+#             (self._df_full["Abs. Distance (m)"] <= end)
+#         ].copy()
+#
+#         self._prepare_data()
+#         self._draw_pipe()
+#
+#     def _reset_range_filter(self):
+#         self._range = None
+#         self.df = self._df_full.copy()
+#         self._prepare_data()
+#         self._draw_pipe()
+#
+#     # -------------------------------------------------
+#     # DATA PREPARATION
+#     # -------------------------------------------------
+#     def _prepare_data(self):
+#         df = self.df
+#
+#         if "Feature Type" in df.columns:
+#             df["__is_weld__"] = (
+#                 df["Feature Type"].isna() |
+#                 (df["Feature Type"].astype(str).str.strip() == "")
+#             )
+#         else:
+#             df["__is_weld__"] = False
+#
+#         def make_label(row):
+#             dist = row.get("Abs. Distance (m)")
+#             if row["__is_weld__"]:
+#                 if pd.isna(dist):
+#                     return "Weld"
+#                 return f"{int(round(dist))} m"
+#             return str(row.get("Feature Type") or "Feature")
+#
+#         df["__label__"] = df.apply(make_label, axis=1)
+#         df.dropna(subset=["Abs. Distance (m)"], inplace=True)
+#         self.df = df
+#
+#     # -------------------------------------------------
+#     # DRAW PIPE (DYNAMIC SCALE)
+#     # -------------------------------------------------
+#     def _draw_pipe(self):
+#         self.scene.clear()
+#         self._active_label = None
+#
+#         if self.df.empty:
+#             return
+#
+#         if self._range:
+#             start, end = self._range
+#         else:
+#             start = 0.0
+#             end = self.df["Abs. Distance (m)"].max()
+#
+#         base_scale = 10.0
+#         scale = base_scale * self._zoom   # 🔥 THIS IS THE KEY FIX
+#         pipe_y = 170
+#         pipe_len_px = (end - start) * scale
+#
+#         # Pipe
+#         self.scene.addLine(
+#             0, pipe_y,
+#             pipe_len_px, pipe_y,
+#             QPen(Qt.GlobalColor.black, 3)
+#         )
+#
+#         # Welds (staggered)
+#         welds = self.df[self.df["__is_weld__"]].sort_values("Abs. Distance (m)")
+#         for i, (_, r) in enumerate(welds.iterrows()):
+#             x = (r["Abs. Distance (m)"] - start) * scale
+#             self.scene.addLine(
+#                 x, pipe_y - 8,
+#                 x, pipe_y - 1,
+#                 QPen(Qt.GlobalColor.black, 2)
+#             )
+#             y_offset = (i % 3) * 12
+#             t = self.scene.addText(r["__label__"])
+#             t.setDefaultTextColor(Qt.GlobalColor.black)
+#             t.setPos(x - 18, pipe_y - 36 - y_offset)
+#
+#         # Features (click only)
+#         for _, r in self.df[~self.df["__is_weld__"]].iterrows():
+#             x = (r["Abs. Distance (m)"] - start) * scale
+#
+#             arrow = QGraphicsPolygonItem(QPolygonF([
+#                 QPointF(x, pipe_y + 18),
+#                 QPointF(x - 7, pipe_y + 34),
+#                 QPointF(x + 7, pipe_y + 34),
+#             ]))
+#             arrow.setBrush(Qt.GlobalColor.blue)
+#             arrow.setPen(QPen(Qt.GlobalColor.blue))
+#             arrow.setData(0, r["__label__"])
+#             arrow.setData(1, x)
+#             arrow.setData(2, pipe_y)
+#             arrow.setFlag(QGraphicsPolygonItem.GraphicsItemFlag.ItemIsSelectable)
+#             self.scene.addItem(arrow)
+#
+#         self.setSceneRect(0, 0, pipe_len_px + 400, 380)
+#
+#     # -------------------------------------------------
+#     # CLICK → SHOW FEATURE NAME
+#     # -------------------------------------------------
+#     def mousePressEvent(self, event):
+#         super().mousePressEvent(event)
+#         item = self.itemAt(event.position().toPoint())
+#
+#         if isinstance(item, QGraphicsPolygonItem):
+#             if self._active_label:
+#                 self.scene.removeItem(self._active_label)
+#
+#             label = item.data(0)
+#             x = item.data(1)
+#             pipe_y = item.data(2)
+#
+#             t = self.scene.addText(label)
+#             t.setDefaultTextColor(Qt.GlobalColor.blue)
+#             t.setPos(x - 35, pipe_y + 54)
+#             self._active_label = t
+#
+#     # -------------------------------------------------
+#     # ZOOM + SCROLL (REDRAW ON ZOOM)
+#     # -------------------------------------------------
+#     def wheelEvent(self, event):
+#         delta = event.angleDelta().y()
+#
+#         # Ctrl + wheel → zoom
+#         if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+#             factor = self._zoom_step if delta > 0 else (1 / self._zoom_step)
+#             new_zoom = self._zoom * factor
+#
+#             if self._zoom_min <= new_zoom <= self._zoom_max:
+#                 self._zoom = new_zoom
+#                 self._draw_pipe()   # 🔥 redraw with new scale
+#
+#             event.accept()
+#             return
+#
+#         # normal wheel → horizontal scroll
+#         hbar = self.horizontalScrollBar()
+#         hbar.setValue(hbar.value() - delta)
+#         event.accept()
+
+
+
+# from PyQt6.QtWidgets import (
+#     QGraphicsView, QGraphicsScene, QPushButton,
+#     QGraphicsPolygonItem, QLineEdit, QLabel
+# )
+# from PyQt6.QtGui import QPen, QPolygonF, QPainter
+# from PyQt6.QtCore import Qt, QPointF, pyqtSignal
+# import pandas as pd
+# import math
+#
+#
+# class PipeLocatorWidget(QGraphicsView):
+#
+#
+#     backRequested = pyqtSignal()
+#
+#     def __init__(self, pipe_tally: pd.DataFrame, parent=None):
+#         super().__init__(parent)
+#
+#         # -------- DATA --------
+#         self._df_full = pipe_tally.copy()
+#         self.df = pipe_tally.copy()
+#         self._range = None
+#
+#         # -------- GRAPHICS --------
+#         self.scene = QGraphicsScene(self)
+#         self.setScene(self.scene)
+#         self.setRenderHint(QPainter.RenderHint.Antialiasing)
+#
+#         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+#         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+#         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+#         self.setInteractive(True)
+#         self.setMouseTracking(True)
+#
+#         # cursor-centric zoom
+#         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+#         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+#
+#         # zoom control
+#         self._zoom = 1.0
+#         self._zoom_step = 1.25
+#         self._zoom_min = 0.4
+#         self._zoom_max = 8.0
+#
+#         self._active_label = None
+#         self.setMinimumHeight(320)
+#
+#         # UI
+#         self._add_buttons()
+#         self._add_range_filter()
+#
+#         self._prepare_data()
+#         self._draw_pipe()
+#
+#     # -------------------------------------------------
+#     # BACK / CLOSE / ESC
+#     # -------------------------------------------------
+#     def _add_buttons(self):
+#         self.back_btn = QPushButton("← Back", self)
+#         self.back_btn.setFixedSize(70, 26)
+#         self.back_btn.move(10, 10)
+#         self.back_btn.clicked.connect(self.backRequested.emit)
+#         self.back_btn.raise_()
+#
+#         self.close_btn = QPushButton("✕", self)
+#         self.close_btn.setFixedSize(26, 26)
+#         self.close_btn.clicked.connect(self.backRequested.emit)
+#         self.close_btn.raise_()
+#
+#     def resizeEvent(self, event):
+#         super().resizeEvent(event)
+#         self.close_btn.move(self.width() - 36, 10)
+#
+#     def keyPressEvent(self, event):
+#         if event.key() == Qt.Key.Key_Escape:
+#             self.backRequested.emit()
+#             event.accept()
+#             return
+#         super().keyPressEvent(event)
+#
+#     # -------------------------------------------------
+#     # RANGE FILTER UI
+#     # -------------------------------------------------
+#     def _add_range_filter(self):
+#         self.lbl_start = QLabel("Start (m):", self)
+#         self.lbl_start.move(100, 12)
+#
+#         self.start_edit = QLineEdit(self)
+#         self.start_edit.setFixedWidth(70)
+#         self.start_edit.move(165, 10)
+#
+#         self.lbl_end = QLabel("End (m):", self)
+#         self.lbl_end.move(245, 12)
+#
+#         self.end_edit = QLineEdit(self)
+#         self.end_edit.setFixedWidth(70)
+#         self.end_edit.move(300, 10)
+#
+#         self.apply_btn = QPushButton("Apply", self)
+#         self.apply_btn.move(380, 9)
+#         self.apply_btn.clicked.connect(self._apply_range_filter)
+#
+#         self.reset_btn = QPushButton("Reset", self)
+#         self.reset_btn.move(450, 9)
+#         self.reset_btn.clicked.connect(self._reset_range_filter)
+#
+#         for w in (
+#             self.lbl_start, self.start_edit,
+#             self.lbl_end, self.end_edit,
+#             self.apply_btn, self.reset_btn
+#         ):
+#             w.raise_()
+#
+#     def _apply_range_filter(self):
+#         try:
+#             start = float(self.start_edit.text())
+#             end = float(self.end_edit.text())
+#             if start >= end:
+#                 return
+#         except ValueError:
+#             return
+#
+#         self._range = (start, end)
+#         self.df = self._df_full[
+#             (self._df_full["Abs. Distance (m)"] >= start) &
+#             (self._df_full["Abs. Distance (m)"] <= end)
+#         ].copy()
+#
+#         self._prepare_data()
+#         self._draw_pipe()
+#
+#     # def _apply_range_filter(self):
+#     #     try:
+#     #         start = float(self.start_edit.text())
+#     #         end = float(self.end_edit.text())
+#     #         if start >= end:
+#     #             return
+#     #     except ValueError:
+#     #         return
+#     #
+#     #     self._range = (start, end)
+#     #     self.df = self._df_full[
+#     #         (self._df_full["Abs. Distance (m)"] >= start) &
+#     #         (self._df_full["Abs. Distance (m)"] <= end)
+#     #         ].copy()
+#     #
+#     #     self._prepare_data()
+#     #     self._draw_pipe()
+#     #
+#     #     # 🔒 STOP event propagation (VERY IMPORTANT)
+#     #     self.setFocus()
+#
+#     def _reset_range_filter(self):
+#         self._range = None
+#         self.df = self._df_full.copy()
+#         self._prepare_data()
+#         self._draw_pipe()
+#
+#     # -------------------------------------------------
+#     # DATA PREPARATION
+#     # -------------------------------------------------
+#     def _prepare_data(self):
+#         df = self.df
+#
+#         if "Feature Type" in df.columns:
+#             df["__is_weld__"] = (
+#                 df["Feature Type"].isna() |
+#                 (df["Feature Type"].astype(str).str.strip() == "")
+#             )
+#         else:
+#             df["__is_weld__"] = False
+#
+#         def make_label(row):
+#             dist = row.get("Abs. Distance (m)")
+#             if row["__is_weld__"]:
+#                 if pd.isna(dist):
+#                     return "Weld"
+#                 return f"{int(round(dist))} m"
+#             return str(row.get("Feature Type") or "Feature")
+#
+#         df["__label__"] = df.apply(make_label, axis=1)
+#         df.dropna(subset=["Abs. Distance (m)"], inplace=True)
+#         self.df = df
+#
+#     # -------------------------------------------------
+#     # DRAW PIPE (DYNAMIC SCALE)
+#     # -------------------------------------------------
+#     def _draw_pipe(self):
+#         self.scene.clear()
+#         self._active_label = None
+#
+#         if self.df.empty:
+#             return
+#
+#         if self._range:
+#             start, end = self._range
+#         else:
+#             start = 0.0
+#             end = self.df["Abs. Distance (m)"].max()
+#
+#         base_scale = 10.0
+#         scale = base_scale * self._zoom
+#         pipe_y = 170
+#         pipe_len_px = (end - start) * scale
+#
+#         # Pipe
+#         self.scene.addLine(
+#             0, pipe_y,
+#             pipe_len_px, pipe_y,
+#             QPen(Qt.GlobalColor.black, 3)
+#         )
+#
+#         # Welds (staggered)
+#         welds = self.df[self.df["__is_weld__"]].sort_values("Abs. Distance (m)")
+#         for i, (_, r) in enumerate(welds.iterrows()):
+#             x = (r["Abs. Distance (m)"] - start) * scale
+#             self.scene.addLine(
+#                 x, pipe_y - 8,
+#                 x, pipe_y - 1,
+#                 QPen(Qt.GlobalColor.black, 2)
+#             )
+#             y_offset = (i % 3) * 12
+#             t = self.scene.addText(r["__label__"])
+#             t.setDefaultTextColor(Qt.GlobalColor.black)
+#             t.setPos(x - 18, pipe_y - 36 - y_offset)
+#
+#         # -------- FEATURES (ABOVE PIPE, TOUCHING PIPE) --------
+#         for _, r in self.df[~self.df["__is_weld__"]].iterrows():
+#             x = (r["Abs. Distance (m)"] - start) * scale
+#
+#             arrow = QGraphicsPolygonItem(QPolygonF([
+#                 QPointF(x, pipe_y),          # 👈 touch pipe
+#                 QPointF(x - 7, pipe_y - 16),
+#                 QPointF(x + 7, pipe_y - 16),
+#             ]))
+#             arrow.setBrush(Qt.GlobalColor.blue)
+#             arrow.setPen(QPen(Qt.GlobalColor.blue))
+#             arrow.setData(0, r["__label__"])
+#             arrow.setData(1, x)
+#             arrow.setData(2, pipe_y)
+#             arrow.setFlag(QGraphicsPolygonItem.GraphicsItemFlag.ItemIsSelectable)
+#             self.scene.addItem(arrow)
+#
+#         self.setSceneRect(0, 0, pipe_len_px + 400, 380)
+#
+#     # -------------------------------------------------
+#     # CLICK → SHOW FEATURE NAME (ABOVE PIPE)
+#     # -------------------------------------------------
+#     def mousePressEvent(self, event):
+#         super().mousePressEvent(event)
+#         item = self.itemAt(event.position().toPoint())
+#
+#         if isinstance(item, QGraphicsPolygonItem):
+#             if self._active_label:
+#                 self.scene.removeItem(self._active_label)
+#
+#             label = item.data(0)
+#             x = item.data(1)
+#             pipe_y = item.data(2)
+#
+#             t = self.scene.addText(label)
+#             t.setDefaultTextColor(Qt.GlobalColor.blue)
+#             t.setPos(x - 35, pipe_y - 40)
+#             self._active_label = t
+#
+#     # -------------------------------------------------
+#     # ZOOM + SCROLL (REDRAW ON ZOOM)
+#     # -------------------------------------------------
+#     def wheelEvent(self, event):
+#         delta = event.angleDelta().y()
+#
+#         if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+#             factor = self._zoom_step if delta > 0 else (1 / self._zoom_step)
+#             new_zoom = self._zoom * factor
+#
+#             if self._zoom_min <= new_zoom <= self._zoom_max:
+#                 self._zoom = new_zoom
+#                 self._draw_pipe()
+#
+#             event.accept()
+#             return
+#
+#         hbar = self.horizontalScrollBar()
+#         hbar.setValue(hbar.value() - delta)
+#         event.accept()
+
+
+# ================== IMPORTS ==================
+from PyQt6.QtWidgets import (
+    QDialog, QGraphicsView, QGraphicsScene,
+    QVBoxLayout, QPushButton, QLabel, QLineEdit,
+    QGraphicsPolygonItem
+)
+from PyQt6.QtGui import QPen, QPolygonF, QPainter
+from PyQt6.QtCore import Qt, QPointF, pyqtSignal
+import pandas as pd
+
+
+# ================== PIPE LOCATOR VIEW ==================
+class PipeLocatorWidget(QGraphicsView):
+    backRequested = pyqtSignal()
+
+    def __init__(self, pipe_tally: pd.DataFrame, parent=None):
+        super().__init__(parent)
+
+        self.df = pipe_tally.copy() if isinstance(pipe_tally, pd.DataFrame) else pd.DataFrame()
+        self._range = None
+        self._zoom = 1.0
+        self._active_feature_label = None
+
+        # Graphics
+        self.scene = QGraphicsScene(self)
+        self.setScene(self.scene)
+        self.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+
+        self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+        self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
+
+        self.setMinimumHeight(320)
+
+        self._add_controls()
+        self._prepare_data()
+        self._draw_pipe()
+
+    # ---------- TOP CONTROLS ----------
+    def _add_controls(self):
+        self.back_btn = QPushButton("← Back", self)
+        self.back_btn.move(10, 10)
+        self.back_btn.clicked.connect(self.backRequested.emit)
+        self.back_btn.raise_()
+
+        QLabel("Start (m):", self).move(100, 12)
+        self.start_edit = QLineEdit(self)
+        self.start_edit.setFixedWidth(70)
+        self.start_edit.move(165, 10)
+
+        QLabel("End (m):", self).move(245, 12)
+        self.end_edit = QLineEdit(self)
+        self.end_edit.setFixedWidth(70)
+        self.end_edit.move(300, 10)
+
+        QPushButton("Apply", self, clicked=self._apply_filter).move(380, 9)
+        QPushButton("Reset", self, clicked=self._reset_filter).move(450, 9)
+
+    # ---------- FILTER ----------
+    def _apply_filter(self):
+        try:
+            s = float(self.start_edit.text())
+            e = float(self.end_edit.text())
+            if s >= e:
+                return
+            self._range = (s, e)
+        except Exception:
+            return
+        self._draw_pipe()
+
+    def _reset_filter(self):
+        self._range = None
+        self.start_edit.clear()
+        self.end_edit.clear()
+        self._draw_pipe()
+
+    # ---------- DATA ----------
+    def _prepare_data(self):
+        if self.df.empty:
+            return
+
+        if "Feature Type" in self.df.columns:
+            self.df["__is_weld__"] = (
+                self.df["Feature Type"].isna() |
+                (self.df["Feature Type"].astype(str).str.strip() == "")
+            )
+        else:
+            self.df["__is_weld__"] = False
+
+        def label(row):
+            d = row.get("Abs. Distance (m)")
+            if pd.isna(d):
+                return ""
+            # integer distance only
+            return f"{int(round(float(d)))} m" if row["__is_weld__"] else str(
+                row.get("Feature Type", "Feature")
+            )
+
+        self.df["__label__"] = self.df.apply(label, axis=1)
+        self.df.dropna(subset=["Abs. Distance (m)"], inplace=True)
+
+    # ---------- DRAW ----------
+    def _draw_pipe(self):
+        self.scene.clear()
+        self._active_feature_label = None
+
+        if self.df.empty:
+            return
+
+        if self._range:
+            start, end = self._range
+            data = self.df[
+                (self.df["Abs. Distance (m)"] >= start) &
+                (self.df["Abs. Distance (m)"] <= end)
+            ]
+        else:
+            start = 0
+            end = self.df["Abs. Distance (m)"].max()
+            data = self.df
+
+        scale = 10 * self._zoom
+        pipe_y = 180
+        pipe_len = (end - start) * scale
+
+        # Pipe
+        self.scene.addLine(0, pipe_y, pipe_len, pipe_y, QPen(Qt.GlobalColor.black, 3))
+
+        weld_index = 0  # 🔥 for zig-zag labels
+
+        for _, r in data.iterrows():
+            x = (r["Abs. Distance (m)"] - start) * scale
+
+            # -------- WELD (zig-zag labels) --------
+            if r["__is_weld__"]:
+                # weld line
+                self.scene.addLine(
+                    x, pipe_y - 8,
+                    x, pipe_y,
+                    QPen(Qt.GlobalColor.black, 2)
+                )
+
+                # 🔥 zig-zag Y offset
+                # even → higher, odd → slightly lower
+                y_offset = -34 if (weld_index % 2 == 0) else -50
+
+                t = self.scene.addText(r["__label__"])
+                t.setDefaultTextColor(Qt.GlobalColor.black)
+                t.setPos(x - 18, pipe_y + y_offset)
+
+                weld_index += 1
+
+            # -------- FEATURE (ARROW ABOVE PIPE) --------
+            else:
+                # arrow ABOVE pipe (point touching pipe)
+                arrow = QGraphicsPolygonItem(QPolygonF([
+                    QPointF(x, pipe_y),          # tip touching pipe
+                    QPointF(x - 7, pipe_y - 16),
+                    QPointF(x + 7, pipe_y - 16),
+                ]))
+
+                arrow.setBrush(Qt.GlobalColor.blue)
+                arrow.setPen(QPen(Qt.GlobalColor.blue))
+
+                # store data for click
+                arrow.setData(0, r["__label__"])
+                arrow.setData(1, x)
+                arrow.setData(2, pipe_y)
+
+                arrow.setFlag(QGraphicsPolygonItem.GraphicsItemFlag.ItemIsSelectable)
+                self.scene.addItem(arrow)
+
+        self.setSceneRect(0, 0, pipe_len + 300, 360)
+
+    # ---------- FEATURE CLICK (show name) ----------
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+
+        item = self.itemAt(event.position().toPoint())
+        if isinstance(item, QGraphicsPolygonItem):
+            # remove old label
+            if self._active_feature_label:
+                self.scene.removeItem(self._active_feature_label)
+                self._active_feature_label = None
+
+            label = item.data(0)
+            x = item.data(1)
+            pipe_y = item.data(2)
+
+            if label:
+                t = self.scene.addText(label)
+                t.setDefaultTextColor(Qt.GlobalColor.blue)
+                # show name just above arrow
+                t.setPos(x - 35, pipe_y - 32)
+                self._active_feature_label = t
+
+    # ---------- ZOOM ----------
+    def wheelEvent(self, event):
+        if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            self._zoom *= 1.2 if event.angleDelta().y() > 0 else 1 / 1.2
+            self._zoom = max(0.4, min(self._zoom, 6))
+            self._draw_pipe()
+            event.accept()
+            return
+
+        bar = self.horizontalScrollBar()
+        bar.setValue(bar.value() - event.angleDelta().y())
+        event.accept()
+
+
+# ================== PIPE LOCATOR DIALOG ==================
+class PipeLocatorDialog(QDialog):
+    def __init__(self, pipe_tally, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Pipe Locator")
+        self.resize(1100, 500)
+
+        screen = self.screen().availableGeometry()
+        self.move(
+            screen.center().x() - self.width() // 2,
+            screen.center().y() - self.height() // 2
+        )
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.view = PipeLocatorWidget(pipe_tally, self)
+        self.view.backRequested.connect(self.close)
+        layout.addWidget(self.view)
+
+
+# ================== MAIN WINDOW FUNCTION ==================
+def open_pipe_locator(self):
+    if getattr(self, "_pipe_locator_dialog", None):
+        self._pipe_locator_dialog.raise_()
+        self._pipe_locator_dialog.activateWindow()
+        return
+
+    pipe_tally = self.pipe_tally if isinstance(self.pipe_tally, pd.DataFrame) else pd.DataFrame()
+
+    dlg = PipeLocatorDialog(pipe_tally, self)
+    self._pipe_locator_dialog = dlg
+
+    if hasattr(self.ui, "widgetControls"):
+        self.ui.widgetControls.hide()
+
+    def _cleanup():
+        self._pipe_locator_dialog = None
+        if hasattr(self.ui, "widgetControls"):
+            self.ui.widgetControls.show()
+
+    dlg.finished.connect(_cleanup)
+    dlg.show()
+
+
+
+
+
+
+
+
 def resource_path(relative_path):
     if getattr(sys, 'frozen', False):
         return os.path.join(sys._MEIPASS, relative_path)
@@ -233,22 +1763,6 @@ class PipeLoaderWorker(QThread):
             self.data_loaded.emit(df)
             self._update_time_estimate(1, total_steps)
             print(f"Loaded pickle with {len(df)} rows")
-
-            # --------------------------------------------
-            # Update Pipe Locator after pipe_tally loads
-            # --------------------------------------------
-            try:
-                df = self.pipe_tally
-                if df is not None and "Abs. Distance (m)" in df.columns:
-                    defects = []
-                    for _, row in df.iterrows():
-                        defects.append((row["Abs. Distance (m)"], str(row.get("Type", ""))))
-
-                    total_length = df["Abs. Distance (m)"].max()
-                    self.pipe_locator.set_data(defects, total_length)
-            except Exception as e:
-                print("Pipe Locator Update Error:", e)
-            # --------------------------------------------
 
             # Step 2: Find pipe directory
             self.progress_updated.emit(25, "Locating asset files...")
@@ -608,263 +2122,166 @@ class MainApp(QApplication):
         self.close_splash_screen()
         self.show_main_window()
 
-# class ColumnFilterDialog(QDialog):
-#     def __init__(self, *, headers: list[str], checked: set[str], locked: set[str], parent=None):
-#         super().__init__(parent)
-#         self.setWindowTitle("Select Columns")
-#         self.setModal(True)
-#         self.resize(420, 520)
-#
-#         self._locked = set(locked)
-#         # only show headers that are NOT locked
-#         visible_headers = [h for h in headers if h not in self._locked]
-#
-#         # widgets
-#         from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLineEdit, QListView, QPushButton, QLabel
-#         from PyQt6.QtGui import QStandardItemModel, QStandardItem
-#         from PyQt6.QtCore import Qt, QSortFilterProxyModel
-#
-#         lay = QVBoxLayout(self)
-#
-#         # search
-#         self.search = QLineEdit(self)
-#         self.search.setPlaceholderText("Search columns…")
-#         lay.addWidget(self.search)
-#
-#         # self.model = QStandardItemModel(self)
-#         # self.proxy = QSortFilterProxyModel(self)
-#         # self.proxy.setSourceModel(self.model)
-#         #
-#         # self.view = QListView(self)
-#         # self.view.setModel(self.proxy)
-#         # lay.addWidget(self.view)
-#
-#         #list (checkable)
-#
-#         self.model = QStandardItemModel(self)
-#         for name in visible_headers:
-#             it = QStandardItem(name)
-#             it.setCheckable(True)
-#             it.setCheckState(Qt.CheckState.Checked if name in checked else Qt.CheckState.Unchecked)
-#             it.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-#             self.model.appendRow(it)
-#
-#         # self.unit_map = {}  # store dropdown for these columns
-#         #
-#         # UNIT_COLUMNS = [
-#         #     "Abs. Distance (m)",
-#         #     "Pipe Length (mm)",
-#         #     "WT (mm)",
-#         #     "Length (mm)",
-#         #     "Width (mm)",
-#         #     "Depth (mm)",
-#         # ]
-#         #
-#         # for name in visible_headers:
-#         #     row_widget = QWidget()
-#         #     row_layout = QHBoxLayout(row_widget)
-#         #     row_layout.setContentsMargins(0, 0, 0, 0)
-#         #
-#         #     # checkbox
-#         #     item = QStandardItem(name)
-#         #     item.setCheckable(True)
-#         #     item.setCheckState(Qt.CheckState.Checked if name in checked else Qt.CheckState.Unchecked)
-#         #     self.model.appendRow(item)
-#         #
-#         #     # dropdown for select columns
-#         #     if name in UNIT_COLUMNS:
-#         #         cb = QComboBox()
-#         #         cb.addItems(["m", "cm", "mm", "feet", "km"])
-#         #         cb.setFixedWidth(80)
-#         #         self.unit_map[name] = cb
-#         #
-#         #         row_layout.addWidget(cb)
-#         #     else:
-#         #         spacer = QWidget()
-#         #         spacer.setFixedWidth(80)
-#         #         row_layout.addWidget(spacer)
-#         #
-#         #     # add the composite widget in place of plain text
-#         #     index = self.model.index(self.model.rowCount() - 1, 0)
-#         #     self.view.setIndexWidget(self.proxy.mapFromSource(index), row_widget)
-#
-#         self.proxy = QSortFilterProxyModel(self)
-#         self.proxy.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-#         self.proxy.setFilterKeyColumn(0)
-#         self.proxy.setSourceModel(self.model)
-#
-#         self.view = QListView(self)
-#         self.view.setModel(self.proxy)
-#         self.view.setEditTriggers(QListView.EditTrigger.NoEditTriggers)
-#         lay.addWidget(self.view, 1)
-#
-#         # quick actions
-#         row = QHBoxLayout()
-#         self.btnAll = QPushButton("Select All")
-#         self.btnNone = QPushButton("Select None")
-#         row.addWidget(self.btnAll)
-#         row.addWidget(self.btnNone)
-#         row.addStretch(1)
-#         lay.addLayout(row)
-#
-#         # footer
-#         foot = QHBoxLayout()
-#         self.info = QLabel("")  # shows e.g. "12 selected"
-#         foot.addWidget(self.info)
-#         foot.addStretch(1)
-#         self.btnCancel = QPushButton("Cancel")
-#         self.btnApply = QPushButton("Apply")
-#         foot.addWidget(self.btnCancel)
-#         foot.addWidget(self.btnApply)
-#         lay.addLayout(foot)
-#
-#         # wire up
-#         self.search.textChanged.connect(self.proxy.setFilterFixedString)
-#         self.btnAll.clicked.connect(lambda: self._set_all(Qt.CheckState.Checked))
-#         self.btnNone.clicked.connect(lambda: self._set_all(Qt.CheckState.Unchecked))
-#         self.btnCancel.clicked.connect(self.reject)
-#         self.btnApply.clicked.connect(self.accept)
-#
-#         self._update_info()
-#         self.model.itemChanged.connect(lambda *_: self._update_info())
-
-
 class ColumnFilterDialog(QDialog):
-    def __init__(self, *, headers, checked, locked, parent=None):
+    def __init__(self, *, headers: list[str], checked: set[str], locked: set[str], parent=None):
         super().__init__(parent)
+        self.unit_boxes = {}
+
         self.setWindowTitle("Select Columns")
-        self.resize(500, 600)
+        self.setModal(True)
+        self.resize(420, 520)
+
         self._locked = set(locked)
+        # only show headers that are NOT locked
+        visible_headers = [h for h in headers if h not in self._locked]
 
-        from PyQt6.QtWidgets import (
-            QVBoxLayout, QHBoxLayout, QLineEdit, QLabel,
-            QPushButton, QTableWidget, QTableWidgetItem, QComboBox
-        )
-        from PyQt6.QtCore import Qt
+        # widgets
+        from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLineEdit, QListView, QPushButton, QLabel
+        from PyQt6.QtGui import QStandardItemModel, QStandardItem
+        from PyQt6.QtCore import Qt, QSortFilterProxyModel
 
-        layout = QVBoxLayout(self)
+        lay = QVBoxLayout(self)
 
-
-
-        # Search bar
-        self.search = QLineEdit()
+        # search
+        self.search = QLineEdit(self)
         self.search.setPlaceholderText("Search columns…")
-        layout.addWidget(self.search)
+        lay.addWidget(self.search)
 
-        # Table instead of list
-        self.table = QTableWidget()
-        self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["✓", "Column Name", "Unit"])
-        self.table.verticalHeader().setVisible(False)
+        # self.model = QStandardItemModel(self)
+        # self.proxy = QSortFilterProxyModel(self)
+        # self.proxy.setSourceModel(self.model)
+        #
+        # self.view = QListView(self)
+        # self.view.setModel(self.proxy)
+        # lay.addWidget(self.view)
 
-        self.table.horizontalHeader().setStretchLastSection(True)
-        layout.addWidget(self.table)
+        #list (checkable)
 
-        # Columns which get unit dropdown
-        self.UNIT_COLUMNS = {
-            "Abs. Distance (m)",
-            "Pipe Length (mm)",
-            "WT (mm)",
-            "Length (mm)",
-            "Width (mm)",
-            "Depth (mm)",
-            "Distance to U/S GW(m)"
-        }
+        self.model = QStandardItemModel(self)
+        for name in visible_headers:
+            it = QStandardItem(name)
+            it.setCheckable(True)
+            it.setCheckState(Qt.CheckState.Checked if name in checked else Qt.CheckState.Unchecked)
+            it.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            self.model.appendRow(it)
 
-        self._populate_table(headers, checked)
-        self._remove_empty_unit_column()
+            base = it.text().split(" (")[0]
 
-        # Buttons row
-        btn_row = QHBoxLayout()
+            if base in parent._unit_columns:
+                cb = QComboBox()
+                cb.addItems(["m", "cm", "mm", "km", "feet"])
+                cb.setCurrentText(parent._unit_columns[base])
+                self.unit_boxes[base] = cb
+
+        # self.unit_map = {}  # store dropdown for these columns
+        #
+        # UNIT_COLUMNS = [
+        #     "Abs. Distance (m)",
+        #     "Pipe Length (mm)",
+        #     "WT (mm)",
+        #     "Length (mm)",
+        #     "Width (mm)",
+        #     "Depth (mm)",
+        # ]
+        #
+        # for name in visible_headers:
+        #     row_widget = QWidget()
+        #     row_layout = QHBoxLayout(row_widget)
+        #     row_layout.setContentsMargins(0, 0, 0, 0)
+        #
+        #     # checkbox
+        #     item = QStandardItem(name)
+        #     item.setCheckable(True)
+        #     item.setCheckState(Qt.CheckState.Checked if name in checked else Qt.CheckState.Unchecked)
+        #     self.model.appendRow(item)
+        #
+        #     # dropdown for select columns
+        #     if name in UNIT_COLUMNS:
+        #         cb = QComboBox()
+        #         cb.addItems(["m", "cm", "mm", "feet", "km"])
+        #         cb.setFixedWidth(80)
+        #         self.unit_map[name] = cb
+        #
+        #         row_layout.addWidget(cb)
+        #     else:
+        #         spacer = QWidget()
+        #         spacer.setFixedWidth(80)
+        #         row_layout.addWidget(spacer)
+        #
+        #     # add the composite widget in place of plain text
+        #     index = self.model.index(self.model.rowCount() - 1, 0)
+        #     self.view.setIndexWidget(self.proxy.mapFromSource(index), row_widget)
+
+        self.proxy = QSortFilterProxyModel(self)
+        self.proxy.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.proxy.setFilterKeyColumn(0)
+        self.proxy.setSourceModel(self.model)
+
+        self.view = QListView(self)
+        self.view.setModel(self.proxy)
+        self.view.setEditTriggers(QListView.EditTrigger.NoEditTriggers)
+        lay.addWidget(self.view, 1)
+
+        # quick actions
+        row = QHBoxLayout()
         self.btnAll = QPushButton("Select All")
         self.btnNone = QPushButton("Select None")
-        btn_row.addWidget(self.btnAll)
-        btn_row.addWidget(self.btnNone)
-        btn_row.addStretch()
-        layout.addLayout(btn_row)
+        row.addWidget(self.btnAll)
+        row.addWidget(self.btnNone)
+        row.addStretch(1)
+        lay.addLayout(row)
 
-        # Apply / Cancel
-        action_row = QHBoxLayout()
+        for col, cb in self.unit_boxes.items():
+            row = QHBoxLayout()
+            row.addWidget(QLabel(col))
+            row.addWidget(cb)
+            lay.addLayout(row)
+
+        # footer
+        foot = QHBoxLayout()
+        self.info = QLabel("")  # shows e.g. "12 selected"
+        foot.addWidget(self.info)
+        foot.addStretch(1)
         self.btnCancel = QPushButton("Cancel")
         self.btnApply = QPushButton("Apply")
-        action_row.addStretch()
-        action_row.addWidget(self.btnCancel)
-        action_row.addWidget(self.btnApply)
-        layout.addLayout(action_row)
+        foot.addWidget(self.btnCancel)
+        foot.addWidget(self.btnApply)
+        lay.addLayout(foot)
 
-        # Connections
+        # wire up
+        self.search.textChanged.connect(self.proxy.setFilterFixedString)
+        self.btnAll.clicked.connect(lambda: self._set_all(Qt.CheckState.Checked))
+        self.btnNone.clicked.connect(lambda: self._set_all(Qt.CheckState.Unchecked))
         self.btnCancel.clicked.connect(self.reject)
         self.btnApply.clicked.connect(self.accept)
-        self.btnAll.clicked.connect(lambda: self._select_all(True))
-        self.btnNone.clicked.connect(lambda: self._select_all(False))
-        self.search.textChanged.connect(self._filter_rows)
 
-    def _populate_table(self, headers, checked):
-        from PyQt6.QtWidgets import QTableWidgetItem, QComboBox
-        from PyQt6.QtCore import Qt
+        self._update_info()
+        self.model.itemChanged.connect(lambda *_: self._update_info())
 
-        self.table.setRowCount(len(headers))
-        self.unit_widgets = {}
+    # def selected_units(self):
+    #     return {col: self.unit_map[col].currentText() for col in self.unit_map}
 
-        for row, name in enumerate(headers):
-            chk = QTableWidgetItem()
-            chk.setCheckState(Qt.CheckState.Checked if name in checked else Qt.CheckState.Unchecked)
-            self.table.setItem(row, 0, chk)
+    def _set_all(self, state: Qt.CheckState):
+        for r in range(self.model.rowCount()):
+            self.model.item(r).setCheckState(state)
+        self._update_info()
 
-            self.table.setItem(row, 1, QTableWidgetItem(name))
+    def _update_info(self):
+        total = self.model.rowCount()
+        sel = sum(1 for r in range(total) if self.model.item(r).checkState() == Qt.CheckState.Checked)
+        self.info.setText(f"{sel} / {total} visible columns selected")
 
-            if name in self.UNIT_COLUMNS:
-                cb = QComboBox()
-                cb.addItems(["m", "cm", "mm", "feet", "km"])
-                self.table.setCellWidget(row, 2, cb)
-                self.unit_widgets[name] = cb
-            else:
-                self.table.setItem(row, 2, QTableWidgetItem(""))
-
-    def _select_all(self, state=True):
-        from PyQt6.QtCore import Qt
-        for r in range(self.table.rowCount()):
-            it = self.table.item(r, 0)
-            if it:
-                it.setCheckState(Qt.CheckState.Checked if state else Qt.CheckState.Unchecked)
-
-    def _filter_rows(self, text):
-        text = text.lower()
-        for r in range(self.table.rowCount()):
-            col_name = self.table.item(r, 1).text().lower()
-            self.table.setRowHidden(r, text not in col_name)
+    def selected_names(self) -> set[str]:
+        """Return the names selected in the dialog (locked not included, they’re enforced by caller)."""
+        out = set()
+        for r in range(self.model.rowCount()):
+            it = self.model.item(r)
+            if it.checkState() == Qt.CheckState.Checked:
+                out.add(it.text())
+        return out
 
     def selected_units(self):
-        out = {}
-        for col, cb in self.unit_widgets.items():
-            out[col] = cb.currentText()
-
-        return out
-
-    def selected_names(self):
-        out = set()
-        from PyQt6.QtCore import Qt
-        for r in range(self.table.rowCount()):
-            if self.table.item(r, 0).checkState() == Qt.CheckState.Checked:
-                out.add(self.table.item(r, 1).text())
-        return out
-
-    def _remove_empty_unit_column(self):
-        # check if Unit column is completely empty
-        from PyQt6.QtWidgets import QWidget
-
-        unit_col = 2  # "Unit" column index
-        has_any_widget = False
-
-        for row in range(self.table.rowCount()):
-            if self.table.cellWidget(row, unit_col) is not None:
-                has_any_widget = True
-                break
-
-        if not has_any_widget:
-            self.table.setColumnHidden(unit_col, True)
-
-
+        return {k: cb.currentText() for k, cb in self.unit_boxes.items()}
 
 
 class ConsoleRelayPage(QWebEnginePage):
@@ -988,75 +2405,10 @@ class SyncPlotlyView(QWebEngineView):
         from PyQt6.QtCore import QTimer
         QTimer.singleShot(0, lambda: setattr(self, "_busy", False))
 
+from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene
+from PyQt6.QtGui import QPen, QPolygonF
+from PyQt6.QtCore import QPointF
 
-# class PipeLocatorWindow(QDialog):
-#     rangeSelected = pyqtSignal(float, float)
-#
-#     def __init__(self, df, parent=None):
-#         super().__init__(parent)
-#         self.setWindowTitle("Pipe Locator")
-#         self.resize(1100, 200)
-#
-#         layout = QVBoxLayout(self)
-#         self.view = QWebEngineView()
-#         layout.addWidget(self.view)
-#
-#         html = self.build_html(df)
-#         self.view.setHtml(html)
-#
-#         # JS → Python communication
-#         self.view.page().javaScriptConsoleMessage = self.on_js_msg
-#
-#     def on_js_msg(self, level, msg, line, source):
-#         if msg.startswith("RANGE:"):
-#             try:
-#                 s, e = msg.replace("RANGE:", "").split(",")
-#                 self.rangeSelected.emit(float(s), float(e))
-#             except:
-#                 pass
-#
-#     def build_html(self, df):
-#         import plotly.graph_objects as go
-#
-#         fig = go.Figure()
-#
-#         # defect markers
-#         fig.add_trace(go.Scatter(
-#             x=df["Abs. Distance (m)"],
-#             y=[1]*len(df),
-#             mode="markers",
-#             marker=dict(color="red", size=10, symbol="triangle-down")
-#         ))
-#
-#         fig.update_layout(
-#             height=120,
-#             margin=dict(l=10, r=10, t=10, b=10),
-#             xaxis_title="Pipeline Distance (m)",
-#             yaxis=dict(visible=False)
-#         )
-#
-#         # add JS mouse drag range selection
-#         js = """
-#         <script>
-#         let g;
-#         document.addEventListener("DOMContentLoaded", ()=>{
-#             g = document.querySelector('.js-plotly-plot');
-#             let startX=null;
-#             g.onmousedown = e => { startX = e.offsetX; };
-#             g.onmouseup = e => {
-#                 if(startX!==null){
-#                     let endX = e.offsetX;
-#                     let x1 = g._fullLayout.xaxis.p2d(startX);
-#                     let x2 = g._fullLayout.xaxis.p2d(endX);
-#                     console.log("RANGE:" + [Math.min(x1,x2), Math.max(x1,x2)]);
-#                 }
-#                 startX=null;
-#             };
-#         });
-#         </script>
-#         """
-#
-#         return fig.to_html(include_plotlyjs="cdn") + js
 
 class MyMainWindow(QMainWindow):
     REQUIRED_TALLY_COLS = [
@@ -1069,12 +2421,18 @@ class MyMainWindow(QMainWindow):
         self.ui = Form()
 
         self.ui.setupUi(self)
+        # self._pipe_locator_dialog = None
+        # self._pipe_locator_lock = False
+        self._pipe_locator_dialog = None
 
         # Hide unwanted menu actions
-        if hasattr(self.ui, "action_Pipe_Locator"):
-            self.ui.action_Pipe_Locator.setVisible(False)
-        #print("UI Actions:", [a for a in dir(self.ui) if "action" in a.lower()])
+        # if hasattr(self.ui, "action_Pipe_Locator"):
+        #     self.ui.action_Pipe_Locator.setVisible(False)
 
+        if hasattr(self.ui, "action_Pipe_Locator"):
+            self.ui.action_Pipe_Locator.setVisible(True)
+            self.ui.action_Pipe_Sch.setEnabled(True)
+            self.ui.action_Pipe_Locator.triggered.connect(self.open_pipe_locator)
 
         if hasattr(self.ui, "action_ERF"):
             self.ui.action_ERF.setVisible(True)
@@ -1146,6 +2504,25 @@ class MyMainWindow(QMainWindow):
         self._last_allowed_tab_index = 0
         self._ui_ready = False  # set true after first layout/show
         self._selected_columns: set[str] = set()
+        # --- unit config ---
+        self._unit_columns = {
+            "Abs. Distance": "m",
+            "Distance to U/S GW": "m",
+            "Pipe Length": "mm",
+            "WT": "mm",
+            "Width": "mm",
+            "Length": "mm",
+            "Depth": "mm",
+        }
+
+        self._unit_factor = {
+            "m": 1.0,
+            "cm": 100.0,
+            "mm": 1000.0,
+            "km": 0.001,
+            "feet": 3.28084,
+        }
+
         self.hhmap = None  # hallsensor_heatmap*.html
         self.phmap = None  # proximity_heatmap*.html
         self._hm_layout_mode = "vertical"  # "horizontal" = side-by-side, "vertical" = stacked
@@ -1694,7 +3071,6 @@ class MyMainWindow(QMainWindow):
         # mark UI ready on next tick (prevents popup at startup)
         QTimer.singleShot(0, lambda: setattr(self, "_ui_ready", True))
 
-
         # try:
         #     excel_path = resource_path("14inch Petrofac pipetally.xlsx")
         #     if os.path.exists(excel_path) and self.pipe_tally is None:
@@ -1703,34 +3079,6 @@ class MyMainWindow(QMainWindow):
         #     pass
 
         self._show_watermark()
-
-    # def open_pipe_locator(self):
-    #     print("Pipe Locator CLICKED!")
-    #
-    #     if self.pipe_tally is None:
-    #         QMessageBox.warning(self, "Pipe Locator", "Please load a pipe first.")
-    #         return
-    #
-    #     dlg = PipeLocatorWindow(self.pipe_tally, self)
-    #     dlg.rangeSelected.connect(self.apply_locator_range)
-    #     dlg.exec()
-
-    # def apply_locator_range(self, start, end):
-    #     if self.pipe_tally is None:
-    #         return
-    #
-    #     df = self.pipe_tally
-    #     filtered = df[(df["Abs. Distance (m)"] >= start) &
-    #                   (df["Abs. Distance (m)"] <= end)]
-    #
-    #     if filtered.empty:
-    #         QMessageBox.information(self, "Pipe Locator", "No defects in this range.")
-    #         return
-    #
-    #     # update table
-    #     self.load_defect_table(filtered)
-
-
 
     def _reset_ui_to_start_state(self):
         # mark app state
@@ -1802,218 +3150,79 @@ class MyMainWindow(QMainWindow):
         self._hscroll_ready_main = False
         self._hscroll_ready_table = False
 
-
-
-
-
-    # def _cache_original_table_values(self):
-    #     self._original_table_data = {}
-    #
-    #     table = self.ui.tableWidgetDefect
-    #     headers = [table.horizontalHeaderItem(i).text() for i in range(table.columnCount())]
-    #
-    #     for h in headers:
-    #         self._original_table_data[h.split(" (")[0]] = []
-    #
-    #     for r in range(table.rowCount()):
-    #         for c, h in enumerate(headers):
-    #             item = table.item(r, c)
-    #             try:
-    #                 self._original_table_data[h.split(" (")[0]].append(float(item.text()))
-    #             except:
-    #                 self._original_table_data[h.split(" (")[0]].append(None)
-
-    def _cache_original_table_values(self):
-        self._original_table_data = {}
-        table = self.ui.tableWidgetDefect
-
-        for c in range(table.columnCount()):
-            header = table.horizontalHeaderItem(c).text()
-            base = header.split("(")[0].strip()
-            self._original_table_data[base] = []
-
-            for r in range(table.rowCount()):
-                item = table.item(r, c)
-                try:
-                    self._original_table_data[base].append(float(item.text()))
-                except:
-                    self._original_table_data[base].append(None)
-
-
-
-
-
-    def _apply_unit_conversion_to_table(self):
-        if not hasattr(self, "column_units"):
-            return
-
-        conv = {
-            "m": 1,
-            "cm": 100,
-            "mm": 1000,
-            "feet": 3.28084,
-            "km": 0.001
-        }
-
-        table = self.ui.tableWidgetDefect
-
-        for col_name, unit in self.column_units.items():
-            base_name = col_name.split(" (")[0]
-
-            col_index = -1
-            for i in range(table.columnCount()):
-                header = table.horizontalHeaderItem(i)
-                if not header:
-                    continue
-                if header.text().split(" (")[0] == base_name:
-                    col_index = i
-                    break
-
-            if col_index == -1:
-                continue
-
-            mult = conv.get(unit, 1)
-
-            # ✅ convert values
-            for r in range(table.rowCount()):
-                item = table.item(r, col_index)
-                if not item:
-                    continue
-                try:
-                    val = float(item.text())
-                    item.setText(f"{val * mult:.3f}")
-                except:
-                    pass
-
-            # # ✅ update header text with unit
-            new_header = f"{base_name} ({unit})"
-            table.horizontalHeaderItem(col_index).setText(new_header)
-
-
-
     # def _apply_unit_conversion_to_table(self):
     #     if not hasattr(self, "column_units"):
     #         return
     #
-    #     CONV = {
-    #         "m": 1, "km": 0.001, "feet": 3.28084,
-    #         "mm": 1, "cm": 0.1
-    #     }
-    #
-    #     table = self.ui.tableWidgetDefect
-    #
-    #     for base, unit in self.column_units.items():
-    #         for c in range(table.columnCount()):
-    #             header = table.horizontalHeaderItem(c)
-    #             if header.text().split("(")[0].strip() != base:
-    #                 continue
-    #
-    #             values = self._original_table_data.get(base)
-    #             if not values:
-    #                 continue
-    #
-    #             mul = CONV.get(unit, 1)
-    #             for r, v in enumerate(values):
-    #                 if v is not None:
-    #                     table.item(r, c).setText(f"{v * mul:.3f}")
-    #
-    #             header.setText(f"{base} ({unit})")
-
-    # def open_column_filter_dialog(self):
-    #     headers = [
-    #         self.ui.tableWidgetDefect.horizontalHeaderItem(i).text()
-    #         for i in range(self.ui.tableWidgetDefect.columnCount())
-    #     ]
-    #
-    #     dlg = ColumnFilterDialog(
-    #         headers=headers,
-    #         selected_cols=getattr(self, "_selected_columns", set()),
-    #         parent=self
-    #     )
-    #
-    #     # dlg = ColumnFilterDialog(
-    #     #     headers=headers,
-    #     #     selected_cols=self._selected_columns if hasattr(self, "_selected_columns") else set(),
-    #     #     parent=self
-    #     # )
-    #
-    #     if dlg.exec():
-    #         self._selected_columns = dlg.selected_columns()
-    #         self.column_units = dlg.selected_units()
-    #
-    #         self.apply_column_filter()
-    #         self._apply_unit_conversion_to_table()
-
-    # def apply_column_filter(self):
-    #     table = self.ui.tableWidgetDefect
-    #     for c in range(table.columnCount()):
-    #         base = table.horizontalHeaderItem(c).text().split("(")[0].strip()
-    #         table.setColumnHidden(c, base not in self._selected_columns)
-
-    # def _apply_unit_conversion_to_table(self):
-    #     if not hasattr(self, "column_units"):
-    #         return
-    #
-    #     # Conversion multipliers
-    #     conv = {
+    #     conversion = {
     #         "m": 1,
     #         "cm": 100,
     #         "mm": 1000,
     #         "feet": 3.28084,
-    #         "km": 0.001
+    #         "km": 0.001,
     #     }
     #
     #     table = self.ui.tableWidgetDefect
+    #     cols = [table.horizontalHeaderItem(i).text() for i in range(table.columnCount())]
     #
-    #     # Helper: Clean header name (remove unit part)
-    #     def clean(text):
-    #         return text.split("(")[0].replace(".", "").strip()
-    #
-    #     # Extract ALL column names (always clean base name)
-    #     headers = []
-    #     for i in range(table.columnCount()):
-    #         h = table.horizontalHeaderItem(i)
-    #         if h:
-    #             base = h.data(0) or clean(h.text())
-    #             headers.append(base)
-    #         else:
-    #             headers.append(None)
-    #
-    #     # APPLY CONVERSION
     #     for col_name, unit in self.column_units.items():
-    #         base_name = clean(col_name)
-    #
-    #         # Find correct column index (using clean name)
-    #         if base_name not in headers:
+    #         if col_name not in cols:
     #             continue
     #
-    #         col_index = headers.index(base_name)
-    #         multiplier = conv.get(unit, 1)
+    #         multiplier = conversion.get(unit, 1)
+    #         col_idx = cols.index(col_name)
     #
-    #         # Get ORIGINAL values (never modified)
-    #         original_vals = self._original_table_data.get(base_name)
-    #         if original_vals is None:
-    #             continue
-    #
-    #         # Convert each cell using ORIGINAL values
-    #         for r, original_val in enumerate(original_vals):
-    #             if original_val is None:
+    #         for r in range(table.rowCount()):
+    #             item = table.item(r, col_idx)
+    #             if not item:
     #                 continue
     #
-    #             new_val = original_val * multiplier
-    #             item = table.item(r, col_index)
-    #             if item:
-    #                 item.setText(f"{new_val:.3f}")
-    #
-    #         # UPDATE header visually BUT keep internal name the same
-    #         header_item = table.horizontalHeaderItem(col_index)
-    #
-    #         # Store internal original header (never changes)
-    #         header_item.setData(0, base_name)
-    #
-    #         # Show visible header with selected unit
-    #         header_item.setText(f"{base_name} ({unit})")
+    #             try:
+    #                 base_value = float(item.text())  # assuming original is in meters/mm
+    #                 new_value = base_value * multiplier
+    #                 item.setText(f"{new_value:.3f}")
+    #             except:
+    #                 pass
 
+    def _apply_unit_conversion(self, selected_units: dict):
+        table = self.ui.tableWidgetDefect
+        if table.columnCount() == 0:
+            return
+
+        for c in range(table.columnCount()):
+            header_item = table.horizontalHeaderItem(c)
+            if not header_item:
+                continue
+
+            header = header_item.text()
+            base = header.split(" (")[0]
+
+            if base not in selected_units:
+                continue
+
+            new_unit = selected_units[base]
+            old_unit = self._unit_columns.get(base, new_unit)
+
+            if old_unit == new_unit:
+                continue
+
+            factor = self._unit_factor[new_unit] / self._unit_factor[old_unit]
+
+            for r in range(table.rowCount()):
+                item = table.item(r, c)
+                if not item:
+                    continue
+                try:
+                    val = float(item.text())
+                    item.setText(f"{val * factor:.3f}")
+                except:
+                    pass
+
+            header_item.setText(f"{base} ({new_unit})")
+            self._unit_columns[base] = new_unit
+
+            table.viewport().update()
+            table.horizontalHeader().repaint()
 
 
     # def _on_column_item_pressed(self, index):
@@ -2151,58 +3360,79 @@ class MyMainWindow(QMainWindow):
             checked = set(h for h in self._selected_columns if h in headers and h not in locked)
 
         dlg = ColumnFilterDialog(headers=headers, checked=checked, locked=locked, parent=self)
-        # dlg = ColumnFilterDialog(
-        #     headers=headers,
-        #     selected_cols=self._selected_columns if hasattr(self, "_selected_columns") else set(),
-        #     parent=self
-        # )
-
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return
 
-        self.column_units = dlg.selected_units()
-        self._apply_unit_conversion_to_table()
-
-
+        # self.column_units = dlg.selected_units()
+        # self._apply_unit_conversion_to_table()
 
         # persist + apply (locked are always enforced)
         self._selected_columns = set(dlg.selected_names()) | locked
-        #self.apply_column_filter()
+        #self._selected_columns = set(dlg.selected_names())
+        self._apply_unit_conversion(dlg.selected_units())
+        self.apply_column_filter()
 
 
+    # def apply_column_filter(self):
+    #     """Hide/show columns based on self._selected_columns + locked columns."""
+    #     locked = set(getattr(self, "BACKEND_LOCKED_COLS", set()))
+    #
+    #     # If we have no selection yet, treat as 'show all'
+    #     if not self._selected_columns:
+    #         self._selected_columns = set(self._current_headers_for_filter()) | locked
+    #
+    #     names_to_keep = set(self._selected_columns) | locked
+    #
+    #     # Prefer bottom QTableWidgetDefect if it has columns
+    #     if hasattr(self.ui, "tableWidgetDefect") and self.ui.tableWidgetDefect.columnCount() > 0:
+    #         header_map = {
+    #             c: (self.ui.tableWidgetDefect.horizontalHeaderItem(c).text()
+    #                 if self.ui.tableWidgetDefect.horizontalHeaderItem(c) else f"Col {c}")
+    #             for c in range(self.ui.tableWidgetDefect.columnCount())
+    #         }
+    #         for c, name in header_map.items():
+    #             hide = (name not in names_to_keep) and (name not in locked)
+    #             self.ui.tableWidgetDefect.setColumnHidden(c, hide)
+    #         QTimer.singleShot(0, self._refresh_table_scrollbars)
+    #         return
+    #
+    #     # Fallback to the top QTableView
+    #     if hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
+    #         model = self.ui.tableView.model()
+    #         header_names = [str(model.headerData(c, Qt.Orientation.Horizontal)) for c in range(model.columnCount())]
+    #         for c, name in enumerate(header_names):
+    #             hide = (name not in names_to_keep) and (name not in locked)
+    #             self.ui.tableView.setColumnHidden(c, hide)
 
     def apply_column_filter(self):
-        """Hide/show columns based on self._selected_columns + locked columns."""
-        locked = set(getattr(self, "BACKEND_LOCKED_COLS", set()))
-
-        # If we have no selection yet, treat as 'show all'
-        if not self._selected_columns:
-            self._selected_columns = set(self._current_headers_for_filter()) | locked
-
-        names_to_keep = set(self._selected_columns) | locked
-
-        # Prefer bottom QTableWidgetDefect if it has columns
-        if hasattr(self.ui, "tableWidgetDefect") and self.ui.tableWidgetDefect.columnCount() > 0:
-            header_map = {
-                c: (self.ui.tableWidgetDefect.horizontalHeaderItem(c).text()
-                    if self.ui.tableWidgetDefect.horizontalHeaderItem(c) else f"Col {c}")
-                for c in range(self.ui.tableWidgetDefect.columnCount())
-            }
-            for c, name in header_map.items():
-                hide = (name not in names_to_keep) and (name not in locked)
-                self.ui.tableWidgetDefect.setColumnHidden(c, hide)
-            QTimer.singleShot(0, self._refresh_table_scrollbars)
+        table = self.ui.tableWidgetDefect
+        if table.columnCount() == 0:
             return
 
-        # Fallback to the top QTableView
-        if hasattr(self.ui, "tableView") and self.ui.tableView.model() is not None:
-            model = self.ui.tableView.model()
-            header_names = [str(model.headerData(c, Qt.Orientation.Horizontal)) for c in range(model.columnCount())]
-            for c, name in enumerate(header_names):
-                hide = (name not in names_to_keep) and (name not in locked)
-                self.ui.tableView.setColumnHidden(c, hide)
+        # 🔹 selected column base names
+        selected = set()
+        for name in self._selected_columns:
+            base = name
+            for u in ["(m)", "(mm)", "(cm)", "(km)", "(feet)"]:
+                base = base.replace(u, "")
+            selected.add(base.strip())
 
+        # 🔥 FIXED RULE: selected = show, unselected = hide
+        for c in range(table.columnCount()):
+            header_item = table.horizontalHeaderItem(c)
+            if not header_item:
+                continue
 
+            header = header_item.text()
+            base = header
+            for u in ["(m)", "(mm)", "(cm)", "(km)", "(feet)"]:
+                base = base.replace(u, "")
+            base = base.strip()
+
+            if base in selected:
+                table.setColumnHidden(c, False)  # SHOW
+            else:
+                table.setColumnHidden(c, True)  # HIDE
 
     def _on_column_item_pressed(self, index):
         """Toggle the check state; keep popup open and update summary."""
@@ -2366,6 +3596,9 @@ class MyMainWindow(QMainWindow):
             self._cf_model.appendRow(it)
 
         self._update_column_summary()
+
+
+
 
 
     def _update_column_summary(self):
@@ -3280,6 +4513,7 @@ class MyMainWindow(QMainWindow):
 
     def setup_actions(self):
         a = self.ui
+        # a.action_Pipe_Locator.triggered.connect(self.open_pipe_locator())
         a.action_Create_Proj.triggered.connect(self.open_project)
         a.action_Close_Proj.triggered.connect(self.close_project)
         a.action_Quit.triggered.connect(self.quit_app)
@@ -3307,6 +4541,8 @@ class MyMainWindow(QMainWindow):
         a.action__pipetally.triggered.connect(self.open_pipe_tally)
         a.action_Manual.triggered.connect(self.open_manual)
         a.actionStandard.triggered.connect(self.open_digs)  # original (by defect no.)
+        a.action_Pipe_Locator.triggered.connect(self.open_pipe_locator)
+
 
     def load_next_pipe(self):
         """Go to next pipe and load automatically"""
@@ -3807,9 +5043,9 @@ class MyMainWindow(QMainWindow):
 
         self.btnLoadPipe.setEnabled(False)
         self.load_selected_by_index(idx)
-        self._cache_original_table_values()
 
         #self.btnLoadPipe.clicked.connect(self.load_selected_pipe)
+
 
     def update_load_button_state(self, idx: int):
         if not hasattr(self, "btnLoadPipe"):
@@ -3835,7 +5071,7 @@ class MyMainWindow(QMainWindow):
         # Use lightweight model instead of building QStandardItem rows
         self.df_model = PandasModel(df)
         self.proxy_model.setSourceModel(self.df_model)
-        self.ui.tableView.setModel(self.proxy_model)
+
         self.ui.tableView.setSortingEnabled(True)
 
     def on_assets_loaded(self, assets):
@@ -3850,38 +5086,21 @@ class MyMainWindow(QMainWindow):
         self.hhmap = assets.get("hallsensor_heatmap")
         self.phmap = assets.get("proximity_heatmap")
 
-    # def on_table_data_ready(self, df):
-    #     """Handle processed table data"""
-    #     self.curr_data = df  # 👈 make sure we keep a reference for filtering later
-    #
-    #     if df is not None:
-    #         # 👇 populate the column filter dropdown with available columns
-    #
-    #         # Check if this is a PipeTally format or defects.csv format
-    #         if "Feature Type" in df.columns:
-    #             self._populate_defect_table_from_tally(df)
-    #         else:
-    #             self._populate_defect_table_from_csv(df)
-    #     else:
-    #         self._show_no_defects_message()
-
     def on_table_data_ready(self, df):
-        self.curr_data = df
+        """Handle processed table data"""
+        self.curr_data = df  # 👈 make sure we keep a reference for filtering later
 
         if df is not None:
+            # 👇 populate the column filter dropdown with available columns
+
+            # Check if this is a PipeTally format or defects.csv format
             if "Feature Type" in df.columns:
                 self._populate_defect_table_from_tally(df)
             else:
                 self._populate_defect_table_from_csv(df)
-
-            # ✅ EXACT LOCATION
-            self._cache_original_table_values()
-
-
-            if hasattr(self, "column_units"):
-                self._apply_unit_conversion_to_table()
         else:
             self._show_no_defects_message()
+
 
     def on_loading_error(self, error_msg):
         """Handle loading errors"""
@@ -4026,7 +5245,7 @@ class MyMainWindow(QMainWindow):
             'Longitude': 150,
             'Altitude': 150,
             'Comment': 150,
-            'Empty': 150,
+            'Empty': 530
         }
 
         for c, col_name in enumerate(view.columns):
@@ -4270,6 +5489,11 @@ class MyMainWindow(QMainWindow):
         if not self._selected_columns:
             self._selected_columns = set(self._current_headers_for_filter()) | set(self.BACKEND_LOCKED_COLS)
         self.apply_column_filter()
+
+
+
+
+
 
 
 
@@ -5160,6 +6384,109 @@ class MyMainWindow(QMainWindow):
         # Start ERF calculator in a background thread
         threading.Thread(target=run_erf, daemon=True).start()
 
+    def _back_from_pipe_locator(self):
+        # Go back only if previous widget exists and is valid
+        if hasattr(self, "_pipe_locator_prev_widget") and self._pipe_locator_prev_widget:
+            self.top_stack.setCurrentWidget(self._pipe_locator_prev_widget)
+        else:
+            # fallback: go to first available widget
+            if self.top_stack.count() > 0:
+                self.top_stack.setCurrentIndex(0)
+
+    def _close_pipe_locator(self):
+        if hasattr(self, "_pipe_locator_view"):
+            self.top_stack.removeWidget(self._pipe_locator_view)
+            self._pipe_locator_view.deleteLater()
+            del self._pipe_locator_view
+
+            # Go back to previous view safely
+            if hasattr(self, "_pipe_locator_prev_widget") and self._pipe_locator_prev_widget:
+                self.top_stack.setCurrentWidget(self._pipe_locator_prev_widget)
+
+
+
+    # def _close_pipe_locator(self):
+    #
+    #     if hasattr(self, "_pipe_locator_view") and self._pipe_locator_view:
+    #         self._pipe_locator_view.setParent(None)
+    #         self._pipe_locator_view.deleteLater()
+    #         self._pipe_locator_view = None
+    #
+    #     # 🔥 RE-ENABLE DIGSHEET
+    #     if hasattr(self, "actionDigsheet"):
+    #         self.actionDigsheet.setEnabled(True)
+
+    # def open_pipe_locator(self):
+    #     if self.pipe_tally is None or self.pipe_tally.empty:
+    #         QMessageBox.warning(self, "Pipe Locator", "Pipe tally not loaded")
+    #         return
+    #
+    #     # create once
+    #     if not hasattr(self, "_pipe_locator_view"):
+    #         self._pipe_locator_view = PipeLocatorWidget(self.pipe_tally, self)
+    #
+    #         # 🔥 ADD TO TOP STACK
+    #         self.top_stack.addWidget(self._pipe_locator_view)
+    #
+    #     # 🔥 SHOW PIPE LOCATOR
+    #     self.top_stack.setCurrentWidget(self._pipe_locator_view)
+
+    # def open_pipe_locator(self):
+    #     if self.pipe_tally is None or self.pipe_tally.empty:
+    #         QMessageBox.warning(self, "Pipe Locator", "Pipe tally not loaded")
+    #         return
+    #
+    #     # ✅ Save previous view ONLY if we are not already in PipeLocator
+    #     current = self.top_stack.currentWidget()
+    #
+    #     if not isinstance(current, PipeLocatorWidget):
+    #         self._pipe_locator_prev_widget = current
+    #
+    #     # Create Pipe Locator only once
+    #     if not hasattr(self, "_pipe_locator_view"):
+    #         self._pipe_locator_view = PipeLocatorWidget(self.pipe_tally, self)
+    #         self.top_stack.addWidget(self._pipe_locator_view)
+    #
+    #         # 🔙 Back / ✕ / ESC → go back properly
+    #         self._pipe_locator_view.backRequested.connect(
+    #             self._back_from_pipe_locator
+    #         )
+    #
+    #     # Show Pipe Locator
+    #     self.top_stack.setCurrentWidget(self._pipe_locator_view)
+
+    def open_pipe_locator(self):
+
+        if getattr(self, "_pipe_locator_dialog", None):
+            dlg = self._pipe_locator_dialog
+            dlg.raise_()
+            dlg.activateWindow()
+            return
+
+        pipe_tally = self.pipe_tally if isinstance(self.pipe_tally, pd.DataFrame) else pd.DataFrame()
+
+        dlg = PipeLocatorDialog(pipe_tally, self)
+        self._pipe_locator_dialog = dlg
+
+        # hide top controls
+        if hasattr(self.ui, "widgetControls"):
+            self.ui.widgetControls.hide()
+
+        def cleanup():
+            self._pipe_locator_dialog = None
+            if hasattr(self.ui, "widgetControls"):
+                self.ui.widgetControls.show()
+
+        dlg.finished.connect(cleanup)
+
+        # 🔥 SHOW ORDER MATTERS
+        dlg.show()
+        dlg.raise_()
+        dlg.activateWindow()
+
+    def _clear_pipe_locator_ref(self):
+        self._pipe_locator_dialog = None
+
     def open_Final_Report(self):
         # Check if a project is open
         if not self.project_is_open or not self.project_root:
@@ -5640,19 +6967,6 @@ class MyMainWindow(QMainWindow):
 
         except Exception as e:
             self.open_Error(f"Error opening ABS-distance digsheet:\n{e}")
-
-    # def open_pipe_locator(self):
-    #     print("PIPE LOCATOR FUNCTION LOADED")
-    #
-    #     if self.pipe_tally is None:
-    #         QMessageBox.warning(self, "Pipe Locator", "Load a pipe first.")
-    #         return
-    #
-    #     try:
-    #         dlg = PipeLocatorDialog(self.pipe_tally, self)
-    #         dlg.exec()
-    #     except Exception as e:
-    #         QMessageBox.critical(self, "Pipe Locator Error", str(e))
 
     def _update_generate_actions(self):
         """Update Generate menu buttons based on project and data status"""
@@ -6221,68 +7535,6 @@ class MyMainWindow(QMainWindow):
             self.top_hsplit.setSizes([top, bottom])
 
         print(f"Heatmap layout changed to: {mode}")
-
-
-# class PipeLocatorDialog(QDialog):
-#     def __init__(self, df, parent=None):
-#         super().__init__(parent)
-#         self.setWindowTitle("Pipe Locator")
-#         self.resize(1300, 260)
-#         self.df = df.copy()
-#         self.df["Pipe Length(m)"] = pd.to_numeric(self.df["Pipe Length(m)"], errors="coerce").fillna(0)
-#
-#         layout = QVBoxLayout(self)
-#         self.view = QWebEngineView()
-#         layout.addWidget(self.view)
-#
-#         html = self.build_html(self.df)
-#         self.view.setHtml(html)
-#
-#     def build_html(self, df):
-#         import plotly.graph_objects as go
-#         import numpy as np
-#
-#         # -----------------------------
-#         # 1) WELD POSITIONS (cumulative)
-#         # -----------------------------
-#         df["cum"] = df["Pipe Length(m)"].cumsum()
-#         weld_positions = df["cum"].values
-#
-#         # -----------------------------
-#         # 2) FEATURES (Valve, T-piece…)
-#         # -----------------------------
-#         features = df[df["Feature Identification"].notna()]
-#
-#         fig = go.Figure()
-#
-#         # 🔵 Weld markers (vertical lines)
-#         fig.add_trace(go.Scatter(
-#             x=weld_positions,
-#             y=[1]*len(weld_positions),
-#             mode="markers",
-#             marker=dict(color="blue", size=10, symbol="line-ns"),
-#             name="Welds"
-#         ))
-#
-#         # 🔺 Features with text
-#         fig.add_trace(go.Scatter(
-#             x=features["Abs. Distance (m)"],
-#             y=[0.7]*len(features),
-#             mode="markers+text",
-#             marker=dict(color="red", size=12, symbol="triangle-up"),
-#             text=features["Feature Identification"],
-#             textposition="top center",
-#             name="Features"
-#         ))
-#
-#         fig.update_layout(
-#             height=180,
-#             margin=dict(l=10, r=10, t=10, b=10),
-#             xaxis_title="Pipeline Distance (m)",
-#             yaxis=dict(visible=False)
-#         )
-#
-#         return fig.to_html(include_plotlyjs="cdn")
 
 
 

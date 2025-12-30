@@ -60,3 +60,5 @@ out.txt
 *.env
 
 /main_venv
+
+/venv

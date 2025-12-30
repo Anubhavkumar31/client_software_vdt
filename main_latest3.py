@@ -15,7 +15,6 @@ from typing import Optional
 from PyQt6.QtWidgets import QPushButton
 from PyQt6.QtCore import Qt
 
-
 try:
     from PyQt6.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 except ImportError:
@@ -233,22 +232,6 @@ class PipeLoaderWorker(QThread):
             self.data_loaded.emit(df)
             self._update_time_estimate(1, total_steps)
             print(f"Loaded pickle with {len(df)} rows")
-
-            # --------------------------------------------
-            # Update Pipe Locator after pipe_tally loads
-            # --------------------------------------------
-            try:
-                df = self.pipe_tally
-                if df is not None and "Abs. Distance (m)" in df.columns:
-                    defects = []
-                    for _, row in df.iterrows():
-                        defects.append((row["Abs. Distance (m)"], str(row.get("Type", ""))))
-
-                    total_length = df["Abs. Distance (m)"].max()
-                    self.pipe_locator.set_data(defects, total_length)
-            except Exception as e:
-                print("Pipe Locator Update Error:", e)
-            # --------------------------------------------
 
             # Step 2: Find pipe directory
             self.progress_updated.emit(25, "Locating asset files...")
@@ -608,265 +591,147 @@ class MainApp(QApplication):
         self.close_splash_screen()
         self.show_main_window()
 
-# class ColumnFilterDialog(QDialog):
-#     def __init__(self, *, headers: list[str], checked: set[str], locked: set[str], parent=None):
-#         super().__init__(parent)
-#         self.setWindowTitle("Select Columns")
-#         self.setModal(True)
-#         self.resize(420, 520)
-#
-#         self._locked = set(locked)
-#         # only show headers that are NOT locked
-#         visible_headers = [h for h in headers if h not in self._locked]
-#
-#         # widgets
-#         from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLineEdit, QListView, QPushButton, QLabel
-#         from PyQt6.QtGui import QStandardItemModel, QStandardItem
-#         from PyQt6.QtCore import Qt, QSortFilterProxyModel
-#
-#         lay = QVBoxLayout(self)
-#
-#         # search
-#         self.search = QLineEdit(self)
-#         self.search.setPlaceholderText("Search columns…")
-#         lay.addWidget(self.search)
-#
-#         # self.model = QStandardItemModel(self)
-#         # self.proxy = QSortFilterProxyModel(self)
-#         # self.proxy.setSourceModel(self.model)
-#         #
-#         # self.view = QListView(self)
-#         # self.view.setModel(self.proxy)
-#         # lay.addWidget(self.view)
-#
-#         #list (checkable)
-#
-#         self.model = QStandardItemModel(self)
-#         for name in visible_headers:
-#             it = QStandardItem(name)
-#             it.setCheckable(True)
-#             it.setCheckState(Qt.CheckState.Checked if name in checked else Qt.CheckState.Unchecked)
-#             it.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-#             self.model.appendRow(it)
-#
-#         # self.unit_map = {}  # store dropdown for these columns
-#         #
-#         # UNIT_COLUMNS = [
-#         #     "Abs. Distance (m)",
-#         #     "Pipe Length (mm)",
-#         #     "WT (mm)",
-#         #     "Length (mm)",
-#         #     "Width (mm)",
-#         #     "Depth (mm)",
-#         # ]
-#         #
-#         # for name in visible_headers:
-#         #     row_widget = QWidget()
-#         #     row_layout = QHBoxLayout(row_widget)
-#         #     row_layout.setContentsMargins(0, 0, 0, 0)
-#         #
-#         #     # checkbox
-#         #     item = QStandardItem(name)
-#         #     item.setCheckable(True)
-#         #     item.setCheckState(Qt.CheckState.Checked if name in checked else Qt.CheckState.Unchecked)
-#         #     self.model.appendRow(item)
-#         #
-#         #     # dropdown for select columns
-#         #     if name in UNIT_COLUMNS:
-#         #         cb = QComboBox()
-#         #         cb.addItems(["m", "cm", "mm", "feet", "km"])
-#         #         cb.setFixedWidth(80)
-#         #         self.unit_map[name] = cb
-#         #
-#         #         row_layout.addWidget(cb)
-#         #     else:
-#         #         spacer = QWidget()
-#         #         spacer.setFixedWidth(80)
-#         #         row_layout.addWidget(spacer)
-#         #
-#         #     # add the composite widget in place of plain text
-#         #     index = self.model.index(self.model.rowCount() - 1, 0)
-#         #     self.view.setIndexWidget(self.proxy.mapFromSource(index), row_widget)
-#
-#         self.proxy = QSortFilterProxyModel(self)
-#         self.proxy.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-#         self.proxy.setFilterKeyColumn(0)
-#         self.proxy.setSourceModel(self.model)
-#
-#         self.view = QListView(self)
-#         self.view.setModel(self.proxy)
-#         self.view.setEditTriggers(QListView.EditTrigger.NoEditTriggers)
-#         lay.addWidget(self.view, 1)
-#
-#         # quick actions
-#         row = QHBoxLayout()
-#         self.btnAll = QPushButton("Select All")
-#         self.btnNone = QPushButton("Select None")
-#         row.addWidget(self.btnAll)
-#         row.addWidget(self.btnNone)
-#         row.addStretch(1)
-#         lay.addLayout(row)
-#
-#         # footer
-#         foot = QHBoxLayout()
-#         self.info = QLabel("")  # shows e.g. "12 selected"
-#         foot.addWidget(self.info)
-#         foot.addStretch(1)
-#         self.btnCancel = QPushButton("Cancel")
-#         self.btnApply = QPushButton("Apply")
-#         foot.addWidget(self.btnCancel)
-#         foot.addWidget(self.btnApply)
-#         lay.addLayout(foot)
-#
-#         # wire up
-#         self.search.textChanged.connect(self.proxy.setFilterFixedString)
-#         self.btnAll.clicked.connect(lambda: self._set_all(Qt.CheckState.Checked))
-#         self.btnNone.clicked.connect(lambda: self._set_all(Qt.CheckState.Unchecked))
-#         self.btnCancel.clicked.connect(self.reject)
-#         self.btnApply.clicked.connect(self.accept)
-#
-#         self._update_info()
-#         self.model.itemChanged.connect(lambda *_: self._update_info())
-
-
 class ColumnFilterDialog(QDialog):
-    def __init__(self, *, headers, checked, locked, parent=None):
+    def __init__(self, *, headers: list[str], checked: set[str], locked: set[str], parent=None):
         super().__init__(parent)
         self.setWindowTitle("Select Columns")
-        self.resize(500, 600)
+        self.setModal(True)
+        self.resize(420, 520)
+
         self._locked = set(locked)
+        # only show headers that are NOT locked
+        visible_headers = [h for h in headers if h not in self._locked]
 
-        from PyQt6.QtWidgets import (
-            QVBoxLayout, QHBoxLayout, QLineEdit, QLabel,
-            QPushButton, QTableWidget, QTableWidgetItem, QComboBox
-        )
-        from PyQt6.QtCore import Qt
+        # widgets
+        from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLineEdit, QListView, QPushButton, QLabel
+        from PyQt6.QtGui import QStandardItemModel, QStandardItem
+        from PyQt6.QtCore import Qt, QSortFilterProxyModel
 
-        layout = QVBoxLayout(self)
+        lay = QVBoxLayout(self)
 
-
-
-        # Search bar
-        self.search = QLineEdit()
+        # search
+        self.search = QLineEdit(self)
         self.search.setPlaceholderText("Search columns…")
-        layout.addWidget(self.search)
+        lay.addWidget(self.search)
 
-        # Table instead of list
-        self.table = QTableWidget()
-        self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["✓", "Column Name", "Unit"])
-        self.table.verticalHeader().setVisible(False)
+        # self.model = QStandardItemModel(self)
+        # self.proxy = QSortFilterProxyModel(self)
+        # self.proxy.setSourceModel(self.model)
+        #
+        # self.view = QListView(self)
+        # self.view.setModel(self.proxy)
+        # lay.addWidget(self.view)
 
-        self.table.horizontalHeader().setStretchLastSection(True)
-        layout.addWidget(self.table)
+        #list (checkable)
 
-        # Columns which get unit dropdown
-        self.UNIT_COLUMNS = {
-            "Abs. Distance (m)",
-            "Pipe Length (mm)",
-            "WT (mm)",
-            "Length (mm)",
-            "Width (mm)",
-            "Depth (mm)",
-            "Distance to U/S GW(m)"
-        }
+        self.model = QStandardItemModel(self)
+        for name in visible_headers:
+            it = QStandardItem(name)
+            it.setCheckable(True)
+            it.setCheckState(Qt.CheckState.Checked if name in checked else Qt.CheckState.Unchecked)
+            it.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            self.model.appendRow(it)
 
-        self._populate_table(headers, checked)
-        self._remove_empty_unit_column()
+        # self.unit_map = {}  # store dropdown for these columns
+        #
+        # UNIT_COLUMNS = [
+        #     "Abs. Distance (m)",
+        #     "Pipe Length (mm)",
+        #     "WT (mm)",
+        #     "Length (mm)",
+        #     "Width (mm)",
+        #     "Depth (mm)",
+        # ]
+        #
+        # for name in visible_headers:
+        #     row_widget = QWidget()
+        #     row_layout = QHBoxLayout(row_widget)
+        #     row_layout.setContentsMargins(0, 0, 0, 0)
+        #
+        #     # checkbox
+        #     item = QStandardItem(name)
+        #     item.setCheckable(True)
+        #     item.setCheckState(Qt.CheckState.Checked if name in checked else Qt.CheckState.Unchecked)
+        #     self.model.appendRow(item)
+        #
+        #     # dropdown for select columns
+        #     if name in UNIT_COLUMNS:
+        #         cb = QComboBox()
+        #         cb.addItems(["m", "cm", "mm", "feet", "km"])
+        #         cb.setFixedWidth(80)
+        #         self.unit_map[name] = cb
+        #
+        #         row_layout.addWidget(cb)
+        #     else:
+        #         spacer = QWidget()
+        #         spacer.setFixedWidth(80)
+        #         row_layout.addWidget(spacer)
+        #
+        #     # add the composite widget in place of plain text
+        #     index = self.model.index(self.model.rowCount() - 1, 0)
+        #     self.view.setIndexWidget(self.proxy.mapFromSource(index), row_widget)
 
-        # Buttons row
-        btn_row = QHBoxLayout()
+        self.proxy = QSortFilterProxyModel(self)
+        self.proxy.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.proxy.setFilterKeyColumn(0)
+        self.proxy.setSourceModel(self.model)
+
+        self.view = QListView(self)
+        self.view.setModel(self.proxy)
+        self.view.setEditTriggers(QListView.EditTrigger.NoEditTriggers)
+        lay.addWidget(self.view, 1)
+
+        # quick actions
+        row = QHBoxLayout()
         self.btnAll = QPushButton("Select All")
         self.btnNone = QPushButton("Select None")
-        btn_row.addWidget(self.btnAll)
-        btn_row.addWidget(self.btnNone)
-        btn_row.addStretch()
-        layout.addLayout(btn_row)
+        row.addWidget(self.btnAll)
+        row.addWidget(self.btnNone)
+        row.addStretch(1)
+        lay.addLayout(row)
 
-        # Apply / Cancel
-        action_row = QHBoxLayout()
+        # footer
+        foot = QHBoxLayout()
+        self.info = QLabel("")  # shows e.g. "12 selected"
+        foot.addWidget(self.info)
+        foot.addStretch(1)
         self.btnCancel = QPushButton("Cancel")
         self.btnApply = QPushButton("Apply")
-        action_row.addStretch()
-        action_row.addWidget(self.btnCancel)
-        action_row.addWidget(self.btnApply)
-        layout.addLayout(action_row)
+        foot.addWidget(self.btnCancel)
+        foot.addWidget(self.btnApply)
+        lay.addLayout(foot)
 
-        # Connections
+        # wire up
+        self.search.textChanged.connect(self.proxy.setFilterFixedString)
+        self.btnAll.clicked.connect(lambda: self._set_all(Qt.CheckState.Checked))
+        self.btnNone.clicked.connect(lambda: self._set_all(Qt.CheckState.Unchecked))
         self.btnCancel.clicked.connect(self.reject)
         self.btnApply.clicked.connect(self.accept)
-        self.btnAll.clicked.connect(lambda: self._select_all(True))
-        self.btnNone.clicked.connect(lambda: self._select_all(False))
-        self.search.textChanged.connect(self._filter_rows)
 
-    def _populate_table(self, headers, checked):
-        from PyQt6.QtWidgets import QTableWidgetItem, QComboBox
-        from PyQt6.QtCore import Qt
+        self._update_info()
+        self.model.itemChanged.connect(lambda *_: self._update_info())
 
-        self.table.setRowCount(len(headers))
-        self.unit_widgets = {}
+    # def selected_units(self):
+    #     return {col: self.unit_map[col].currentText() for col in self.unit_map}
 
-        for row, name in enumerate(headers):
-            chk = QTableWidgetItem()
-            chk.setCheckState(Qt.CheckState.Checked if name in checked else Qt.CheckState.Unchecked)
-            self.table.setItem(row, 0, chk)
+    def _set_all(self, state: Qt.CheckState):
+        for r in range(self.model.rowCount()):
+            self.model.item(r).setCheckState(state)
+        self._update_info()
 
-            self.table.setItem(row, 1, QTableWidgetItem(name))
+    def _update_info(self):
+        total = self.model.rowCount()
+        sel = sum(1 for r in range(total) if self.model.item(r).checkState() == Qt.CheckState.Checked)
+        self.info.setText(f"{sel} / {total} visible columns selected")
 
-            if name in self.UNIT_COLUMNS:
-                cb = QComboBox()
-                cb.addItems(["m", "cm", "mm", "feet", "km"])
-                self.table.setCellWidget(row, 2, cb)
-                self.unit_widgets[name] = cb
-            else:
-                self.table.setItem(row, 2, QTableWidgetItem(""))
-
-    def _select_all(self, state=True):
-        from PyQt6.QtCore import Qt
-        for r in range(self.table.rowCount()):
-            it = self.table.item(r, 0)
-            if it:
-                it.setCheckState(Qt.CheckState.Checked if state else Qt.CheckState.Unchecked)
-
-    def _filter_rows(self, text):
-        text = text.lower()
-        for r in range(self.table.rowCount()):
-            col_name = self.table.item(r, 1).text().lower()
-            self.table.setRowHidden(r, text not in col_name)
-
-    def selected_units(self):
-        out = {}
-        for col, cb in self.unit_widgets.items():
-            out[col] = cb.currentText()
-
-        return out
-
-    def selected_names(self):
+    def selected_names(self) -> set[str]:
+        """Return the names selected in the dialog (locked not included, they’re enforced by caller)."""
         out = set()
-        from PyQt6.QtCore import Qt
-        for r in range(self.table.rowCount()):
-            if self.table.item(r, 0).checkState() == Qt.CheckState.Checked:
-                out.add(self.table.item(r, 1).text())
+        for r in range(self.model.rowCount()):
+            it = self.model.item(r)
+            if it.checkState() == Qt.CheckState.Checked:
+                out.add(it.text())
         return out
-
-    def _remove_empty_unit_column(self):
-        # check if Unit column is completely empty
-        from PyQt6.QtWidgets import QWidget
-
-        unit_col = 2  # "Unit" column index
-        has_any_widget = False
-
-        for row in range(self.table.rowCount()):
-            if self.table.cellWidget(row, unit_col) is not None:
-                has_any_widget = True
-                break
-
-        if not has_any_widget:
-            self.table.setColumnHidden(unit_col, True)
-
-
-
-
 class ConsoleRelayPage(QWebEnginePage):
     """Catches JS console messages to ferry Plotly relayout/hover to Python."""
     relayout_json = pyqtSignal(dict)    # emits on plotly_relayout
@@ -988,76 +853,6 @@ class SyncPlotlyView(QWebEngineView):
         from PyQt6.QtCore import QTimer
         QTimer.singleShot(0, lambda: setattr(self, "_busy", False))
 
-
-# class PipeLocatorWindow(QDialog):
-#     rangeSelected = pyqtSignal(float, float)
-#
-#     def __init__(self, df, parent=None):
-#         super().__init__(parent)
-#         self.setWindowTitle("Pipe Locator")
-#         self.resize(1100, 200)
-#
-#         layout = QVBoxLayout(self)
-#         self.view = QWebEngineView()
-#         layout.addWidget(self.view)
-#
-#         html = self.build_html(df)
-#         self.view.setHtml(html)
-#
-#         # JS → Python communication
-#         self.view.page().javaScriptConsoleMessage = self.on_js_msg
-#
-#     def on_js_msg(self, level, msg, line, source):
-#         if msg.startswith("RANGE:"):
-#             try:
-#                 s, e = msg.replace("RANGE:", "").split(",")
-#                 self.rangeSelected.emit(float(s), float(e))
-#             except:
-#                 pass
-#
-#     def build_html(self, df):
-#         import plotly.graph_objects as go
-#
-#         fig = go.Figure()
-#
-#         # defect markers
-#         fig.add_trace(go.Scatter(
-#             x=df["Abs. Distance (m)"],
-#             y=[1]*len(df),
-#             mode="markers",
-#             marker=dict(color="red", size=10, symbol="triangle-down")
-#         ))
-#
-#         fig.update_layout(
-#             height=120,
-#             margin=dict(l=10, r=10, t=10, b=10),
-#             xaxis_title="Pipeline Distance (m)",
-#             yaxis=dict(visible=False)
-#         )
-#
-#         # add JS mouse drag range selection
-#         js = """
-#         <script>
-#         let g;
-#         document.addEventListener("DOMContentLoaded", ()=>{
-#             g = document.querySelector('.js-plotly-plot');
-#             let startX=null;
-#             g.onmousedown = e => { startX = e.offsetX; };
-#             g.onmouseup = e => {
-#                 if(startX!==null){
-#                     let endX = e.offsetX;
-#                     let x1 = g._fullLayout.xaxis.p2d(startX);
-#                     let x2 = g._fullLayout.xaxis.p2d(endX);
-#                     console.log("RANGE:" + [Math.min(x1,x2), Math.max(x1,x2)]);
-#                 }
-#                 startX=null;
-#             };
-#         });
-#         </script>
-#         """
-#
-#         return fig.to_html(include_plotlyjs="cdn") + js
-
 class MyMainWindow(QMainWindow):
     REQUIRED_TALLY_COLS = [
         r"Abs. Distance (m)", r"Depth %", r"Type",
@@ -1069,12 +864,9 @@ class MyMainWindow(QMainWindow):
         self.ui = Form()
 
         self.ui.setupUi(self)
-
         # Hide unwanted menu actions
         if hasattr(self.ui, "action_Pipe_Locator"):
             self.ui.action_Pipe_Locator.setVisible(False)
-        #print("UI Actions:", [a for a in dir(self.ui) if "action" in a.lower()])
-
 
         if hasattr(self.ui, "action_ERF"):
             self.ui.action_ERF.setVisible(True)
@@ -1694,7 +1486,6 @@ class MyMainWindow(QMainWindow):
         # mark UI ready on next tick (prevents popup at startup)
         QTimer.singleShot(0, lambda: setattr(self, "_ui_ready", True))
 
-
         # try:
         #     excel_path = resource_path("14inch Petrofac pipetally.xlsx")
         #     if os.path.exists(excel_path) and self.pipe_tally is None:
@@ -1703,34 +1494,6 @@ class MyMainWindow(QMainWindow):
         #     pass
 
         self._show_watermark()
-
-    # def open_pipe_locator(self):
-    #     print("Pipe Locator CLICKED!")
-    #
-    #     if self.pipe_tally is None:
-    #         QMessageBox.warning(self, "Pipe Locator", "Please load a pipe first.")
-    #         return
-    #
-    #     dlg = PipeLocatorWindow(self.pipe_tally, self)
-    #     dlg.rangeSelected.connect(self.apply_locator_range)
-    #     dlg.exec()
-
-    # def apply_locator_range(self, start, end):
-    #     if self.pipe_tally is None:
-    #         return
-    #
-    #     df = self.pipe_tally
-    #     filtered = df[(df["Abs. Distance (m)"] >= start) &
-    #                   (df["Abs. Distance (m)"] <= end)]
-    #
-    #     if filtered.empty:
-    #         QMessageBox.information(self, "Pipe Locator", "No defects in this range.")
-    #         return
-    #
-    #     # update table
-    #     self.load_defect_table(filtered)
-
-
 
     def _reset_ui_to_start_state(self):
         # mark app state
@@ -1802,219 +1565,39 @@ class MyMainWindow(QMainWindow):
         self._hscroll_ready_main = False
         self._hscroll_ready_table = False
 
-
-
-
-
-    # def _cache_original_table_values(self):
-    #     self._original_table_data = {}
-    #
-    #     table = self.ui.tableWidgetDefect
-    #     headers = [table.horizontalHeaderItem(i).text() for i in range(table.columnCount())]
-    #
-    #     for h in headers:
-    #         self._original_table_data[h.split(" (")[0]] = []
-    #
-    #     for r in range(table.rowCount()):
-    #         for c, h in enumerate(headers):
-    #             item = table.item(r, c)
-    #             try:
-    #                 self._original_table_data[h.split(" (")[0]].append(float(item.text()))
-    #             except:
-    #                 self._original_table_data[h.split(" (")[0]].append(None)
-
-    def _cache_original_table_values(self):
-        self._original_table_data = {}
-        table = self.ui.tableWidgetDefect
-
-        for c in range(table.columnCount()):
-            header = table.horizontalHeaderItem(c).text()
-            base = header.split("(")[0].strip()
-            self._original_table_data[base] = []
-
-            for r in range(table.rowCount()):
-                item = table.item(r, c)
-                try:
-                    self._original_table_data[base].append(float(item.text()))
-                except:
-                    self._original_table_data[base].append(None)
-
-
-
-
-
-    def _apply_unit_conversion_to_table(self):
-        if not hasattr(self, "column_units"):
-            return
-
-        conv = {
-            "m": 1,
-            "cm": 100,
-            "mm": 1000,
-            "feet": 3.28084,
-            "km": 0.001
-        }
-
-        table = self.ui.tableWidgetDefect
-
-        for col_name, unit in self.column_units.items():
-            base_name = col_name.split(" (")[0]
-
-            col_index = -1
-            for i in range(table.columnCount()):
-                header = table.horizontalHeaderItem(i)
-                if not header:
-                    continue
-                if header.text().split(" (")[0] == base_name:
-                    col_index = i
-                    break
-
-            if col_index == -1:
-                continue
-
-            mult = conv.get(unit, 1)
-
-            # ✅ convert values
-            for r in range(table.rowCount()):
-                item = table.item(r, col_index)
-                if not item:
-                    continue
-                try:
-                    val = float(item.text())
-                    item.setText(f"{val * mult:.3f}")
-                except:
-                    pass
-
-            # # ✅ update header text with unit
-            new_header = f"{base_name} ({unit})"
-            table.horizontalHeaderItem(col_index).setText(new_header)
-
-
-
     # def _apply_unit_conversion_to_table(self):
     #     if not hasattr(self, "column_units"):
     #         return
     #
-    #     CONV = {
-    #         "m": 1, "km": 0.001, "feet": 3.28084,
-    #         "mm": 1, "cm": 0.1
-    #     }
-    #
-    #     table = self.ui.tableWidgetDefect
-    #
-    #     for base, unit in self.column_units.items():
-    #         for c in range(table.columnCount()):
-    #             header = table.horizontalHeaderItem(c)
-    #             if header.text().split("(")[0].strip() != base:
-    #                 continue
-    #
-    #             values = self._original_table_data.get(base)
-    #             if not values:
-    #                 continue
-    #
-    #             mul = CONV.get(unit, 1)
-    #             for r, v in enumerate(values):
-    #                 if v is not None:
-    #                     table.item(r, c).setText(f"{v * mul:.3f}")
-    #
-    #             header.setText(f"{base} ({unit})")
-
-    # def open_column_filter_dialog(self):
-    #     headers = [
-    #         self.ui.tableWidgetDefect.horizontalHeaderItem(i).text()
-    #         for i in range(self.ui.tableWidgetDefect.columnCount())
-    #     ]
-    #
-    #     dlg = ColumnFilterDialog(
-    #         headers=headers,
-    #         selected_cols=getattr(self, "_selected_columns", set()),
-    #         parent=self
-    #     )
-    #
-    #     # dlg = ColumnFilterDialog(
-    #     #     headers=headers,
-    #     #     selected_cols=self._selected_columns if hasattr(self, "_selected_columns") else set(),
-    #     #     parent=self
-    #     # )
-    #
-    #     if dlg.exec():
-    #         self._selected_columns = dlg.selected_columns()
-    #         self.column_units = dlg.selected_units()
-    #
-    #         self.apply_column_filter()
-    #         self._apply_unit_conversion_to_table()
-
-    # def apply_column_filter(self):
-    #     table = self.ui.tableWidgetDefect
-    #     for c in range(table.columnCount()):
-    #         base = table.horizontalHeaderItem(c).text().split("(")[0].strip()
-    #         table.setColumnHidden(c, base not in self._selected_columns)
-
-    # def _apply_unit_conversion_to_table(self):
-    #     if not hasattr(self, "column_units"):
-    #         return
-    #
-    #     # Conversion multipliers
-    #     conv = {
+    #     conversion = {
     #         "m": 1,
     #         "cm": 100,
     #         "mm": 1000,
     #         "feet": 3.28084,
-    #         "km": 0.001
+    #         "km": 0.001,
     #     }
     #
     #     table = self.ui.tableWidgetDefect
+    #     cols = [table.horizontalHeaderItem(i).text() for i in range(table.columnCount())]
     #
-    #     # Helper: Clean header name (remove unit part)
-    #     def clean(text):
-    #         return text.split("(")[0].replace(".", "").strip()
-    #
-    #     # Extract ALL column names (always clean base name)
-    #     headers = []
-    #     for i in range(table.columnCount()):
-    #         h = table.horizontalHeaderItem(i)
-    #         if h:
-    #             base = h.data(0) or clean(h.text())
-    #             headers.append(base)
-    #         else:
-    #             headers.append(None)
-    #
-    #     # APPLY CONVERSION
     #     for col_name, unit in self.column_units.items():
-    #         base_name = clean(col_name)
-    #
-    #         # Find correct column index (using clean name)
-    #         if base_name not in headers:
+    #         if col_name not in cols:
     #             continue
     #
-    #         col_index = headers.index(base_name)
-    #         multiplier = conv.get(unit, 1)
+    #         multiplier = conversion.get(unit, 1)
+    #         col_idx = cols.index(col_name)
     #
-    #         # Get ORIGINAL values (never modified)
-    #         original_vals = self._original_table_data.get(base_name)
-    #         if original_vals is None:
-    #             continue
-    #
-    #         # Convert each cell using ORIGINAL values
-    #         for r, original_val in enumerate(original_vals):
-    #             if original_val is None:
+    #         for r in range(table.rowCount()):
+    #             item = table.item(r, col_idx)
+    #             if not item:
     #                 continue
     #
-    #             new_val = original_val * multiplier
-    #             item = table.item(r, col_index)
-    #             if item:
-    #                 item.setText(f"{new_val:.3f}")
-    #
-    #         # UPDATE header visually BUT keep internal name the same
-    #         header_item = table.horizontalHeaderItem(col_index)
-    #
-    #         # Store internal original header (never changes)
-    #         header_item.setData(0, base_name)
-    #
-    #         # Show visible header with selected unit
-    #         header_item.setText(f"{base_name} ({unit})")
-
-
+    #             try:
+    #                 base_value = float(item.text())  # assuming original is in meters/mm
+    #                 new_value = base_value * multiplier
+    #                 item.setText(f"{new_value:.3f}")
+    #             except:
+    #                 pass
 
     # def _on_column_item_pressed(self, index):
     #     """Toggle the check state for a pressed item and keep the popup open."""
@@ -2041,7 +1624,6 @@ class MyMainWindow(QMainWindow):
     #     else:
     #         self.bottom_stack.show()
     #         self.btnToggleTable.setText("Hide Table")
-
 
     def _reset_splitter_ratio(self, top_ratio: float = 0.6):
         """Force consistent top/bottom height ratio for the stack layout."""
@@ -2151,24 +1733,15 @@ class MyMainWindow(QMainWindow):
             checked = set(h for h in self._selected_columns if h in headers and h not in locked)
 
         dlg = ColumnFilterDialog(headers=headers, checked=checked, locked=locked, parent=self)
-        # dlg = ColumnFilterDialog(
-        #     headers=headers,
-        #     selected_cols=self._selected_columns if hasattr(self, "_selected_columns") else set(),
-        #     parent=self
-        # )
-
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return
 
-        self.column_units = dlg.selected_units()
-        self._apply_unit_conversion_to_table()
-
-
+        # self.column_units = dlg.selected_units()
+        # self._apply_unit_conversion_to_table()
 
         # persist + apply (locked are always enforced)
         self._selected_columns = set(dlg.selected_names()) | locked
-        #self.apply_column_filter()
-
+        self.apply_column_filter()
 
 
     def apply_column_filter(self):
@@ -2366,6 +1939,9 @@ class MyMainWindow(QMainWindow):
             self._cf_model.appendRow(it)
 
         self._update_column_summary()
+
+
+
 
 
     def _update_column_summary(self):
@@ -3807,7 +3383,6 @@ class MyMainWindow(QMainWindow):
 
         self.btnLoadPipe.setEnabled(False)
         self.load_selected_by_index(idx)
-        self._cache_original_table_values()
 
         #self.btnLoadPipe.clicked.connect(self.load_selected_pipe)
 
@@ -3850,38 +3425,21 @@ class MyMainWindow(QMainWindow):
         self.hhmap = assets.get("hallsensor_heatmap")
         self.phmap = assets.get("proximity_heatmap")
 
-    # def on_table_data_ready(self, df):
-    #     """Handle processed table data"""
-    #     self.curr_data = df  # 👈 make sure we keep a reference for filtering later
-    #
-    #     if df is not None:
-    #         # 👇 populate the column filter dropdown with available columns
-    #
-    #         # Check if this is a PipeTally format or defects.csv format
-    #         if "Feature Type" in df.columns:
-    #             self._populate_defect_table_from_tally(df)
-    #         else:
-    #             self._populate_defect_table_from_csv(df)
-    #     else:
-    #         self._show_no_defects_message()
-
     def on_table_data_ready(self, df):
-        self.curr_data = df
+        """Handle processed table data"""
+        self.curr_data = df  # 👈 make sure we keep a reference for filtering later
 
         if df is not None:
+            # 👇 populate the column filter dropdown with available columns
+
+            # Check if this is a PipeTally format or defects.csv format
             if "Feature Type" in df.columns:
                 self._populate_defect_table_from_tally(df)
             else:
                 self._populate_defect_table_from_csv(df)
-
-            # ✅ EXACT LOCATION
-            self._cache_original_table_values()
-
-
-            if hasattr(self, "column_units"):
-                self._apply_unit_conversion_to_table()
         else:
             self._show_no_defects_message()
+
 
     def on_loading_error(self, error_msg):
         """Handle loading errors"""
@@ -4026,7 +3584,7 @@ class MyMainWindow(QMainWindow):
             'Longitude': 150,
             'Altitude': 150,
             'Comment': 150,
-            'Empty': 150,
+            'Empty': 530
         }
 
         for c, col_name in enumerate(view.columns):
@@ -4270,6 +3828,11 @@ class MyMainWindow(QMainWindow):
         if not self._selected_columns:
             self._selected_columns = set(self._current_headers_for_filter()) | set(self.BACKEND_LOCKED_COLS)
         self.apply_column_filter()
+
+
+
+
+
 
 
 
@@ -5641,19 +5204,6 @@ class MyMainWindow(QMainWindow):
         except Exception as e:
             self.open_Error(f"Error opening ABS-distance digsheet:\n{e}")
 
-    # def open_pipe_locator(self):
-    #     print("PIPE LOCATOR FUNCTION LOADED")
-    #
-    #     if self.pipe_tally is None:
-    #         QMessageBox.warning(self, "Pipe Locator", "Load a pipe first.")
-    #         return
-    #
-    #     try:
-    #         dlg = PipeLocatorDialog(self.pipe_tally, self)
-    #         dlg.exec()
-    #     except Exception as e:
-    #         QMessageBox.critical(self, "Pipe Locator Error", str(e))
-
     def _update_generate_actions(self):
         """Update Generate menu buttons based on project and data status"""
         # Check if pipe tally data is available
@@ -6221,68 +5771,6 @@ class MyMainWindow(QMainWindow):
             self.top_hsplit.setSizes([top, bottom])
 
         print(f"Heatmap layout changed to: {mode}")
-
-
-# class PipeLocatorDialog(QDialog):
-#     def __init__(self, df, parent=None):
-#         super().__init__(parent)
-#         self.setWindowTitle("Pipe Locator")
-#         self.resize(1300, 260)
-#         self.df = df.copy()
-#         self.df["Pipe Length(m)"] = pd.to_numeric(self.df["Pipe Length(m)"], errors="coerce").fillna(0)
-#
-#         layout = QVBoxLayout(self)
-#         self.view = QWebEngineView()
-#         layout.addWidget(self.view)
-#
-#         html = self.build_html(self.df)
-#         self.view.setHtml(html)
-#
-#     def build_html(self, df):
-#         import plotly.graph_objects as go
-#         import numpy as np
-#
-#         # -----------------------------
-#         # 1) WELD POSITIONS (cumulative)
-#         # -----------------------------
-#         df["cum"] = df["Pipe Length(m)"].cumsum()
-#         weld_positions = df["cum"].values
-#
-#         # -----------------------------
-#         # 2) FEATURES (Valve, T-piece…)
-#         # -----------------------------
-#         features = df[df["Feature Identification"].notna()]
-#
-#         fig = go.Figure()
-#
-#         # 🔵 Weld markers (vertical lines)
-#         fig.add_trace(go.Scatter(
-#             x=weld_positions,
-#             y=[1]*len(weld_positions),
-#             mode="markers",
-#             marker=dict(color="blue", size=10, symbol="line-ns"),
-#             name="Welds"
-#         ))
-#
-#         # 🔺 Features with text
-#         fig.add_trace(go.Scatter(
-#             x=features["Abs. Distance (m)"],
-#             y=[0.7]*len(features),
-#             mode="markers+text",
-#             marker=dict(color="red", size=12, symbol="triangle-up"),
-#             text=features["Feature Identification"],
-#             textposition="top center",
-#             name="Features"
-#         ))
-#
-#         fig.update_layout(
-#             height=180,
-#             margin=dict(l=10, r=10, t=10, b=10),
-#             xaxis_title="Pipeline Distance (m)",
-#             yaxis=dict(visible=False)
-#         )
-#
-#         return fig.to_html(include_plotlyjs="cdn")
 
 
 
