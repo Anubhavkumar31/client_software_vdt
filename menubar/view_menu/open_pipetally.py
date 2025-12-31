@@ -3,15 +3,18 @@ import pandas as pd
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout,
     QLineEdit, QTableView, QFrame, QHBoxLayout,
-    QPushButton, QLabel, QFileDialog, QMessageBox, QRadioButton, QGridLayout, QSpinBox, QDialog, QProgressDialog
+    QPushButton, QLabel, QFileDialog, QMessageBox, QRadioButton, QGridLayout, QSpinBox, QDialog, QProgressDialog,
+    QProgressBar
 )
+
+from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtGui import QStandardItemModel, QStandardItem, QFont
-from PyQt6.QtCore import Qt, QSortFilterProxyModel
+from PyQt6.QtCore import Qt, QSortFilterProxyModel, QTimer
 
 from menubar.view_menu.apps.pipetallyApp.erf_pipeline import launch_erf_batch
 from menubar.view_menu.apps.pipetallyApp.severity_pipeline import launch_severity
 
-EXCEL_PATH = r"C:\Users\admin\Downloads\Pipe_Tally_8inch (1).xlsx"
+# EXCEL_PATH = r"C:\Users\admin\Downloads\Pipe_Tally_8inch (1).xlsx"
 
 
 # ================= ENTERPRISE TOOL BAR =================
@@ -57,7 +60,7 @@ class PipeTallyToolPanel(QFrame):
 
         self.btn_export.clicked.connect(self.export_excel)
         try:
-            self.btn_erf.clicked.connect(lambda: launch_erf_batch(self.parent, EXCEL_PATH))
+            self.btn_erf.clicked.connect(lambda: launch_erf_batch(self.parent, self.parent.parent().pipetally_dir))
             self.btn_severity.clicked.connect(lambda: launch_severity(self.parent))
 
         except Exception as e:
@@ -99,13 +102,13 @@ class PipeTallyToolPanel(QFrame):
 # ================= MAIN VIEWER =================
 
 class PipeTallyViewer(QMainWindow):
-    def __init__(self, df):
-        super().__init__()
-
+    def __init__(self, df, parent=None):
+        super().__init__(parent)   # ✅ now Qt owns this window
 
 
         self.df = df
-        self.EXCEL_PATH = EXCEL_PATH
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        self.EXCEL_PATH = self.parent().pipetally_dir
 
         self.setWindowTitle("Pipe Tally Viewer")
         self.resize(1500, 820)
@@ -201,6 +204,11 @@ class PipeTallyViewer(QMainWindow):
                 font-size:13px;
             }
         """)
+    def showEvent(self, event):
+        super().showEvent(event)
+        if hasattr(self.parent(), "_pipe_spinner") and self.parent()._pipe_spinner:
+            self.parent()._pipe_spinner.close()
+            self.parent()._pipe_spinner = None
 
 
 
@@ -230,7 +238,7 @@ class PipeTallyViewer(QMainWindow):
     def reload_from_excel(self):
         print("🔄 Reloading pipe tally...")
 
-        df = pd.read_excel(EXCEL_PATH)
+        df = pd.read_excel(self.parent().pipetally_dir)
         self.df = df
 
         model = QStandardItemModel()
@@ -267,12 +275,88 @@ class PipeTallyViewer(QMainWindow):
         self.fit_columns_to_headers()
         print("✔ Table refreshed identically")
 
+# ================= PIPE TALLY LAUNCHER =================
 
 
-if __name__ == "__main__":
-    df = pd.read_excel(EXCEL_PATH)
 
-    app = QApplication(sys.argv)
-    win = PipeTallyViewer(df)
-    win.show()
-    sys.exit(app.exec())
+
+
+class PipeTallySpinner(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(260, 110)
+        self.setWindowTitle("Loading Pipe Tally")
+        self.setModal(True)
+
+        v = QVBoxLayout(self)
+        v.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.lbl = QLabel("Loading Pipe Tally… 0%")
+        self.lbl.setStyleSheet("font-size:13px;font-weight:600;")
+
+        self.bar = QProgressBar()
+        self.bar.setRange(0,100)
+
+        v.addWidget(self.lbl)
+        v.addWidget(self.bar)
+
+    def set_progress(self, v):
+        self.bar.setValue(v)
+        self.lbl.setText(f"Loading Pipe Tally… {v}%")
+
+
+class PipeTallyExcelLoader(QThread):
+    progress = pyqtSignal(int)
+    finished = pyqtSignal(object)
+
+    def __init__(self, path):
+        super().__init__()
+        self.path = path
+
+    def run(self):
+        import openpyxl
+        wb = openpyxl.load_workbook(self.path, read_only=True)
+        ws = wb.active
+        total = ws.max_row - 1
+        rows = []
+
+        for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=1):
+            rows.append(row)
+            if i % 500 == 0:
+                self.progress.emit(int((i/total)*100))
+
+        import pandas as pd
+        df = pd.DataFrame(rows, columns=[c.value for c in ws[1]])
+        self.progress.emit(100)
+        self.finished.emit(df)
+
+
+def open_pipetally(self, excel_path=None):
+    print(f"inside open pipetally path: {self.pipetally_dir}")
+    if excel_path is None:
+        excel_path = self.pipetally_dir
+
+    if hasattr(self, "_pipe_tally_instance") and self._pipe_tally_instance:
+        self._pipe_tally_instance.close()
+
+    self._pipe_spinner = PipeTallySpinner(self)
+    self._pipe_spinner.show()
+
+    self._pipe_loader = PipeTallyExcelLoader(excel_path)
+    self._pipe_loader.progress.connect(self._pipe_spinner.set_progress)
+    self._pipe_loader.finished.connect(lambda df: _finish_pipe_tally_load(self, df))
+    self._pipe_loader.start()
+
+
+
+
+def _finish_pipe_tally_load(self, df):
+    # DO NOT close spinner here anymore
+
+    self._pipe_tally_instance = PipeTallyViewer(df, parent=self)
+    self._pipe_tally_instance.show()
+    self._pipe_tally_instance.raise_()
+    self._pipe_tally_instance.activateWindow()
+
+
+

@@ -23,6 +23,7 @@ from menubar.view_menu.open_XYZ import open_XYZ
 from menubar.view_menu.open_customplot import open_customplot
 from menubar.view_menu.open_graphs import open_graphs
 from menubar.view_menu.open_pipe_locator import open_pipe_locator
+from menubar.view_menu.open_pipetally import open_pipetally
 
 
 def setup_menu_actions(self):
@@ -80,6 +81,7 @@ def setup_actions(self):
     a.action_ERF.triggered.connect(lambda: open_ERF(self))
     a.action_XYZ.triggered.connect(lambda: open_XYZ(self))
     a.action_customplot.triggered.connect(lambda : open_customplot(self))
+    a.action_pipetally.triggered.connect(lambda: open_pipetally(self, self.pipetally_dir))
     a.action_graphs.triggered.connect(lambda: open_graphs(self))
     # self.ui.action_Export_Table.triggered.connect(self.gen_data)
 

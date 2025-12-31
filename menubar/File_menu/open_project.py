@@ -36,7 +36,8 @@ def open_project(self):
         _force_full_start_state(self)
 
         self.pipe_tally = None
-        loaded_tally = _auto_load_pipe_tally(self, root)
+        loaded_tally, self.pipetally_dir = _auto_load_pipe_tally(self, root)
+        print(f"pipetally path : {self.pipetally_dir}")
         if not loaded_tally:
             print("[pipe_tally] No tally file found in this project; graphs/reports will warn if needed.")
 
@@ -206,11 +207,11 @@ def _auto_load_pipe_tally(self, root: str) -> bool:
             else:
                 print(f"[pipe_tally] Loaded {os.path.basename(path)}")
             self.pipe_tally = df
-            return True
+            return True, path
         except Exception as e:
             print(f"[pipe_tally] Failed to load {path}: {e}")
     self.pipe_tally = None
-    return False
+    return False, pipetally_dir
 
 
 
