@@ -68,4 +68,5 @@ pip install -r requirements_latest.txt or other txt whichever you need but requi
 
 ### Aksshat Govind and Abhishek Gupta, 2024 
 ### Anubhav Kumar and Manvi, 2025
+### Anubhav Kumar and Digambar Tiwari, 2026
 >>>>>>> master
