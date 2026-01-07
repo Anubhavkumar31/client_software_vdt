@@ -46,7 +46,7 @@ pip install -r requirements_latest.txt or other txt whichever you need but requi
 - mpld3 == 0.5.10
 - PyQt6-WebEngine == 6.7.0
 - kaleido == 0.2.1.post1
-
+there are many more requirements
 ## Usage
 
 - **Open Project:** Use the File menu to open an Excel or CSV file containing pipe sensor data.
