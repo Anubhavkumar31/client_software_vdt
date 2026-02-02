@@ -1,4 +1,6 @@
 import sys, traceback
+from pathlib import Path
+
 
 def global_error_handler(exctype, value, tb):
     # Format error
@@ -65,9 +67,17 @@ from backend.heatmap import HeatmapWindow as hm, pre_process, pre_process2  # no
 
 
 def resource_path(relative_path):
-    if getattr(sys, 'frozen', False):
-        return os.path.join(sys._MEIPASS, relative_path)
-    return os.path.join(os.path.abspath("."), relative_path)
+    """
+    Resolve paths relative to the project root (client_software_vdt),
+    independent of current working directory.
+    """
+    if getattr(sys, "frozen", False):
+        base_path = Path(sys._MEIPASS)
+    else:
+        # main.py lives in client_software_vdt → this IS the project root
+        base_path = Path(__file__).resolve().parent
+
+    return str(base_path / relative_path)
 
 def _dump_tally_to_temp(df):
     import pickle
@@ -136,13 +146,18 @@ if __name__ == "__main__":
         tally_pkl = sys.argv[i+1]
         abs_val = sys.argv[i+2]
         project_root = sys.argv[i+3] if len(sys.argv) > i+3 else None
+        print("MAIN FILE:", Path(__file__).resolve())
+        print("BASE DIR :", Path(__file__).resolve().parent)
+        print("DIG EXISTS:", (Path(__file__).resolve().parent / "dig" / "digsheet_abs.py").exists())
+        dig_py_abs = resource_path("dig/digsheet_abs.py")
 
-        dig_py_abs = resource_path(os.path.join("dig", "digsheet_abs.py"))
 
         # 👇 Pass along all arguments, including project_root
         sys.argv = [dig_py_abs, tally_pkl, abs_val]
         if project_root:
             sys.argv.append(project_root)
+
+
 
         runpy.run_path(dig_py_abs, run_name="__main__")
         sys.exit(0)

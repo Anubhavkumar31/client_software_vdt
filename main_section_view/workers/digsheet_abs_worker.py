@@ -30,7 +30,7 @@ def open_digsheet_by_abs_from_selection_con(self):
         if not abs_text: return
 
         tally_pkl = _dump_tally_to_temp(self.pipe_tally)
-        dig_py_abs = resource_path(os.path.join("dig", "digsheet_abs.py"))
+        dig_py_abs = resource_path(os.path.join("client_software_vdt", "dig", "digsheet_abs.py"))
         if not os.path.exists(dig_py_abs):
             QMessageBox.critical(self, "Script not found", f"Missing: {dig_py_abs}");
             return
