@@ -60,3 +60,6 @@ out.txt
 *.env
 
 /main_venv
+
+/dist_dev
+/dist

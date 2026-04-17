@@ -170,4 +170,3 @@ def _is_graph_tab_ok(self) -> bool:
     tab = self.ui.tabWidgetM.tabText(self.ui.tabWidgetM.currentIndex())
     return tab in ("Heatmap", "3D Graph", "3D")
 
-

@@ -78,6 +78,7 @@ def setup_actions(self):
 
     #View section
     a.action_Pipe_Locator.triggered.connect(lambda: open_pipe_locator(self))
+    self.ui.action_View_Clusters.triggered.connect(self.on_view_clusters_clicked)
     a.action_ERF.triggered.connect(lambda: open_ERF(self))
     a.action_XYZ.triggered.connect(lambda: open_XYZ(self))
     a.action_customplot.triggered.connect(lambda : open_customplot(self))

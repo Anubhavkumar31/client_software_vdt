@@ -1,6 +1,9 @@
 import os
 import sys
 from pathlib import Path
+
+from menubar.view_menu.open_cluster import ClusterSummaryDialog
+
 try:
     from PyQt6.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 except ImportError:
@@ -20,9 +23,6 @@ from PyQt6.QtWidgets import (
 )
 
 from reportlab.pdfgen import canvas  # noqa
-
-
-
 #helper functions imports
 from main_section_view.build_main_section import _build_main_section
 from main_section_view.workers.table_data_worker import _setup_table_models_and_behavior
@@ -39,8 +39,8 @@ from pages.XYZ import XYZ  # noqa
 from pages.metrics import Metric_Dialog  # noqa
 from pages.errorBox import Error_Dialog  # noqa
 from backend.heatmap import HeatmapWindow as hm, pre_process, pre_process2  # noqa
-
-
+from backend.clustering import run_clustering
+from backend.clustering import build_cluster_rows
 
 
 def resource_path(relative_path):
@@ -129,3 +129,26 @@ class MyMainWindow(QMainWindow):
             dlg.exec()
         except Exception as err:
             print("Error dialog failed:", err)
+
+    def on_view_clusters_clicked(self):
+        from PyQt6.QtWidgets import QMessageBox
+        import pandas as pd
+
+        # Safety check
+        if not hasattr(self, "pipe_tally") or self.pipe_tally is None or self.pipe_tally.empty:
+            QMessageBox.warning(self, "Clusters", "No pipe data loaded")
+            return
+
+        # Run clustering
+        clusters = run_clustering(self.pipe_tally)
+
+        if not clusters:
+            QMessageBox.information(self, "Clusters", "No clusters formed")
+            return
+
+        cluster_rows = build_cluster_rows(clusters)
+        cluster_df = pd.DataFrame(cluster_rows)
+
+        # Show dialog
+        dlg = ClusterSummaryDialog(cluster_df, self)
+        dlg.exec()

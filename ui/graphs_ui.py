@@ -1922,88 +1922,6 @@ class GraphApp(QWidget):
             self.file_label.setText(f"Loaded90: {os.path.basename(path)}")
             self.plot_btn.setEnabled(True)
 
-    # def plot_graph(self):
-    #     try:
-    #         graph_type = self.graph_type.currentText()
-    #         feature = self.feature_identification.currentText()
-    #         dimension = self.dimension_classification.currentText()
-    #         view = self.view_type.currentText()
-    #
-    #         if not graph_type:
-    #             QMessageBox.warning(self, "Missing Selection", "Please select a graph type before plotting.")
-    #             return
-    #
-    #         if graph_type == "Defects":
-    #             if not feature and dimension == "":
-    #                 QMessageBox.warning(self, "Missing Selection", "Select Feature Identification or Dimensional Classification.")
-    #                 return
-    #             fig, path = plot_metal_loss(self.df.copy(), feature_type=feature or None,
-    #                                         dimension_class=dimension or None, return_fig=True)
-    #             self.current_fig = fig
-    #             self.browser.load(QUrl.fromLocalFile(path))
-    #
-    #         elif graph_type in ["ERF", "Psafe", "Orientation"]:
-    #             if not view:
-    #                 QMessageBox.warning(self, "Missing Selection", "Select Surface View before plotting.")
-    #                 return
-    #             if graph_type == "ERF":
-    #                 fig, path = plot_erf(self.df.copy(), view, return_fig=True)
-    #             elif graph_type == "Psafe":
-    #                 fig, path = plot_psafe(self.df.copy(), view, return_fig=True)
-    #             else:
-    #                 fig, path = plot_orientation(self.df.copy(), view, return_fig=True)
-    #             self.current_fig = fig
-    #             self.browser.load(QUrl.fromLocalFile(path))
-    #
-    #         # elif graph_type == "Depth":
-    #         #     fig, path = plot_depth(self.df.copy(), return_fig=True)
-    #         #     self.current_fig = fig
-    #         #     self.browser.load(QUrl.fromLocalFile(path))
-    #
-    #         elif graph_type == "Depth":
-    #             selected_bin = self.depth_bin.currentText()
-    #             fig, path = plot_depth(self.df.copy(), return_fig=True, selected_bin=selected_bin)
-    #             self.current_fig = fig
-    #             self.browser.load(QUrl.fromLocalFile(path))
-    #
-    #
-    #         elif graph_type == "Sensor Loss":
-    #             fig, path = plot_sensor_percentage(self.df.copy(), return_fig=True)
-    #             self.current_fig = fig
-    #             self.browser.load(QUrl.fromLocalFile(path))
-    #
-    #         elif graph_type == "Temperature":
-    #             fig, path = plot_temperature(self.df.copy(), return_fig=True)
-    #             self.current_fig = fig
-    #             self.browser.load(QUrl.fromLocalFile(path))
-    #
-    #         else:
-    #             self.file_label.setText("Invalid selection.")
-    #
-    #         # Enable save + status update
-    #         self.save_btn.setEnabled(True)
-    #         self.status_label.setText(f"✅ {graph_type} graph plotted successfully.")
-    #
-    #     except Exception as e:
-    #         self.status_label.setText(f"❌ Plot failed: {str(e)}")
-    #         self.current_fig = None
-
-    # def save_graph(self):
-    #     if hasattr(self, 'current_fig') and self.current_fig is not None:
-    #         downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
-    #         default_file = os.path.join(downloads_folder, "graph.png")
-    #         file_path, _ = QFileDialog.getSaveFileName(self, "Save Plot as PNG", default_file, "PNG Files (*.png)")
-    #         if file_path:
-    #             try:
-    #                 if not file_path.lower().endswith(".png"):
-    #                     file_path += ".png"
-    #                 self.current_fig.write_image(file_path)
-    #                 self.status_label.setText(f"💾 Graph saved at {file_path}")
-    #             except Exception as e:
-    #                 self.status_label.setText(f"❌ Failed to save graph: {str(e)}")
-    #     else:
-    #         self.status_label.setText("No graph to save.")
-
     def plot_graph(self):
         # 🔹 Create progress dialog first
         progress = QProgressDialog("Loading graph...", None, 0, 0, self)
@@ -2042,7 +1960,12 @@ class GraphApp(QWidget):
                 if graph_type == "ERF":
                     fig, path = plot_erf(self.df.copy(), view, return_fig=True)
                 elif graph_type == "Psafe":
-                    fig, path = plot_psafe(self.df.copy(), view, return_fig=True)
+                    import traceback
+                    try:
+                        fig, path = plot_psafe(self.df.copy(), view, return_fig=True)
+                    except Exception as e:
+                        print("error psafe", e)
+                        print(traceback.format_exc())
                 else:
                     fig, path = plot_orientation(self.df.copy(), view, return_fig=True)
                 self.current_fig = fig

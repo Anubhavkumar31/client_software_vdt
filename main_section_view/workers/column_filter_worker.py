@@ -276,7 +276,7 @@ class ColumnFilterDialog(QDialog):
 #     apply_column_filter(self)
 
 def open_column_filter_dialog_con(self):
-    print("hiuihijiji")
+
     """Open column selector dialog and apply the result."""
     headers = _current_headers_for_filter(self)
     locked = set(getattr(self, "BACKEND_LOCKED_COLS", set()))

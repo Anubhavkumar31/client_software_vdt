@@ -244,11 +244,7 @@ else:
     print("[DEBUG] No PROJECT_ROOT passed")
 
 
-
-
 # Populate from constants file if project_root was passed
-
-
 
 
 # def save_as_image():
@@ -1084,12 +1080,6 @@ mid_y = int(canvas_height/2)
 
 # Central vertical line
 pipe_canvas.create_line(mid_x, 30, mid_x, mid_y + 150, arrow=tk.FIRST)
-
-
-
-
-
-
 
 
 

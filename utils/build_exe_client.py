@@ -1,5 +1,8 @@
 import os
 import shutil
+
+import warnings
+warnings.filterwarnings("ignore")
 import PyInstaller.__main__
 
 # -----------------------------
@@ -42,9 +45,13 @@ PyInstaller.__main__.run([
     "--noconfirm",
     "--windowed",
     "--clean",                # Cleans PyInstaller cache for fresh build
-    # "--onefile",             # Uncomment if single-file EXE is desired
+     "--onefile",             # Uncomment if single-file EXE is desired
     "--distpath", DIST_PATH,
     "--workpath", BUILD_PATH,
+    #'--add-data', 'dig;dig',
+    # '--hidden-import=pipeline_schema.pipeline_schema',
+    # '--add-data=pipeline_schema;pipeline_schema',
+
 
     # Exclude unnecessary test packages
     "--exclude-module", "pandas.tests",
@@ -57,6 +64,7 @@ PyInstaller.__main__.run([
     "--collect-all", "pywin32",
     "--collect-all", "img2pdf",
     "--collect-all", "PIL",
+    "--collect-all", "scipy",
 
     # Hidden imports for GUI, imaging, printing, and PDF generation
     "--hidden-import", "tkinter",
@@ -69,20 +77,37 @@ PyInstaller.__main__.run([
     "--hidden-import", "pywintypes",
     "--hidden-import", "pythoncom",
     "--hidden-import", "img2pdf",
+    "--hidden-import", "scipy",
+    "--hidden-import", "scipy.signal",
+    "--hidden-import", "scipy.linalg",
+    "--hidden-import", "scipy._lib",
+    "--hidden-import", "scipy._lib.array_api_compat",
+    "--hidden-import", "scipy._lib.array_api_compat.numpy",
+    "--hidden-import", "scipy._lib.array_api_compat.numpy.fft",
 
     # Optional: specify UPX directory if installed to compress binaries
     # "--upx-dir", "C:\\path\\to\\upx",
 
     # Data folders to bundle
-    f"--add-data={os.path.join(ROOT, 'ui')};ui/",
-    f"--add-data={os.path.join(ROOT, 'pages')};pages/",
     f"--add-data={os.path.join(ROOT, 'backend')};backend/",
     f"--add-data={os.path.join(ROOT, 'dig')};dig/",
-    f"--add-data={os.path.join(ROOT, 'manual')};manual/",
-    f"--add-data={os.path.join(ROOT, 'pipetally')};pipetally/",
     f"--add-data={os.path.join(ROOT, 'final_report')};final_report/",
-    f"--add-data={os.path.join(ROOT, 'preliminary_report')};preliminary_report/",
+    f"--add-data={os.path.join(ROOT, 'main_section_view')};main_section_view/",
+    f"--add-data={os.path.join(ROOT, 'main_window')};main_window/",
+    f"--add-data={os.path.join(ROOT, 'manual')};manual/",
+    f"--add-data={os.path.join(ROOT, 'menubar')};menubar/",
+    f"--add-data={os.path.join(ROOT, 'pages')};pages/",
     f"--add-data={os.path.join(ROOT, 'pipeline_schema')};pipeline_schema/",
+    f"--add-data={os.path.join(ROOT, 'pipetally')};pipetally/",
+    f"--add-data={os.path.join(ROOT, 'preliminary_report')};preliminary_report/",
+    f"--add-data={os.path.join(ROOT, 'ui')};ui/",
+
+
+
+
+
+
+
 
     "--name", EXE_NAME,
     "main_latest1.py"

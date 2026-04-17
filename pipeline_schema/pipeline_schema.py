@@ -2,13 +2,28 @@ import os
 import re
 import hashlib
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+import traceback
+from tkinter import messagebox, filedialog
+from tkinter import ttk
+
+import ttkbootstrap as tb
+from ttkbootstrap.constants import *
+from ttkbootstrap import Style
+import tkinter as tk
+from tkinter import ttk
+from ttkbootstrap import Style
+import ttkbootstrap as tb
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 # from pages.Pipe_Highlights import run_app
 # Optional modern theming
-_USING_BOOTSTRAP = False
+
+
+_USING_BOOTSTRAP = True
 try:
     import ttkbootstrap as tb
+
     from ttkbootstrap.constants import *
     _USING_BOOTSTRAP = True
 except Exception:
@@ -23,6 +38,8 @@ from utils import resource_path
 
 
 # --------------------------- Small Utilities -----------------------------
+
+
 
 def safe_parse_time(clock_orientation):
     """Safely parse time-like values from strings / Timestamp / datetime into (hour, minute)."""
@@ -53,74 +70,204 @@ def info(msg: str):
 # --------------------------- Main App Class -----------------------------
 
 class PipelineApp:
+    # def __init__(self, root, pipe_tally=None):
+    #     print("PipelineApp __init__ started")
+    #     self.root = root
+    #     self.pipe_tally = r"C:\client_software\pickle9\pipetally_main\Pipe_Tally_8inch (1).xlsx"
+    #     #print(self.pipe_tally)
+    #     self.root.title("Pipeline Scheme Report & Pipe Number Visualizer")
+    #     try:
+    #         self.root.iconbitmap(resource_path('pipeline_schema/LOGO-withoutbg.ico'))
+    #     except Exception:
+    #         pass
+    #
+    #     self.root.geometry("1200x800+150+60")
+    #     self.root.minsize(1100, 700)
+    #
+    #     # DB
+    #     self.conn = None
+    #     self.cursor = None
+    #
+    #     # Data
+    #     self.data = pd.DataFrame()
+    #     self.chunks = []          # list[pd.DataFrame] grouped by 'Pipe Number'
+    #     self.current_page = 0     # slot paging (0-based)
+    #     self.chunks_per_page = 100
+    #
+    #     # Canvas state
+    #     self.canvas_scale = 1.0
+    #     self._tooltip_win = None
+    #     self._pan_start = None
+    #     self.pipe_item_map = {}
+    #
+    #     # Styling
+    #     self._init_style()
+    #
+    #     # Layout
+    #     self._build_top_toolbar()
+    #     self._build_body()
+    #     self._build_statusbar()
+    #
+    #     # Branding
+    #    # self._load_logo()
+    #
+    #     # DB connect
+    #     self._connect_db()
+    #
+    #     # Excel load (robust)
+    #
+    #
+    #     # self._read_excel()
+    #     #
+    #     # # Populate & render
+    #     # self._make_chunks()
+    #     # self._populate_slot_menu()
+    #     # self.display_page(0)
+    #     # self._update_status("Ready.")
+    #
+    #     # self._update_status("Starting...")
+    #     #
+    #     # # Delay heavy work until window is visible
+    #     # self.root.after(300, self._delayed_load)
+    #     #
+    #     # self._update_status("App Started")
+    #
+    #     self._update_status("Starting...")
+    #
+    #     print("FORCE LOADING PIPE SCHEME DATA")
+    #     self._read_excel()
+    #     self._make_chunks()
+    #     self._populate_slot_menu()
+    #     self.display_page(0)
+    #
+    #     self._update_status("Ready")
     def __init__(self, root, pipe_tally=None):
-        self.root = root
-        self.pipe_tally = pipe_tally
-        print(self.pipe_tally)
-        self.root.title("Pipeline Scheme Report & Pipe Number Visualizer")
+        import traceback
+
+        print("PipelineApp __init__ started")
+
         try:
-            self.root.iconbitmap(resource_path('pipeline_schema/LOGO-withoutbg.ico'))
-        except Exception:
-            pass
+            print("STEP 1: Assign root")
+            self.root = root
 
-        self.root.geometry("1200x800+150+60")
-        self.root.minsize(1100, 700)
+            print("STEP 2: Pipe tally path")
+            self.pipe_tally = r"C:\client_software\pickle9\pipetally_main\Pipe_Tally_8inch (1).xlsx"
 
-        # DB
-        self.conn = None
-        self.cursor = None
+            print("STEP 3: Window title")
+            self.root.title("Pipeline Scheme Report & Pipe Number Visualizer")
 
-        # Data
-        self.data = pd.DataFrame()
-        self.chunks = []          # list[pd.DataFrame] grouped by 'Pipe Number'
-        self.current_page = 0     # slot paging (0-based)
-        self.chunks_per_page = 100
+            print("STEP 4: Icon")
+            try:
+                self.root.iconbitmap(resource_path('pipeline_schema/LOGO-withoutbg.ico'))
+            except Exception as e:
+                print("Icon load failed:", e)
 
-        # Canvas state
-        self.canvas_scale = 1.0
-        self._tooltip_win = None
-        self._pan_start = None
-        self.pipe_item_map = {}
+            print("STEP 5: Geometry")
+            self.root.geometry("1200x800+150+60")
 
-        # Styling
-        self._init_style()
+            print("STEP 6: Min size")
+            self.root.minsize(1100, 700)
 
-        # Layout
-        self._build_top_toolbar()
-        self._build_body()
-        self._build_statusbar()
+            print("STEP 7: DB vars")
+            self.conn = None
+            self.cursor = None
 
-        # Branding
-        self._load_logo()
+            print("STEP 8: Data vars")
+            self.data = pd.DataFrame()
+            self.chunks = []
+            self.current_page = 0
+            self.chunks_per_page = 100
 
-        # DB connect
-        self._connect_db()
+            print("STEP 9: Canvas state")
+            self.canvas_scale = 1.0
+            self._tooltip_win = None
+            self._pan_start = None
+            self.pipe_item_map = {}
 
-        # Excel load (robust)
-        self._read_excel()
+            print("STEP 10: Init style")
+            self._init_style()
 
-        # Populate & render
-        self._make_chunks()
-        self._populate_slot_menu()
-        self.display_page(0)
-        self._update_status("Ready.")
+            print("STEP 11: Build toolbar")
+            self._build_top_toolbar()
+
+            print("STEP 12: Build body")
+            self._build_body()
+
+            print("STEP 13: Build statusbar")
+            self._build_statusbar()
+
+            print("STEP 14: Connect DB")
+            #self._connect_db()
+
+            print("STEP 15: Update status")
+            self._update_status("Starting...")
+
+            print("STEP 16: Read Excel")
+            self._read_excel()
+
+            print("STEP 17: Make chunks")
+            self._make_chunks()
+
+            print("STEP 18: Populate slot menu")
+            self._populate_slot_menu()
+
+            print("STEP 19: Display page")
+            self.display_page(0)
+
+            print("STEP 20: Final status")
+            self._update_status("Ready")
+
+            print("PipelineApp __init__ FINISHED SUCCESSFULLY ✅")
+
+        except Exception as e:
+            print("🔥 CRASH INSIDE __init__ 🔥")
+            traceback.print_exc()
+            input("Press Enter to close...")
+            raise
+
+    def _delayed_load(self):
+        print("INSIDE MAKE_CHUNKS FUNCTION")
+        try:
+            self._update_status("Loading Excel...")
+            self._read_excel()
+            self._make_chunks()
+            self._populate_slot_menu()
+            self.display_page(0)
+            self._update_status("Ready.")
+        except Exception as e:
+            messagebox.showerror("Startup Error", str(e))
 
     # ------------------------ Style & Layout ----------------------------
 
+    # def _init_style(self):
+    #     if not _USING_BOOTSTRAP:
+    #         style = ttk.Style()
+    #         try:
+    #             style.theme_use("clam")
+    #         except Exception:
+    #             pass
+    #         style.configure("Toolbar.TFrame", background="#f7f7fa")
+    #         style.configure("Toolbar.TButton", padding=6)
+    #         style.configure("Status.TFrame", background="#f1f1f4")
+    #         style.configure("Status.TLabel", background="#f1f1f4")
+    #         style.configure("Card.TLabelframe", background="white")
+    #         style.configure("Card.TLabelframe.Label", font=("Segoe UI", 11, "bold"))
+    #         style.configure("Card.TFrame", background="white")
+
     def _init_style(self):
-        if not _USING_BOOTSTRAP:
-            style = ttk.Style()
-            try:
-                style.theme_use("clam")
-            except Exception:
-                pass
-            style.configure("Toolbar.TFrame", background="#f7f7fa")
-            style.configure("Toolbar.TButton", padding=6)
-            style.configure("Status.TFrame", background="#f1f1f4")
-            style.configure("Status.TLabel", background="#f1f1f4")
-            style.configure("Card.TLabelframe", background="white")
-            style.configure("Card.TLabelframe.Label", font=("Segoe UI", 11, "bold"))
-            style.configure("Card.TFrame", background="white")
+        style = ttk.Style()
+        try:
+            style.theme_use("clam")
+        except:
+            pass
+
+        style.configure("Toolbar.TFrame", background="#f7f7fa")
+        style.configure("Toolbar.TButton", padding=6)
+        style.configure("Status.TFrame", background="#f1f1f4")
+        style.configure("Status.TLabel", background="#f1f1f4")
+        style.configure("Card.TLabelframe", background="white")
+        style.configure("Card.TLabelframe.Label", font=("Segoe UI", 11, "bold"))
+        style.configure("Card.TFrame", background="white")
 
     def _build_top_toolbar(self):
         self.toolbar = ttk.Frame(self.root, style="Toolbar.TFrame")
@@ -149,6 +296,8 @@ class PipelineApp:
     def _build_body(self):
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill="both", expand=True)
+
+
 
         # Project Info
         # self.tab_info = ttk.Frame(self.notebook)
@@ -241,30 +390,90 @@ class PipelineApp:
 
     # -------------------------- App Wiring -----------------------------
 
+    # def _load_logo(self):
+    #     try:
+    #         png_path = resource_path('pipeline_schema/LOGO-withoutbg.png')
+    #         img = Image.open(png_path).convert("RGBA").resize((210, 110))
+    #         self.logo_img = ImageTk.PhotoImage(img)
+    #         # lframe = ttk.LabelFrame(self.tab_info, text="Brand", style="Card.TLabelframe")
+    #         lframe.pack(fill="x", padx=16, pady=(8,16))
+    #         ttk.Label(lframe, image=self.logo_img).pack(pady=8)
+    #     except Exception:
+    #         pass
+
     def _load_logo(self):
         try:
             png_path = resource_path('pipeline_schema/LOGO-withoutbg.png')
             img = Image.open(png_path).convert("RGBA").resize((210, 110))
             self.logo_img = ImageTk.PhotoImage(img)
-            # lframe = ttk.LabelFrame(self.tab_info, text="Brand", style="Card.TLabelframe")
-            lframe.pack(fill="x", padx=16, pady=(8,16))
-            ttk.Label(lframe, image=self.logo_img).pack(pady=8)
-        except Exception:
-            pass
+
+            # Place logo using grid instead of pack
+            lframe = ttk.Frame(self.tab_viz)
+            lframe.grid(row=0, column=0, sticky="nw", padx=10, pady=10)
+
+            ttk.Label(lframe, image=self.logo_img).grid(row=0, column=0)
+        except Exception as e:
+            print("Logo load error:", e)
+
+    # def _connect_db(self):
+    #     try:
+    #         self.conn = mysql.connector.connect(
+    #             host='localhost',
+    #             user='root',
+    #             password='nigam@123',
+    #             database='gmfldesktop12'
+    #         )
+    #         self.cursor = self.conn.cursor(buffered=True)
+    #         self._update_status("DB connected.")
+    #     except mysql.connector.Error as err:
+    #         self.conn = None; self.cursor = None
+    #         self._update_status(f"DB error: {err}")
+
+
+    # def _connect_db(self):
+    #     try:
+    #         print("Trying MySQL connection...")
+    #
+    #         self.conn = mysql.connector.connect(
+    #             host="localhost",
+    #             user="root",
+    #             password="Nigam@123",
+    #             database="gmfldesktop12",
+    #             connection_timeout=5  # 🔥 IMPORTANT
+    #         )
+    #
+    #         self.cursor = self.conn.cursor(buffered=True)
+    #         print("DB CONNECTED SUCCESSFULLY")
+    #         self._update_status("DB connected.")
+    #
+    #     except mysql.connector.Error as err:
+    #         print("DB ERROR:", err)
+    #         self.conn = None
+    #         self.cursor = None
+    #         self._update_status("DB not connected.")
 
     def _connect_db(self):
         try:
+            print("Trying MySQL connection...")
+
             self.conn = mysql.connector.connect(
-                host='localhost',
-                user='root',
-                password='anubhav',
-                database='gmfldesktop12'
+                host="localhost",
+                user="root",
+                password="Nigam@123",
+               # database="gmfldesktop12",
+                port=3306,
+                connection_timeout=5
             )
+
             self.cursor = self.conn.cursor(buffered=True)
+            print("DB CONNECTED SUCCESSFULLY ✅")
             self._update_status("DB connected.")
+
         except mysql.connector.Error as err:
-            self.conn = None; self.cursor = None
-            self._update_status(f"DB error: {err}")
+            print("DB ERROR:", err)
+            self.conn = None
+            self.cursor = None
+            self._update_status(f"DB not connected: {err}")
 
     # ----------------------- Excel: ROBUST LOADER -----------------------
 
@@ -364,7 +573,12 @@ class PipelineApp:
     def _read_excel(self):
         # constants_file = os.path.join(self.project_root, "constants.xlsx")
         # default_path = os.path.join(self.pipe_tally, "pipetally_main", "Pipe_Tally_8inch.xlsx")
-        default_path = r"C:\Users\admin\Downloads\Pipe_Tally_8inch (1).xlsx"
+        #default_path = r"C:\Users\admin\Downloads\Pipe_Tally_8inch (1).xlsx"
+
+        #default_path = r"C:\client_software\pickle9\pipetally_main\Pipe_Tally_8inch (1).xlsx"
+
+        default_path = self.pipe_tally if self.pipe_tally else r"C:\client_software\pickle9\pipetally_main\Pipe_Tally_8inch (1).xlsx"
+
         # if self.pipe_tally and os.path.isfile(self.pipe_tally):
         #     path = self.pipe_tally
         # else:
@@ -460,18 +674,39 @@ class PipelineApp:
         self._populate_slot_menu()
         self.display_page(0)
 
+    # def _make_chunks(self):
+    #     self.chunks = []
+    #     if self.data.empty:
+    #         return
+    #     if 'Pipe Number' not in self.data.columns:
+    #         messagebox.showerror("Missing Column", "Column 'Pipe Number' not found in Excel.")
+    #         return
+    #     pn = pd.to_numeric(self.data["Pipe Number"], errors="coerce")
+    #     data2 = self.data.copy()
+    #     data2["__pn__"] = pn
+    #     for _, grp in data2.groupby("__pn__", dropna=True):
+    #         self.chunks.append(grp.drop(columns="__pn__", errors="ignore"))
+
     def _make_chunks(self):
         self.chunks = []
+
         if self.data.empty:
             return
+
         if 'Pipe Number' not in self.data.columns:
             messagebox.showerror("Missing Column", "Column 'Pipe Number' not found in Excel.")
             return
-        pn = pd.to_numeric(self.data["Pipe Number"], errors="coerce")
+
+        # 🔥 DO NOT force numeric
         data2 = self.data.copy()
-        data2["__pn__"] = pn
-        for _, grp in data2.groupby("__pn__", dropna=True):
+        data2["__pn__"] = data2["Pipe Number"].astype(str)
+
+        for _, grp in data2.groupby("__pn__"):
             self.chunks.append(grp.drop(columns="__pn__", errors="ignore"))
+
+        print("TOTAL PIPE CHUNKS:", len(self.chunks))
+
+
 
     def _populate_slot_menu(self):
         n = len(self.chunks)
@@ -941,23 +1176,120 @@ class PipelineApp:
 
 # ----------------------------- Entrypoint -------------------------------
 
-def create_window(pipe_tally=None):
-    root = tb.Window(themename="cosmo") if _USING_BOOTSTRAP else tk.Tk()
-    app = PipelineApp(root, pipe_tally=pipe_tally)     # <-- pass it in
-    root.protocol("WM_DELETE_WINDOW", app.close)
-    return root
 
-def main():
-    root = create_window()
-    root.mainloop()
+# -------------------- CLEAN ENTRYPOINT --------------------
 
-def run_app(pipe_tally=None):
-    # print(pipe_tally)
-    root = create_window(pipe_tally=pipe_tally)        # <-- pass it in
-    root.mainloop()
-if __name__ == "__main__":
-    run_app(r"C:\Users\admin\Downloads\Pipe_Tally_8inch (1).xlsx")
+# def start_app():
+    # root = tk.Tk()
+    # root.title("Pipeline Scheme Report & Pipe Number Visualizer")
+    # root.geometry("1200x800")
+    #
+    # print("ROOT WINDOW CREATED")
+    #
+    # app = PipelineApp(root)
+    #
+    # root.mainloop()
+
+
+
+
+
+# def create_window(pipe_tally=None):
+#     root = tb.Window(themename="cosmo") if _USING_BOOTSTRAP else tk.Tk()
+#     app = PipelineApp(root, pipe_tally=pipe_tally)     # <-- pass it in
+#     root.protocol("WM_DELETE_WINDOW", app.close)
+#     return root
+
+# def create_window(pipe_tally=None):
+#     root = tk.Tk()   # force normal tkinter window
+#     print("ROOT WINDOW CREATED")
+#
+#     app = PipelineApp(root, pipe_tally=pipe_tally)
+#     root.protocol("WM_DELETE_WINDOW", app.close)
+#
+#     root.mainloop()   # <<< VERY IMPORTANT
+
+
+#
+# def main():
+#     root = create_window()
+#     root.mainloop()
+
+# def run_app(pipe_tally=None):
+#     # print(pipe_tally)
+#     root = create_window(pipe_tally=pipe_tally)        # <-- pass it in
+#     root.mainloop()
+
+# def run_app(pipe_tally=None):
+#     create_window(pipe_tally)
+
+
+# if __name__ == "__main__":
+#     run_app(r"C:\Users\admin\Downloads\Pipe_Tally_8inch (1).xlsx")
     # main()
+# if __name__ == "__main__":
+#     run_app()
+
+
+# if __name__ == "__main__":
+#     root = tk.Tk()
+#     root.geometry("1200x800")
+#     root.title("Pipeline Scheme Report")
+#
+#     app = PipelineApp(root)
+#
+#     root.mainloop()
+
+
+#
+def run_pipe_schema(pipe_tally=None):
+    import traceback
+    import ttkbootstrap as tb
+
+    print("PIPE SCHEMA FUNCTION START")
+
+    try:
+        root = tb.Window(themename="flatly")
+
+        app = PipelineApp(root, pipe_tally=pipe_tally)
+
+        root.protocol("WM_DELETE_WINDOW", app.close)
+
+        root.mainloop()
+
+    except Exception as e:
+        print("PIPE SCHEMA ERROR:", e)
+        traceback.print_exc()
+
+if __name__ == "__main__":
+    import sys, traceback
+
+    print("PIPE SCHEME STARTING...")
+
+    try:
+        root = tb.Window(themename="flatly")
+        print("ROOT CREATED")
+
+        try:
+            app = PipelineApp(root, pipe_tally=r"C:\client_software\pickle9\pipetally_main\Pipe_Tally_8inch (1).xlsx")
+            print("APP CREATED")
+        except Exception:
+            print("ERROR WHILE CREATING PipelineApp ❌")
+            traceback.print_exc()
+            input("Press Enter to close...")
+            raise
+
+        root.protocol("WM_DELETE_WINDOW", app.close)
+        print("ENTERING MAINLOOP")
+
+        root.mainloop()
+        print("MAINLOOP EXITED")
+
+    except Exception:
+        print("PIPE SCHEME CRASHED ❌")
+        traceback.print_exc()
+        input("Press Enter to close...")
+
 
 
 
