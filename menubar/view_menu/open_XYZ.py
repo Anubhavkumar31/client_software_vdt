@@ -1,4 +1,5 @@
 import os
+import sys
 
 from PyQt6.QtWidgets import QMessageBox, QInputDialog
 import subprocess
@@ -92,7 +93,22 @@ def open_XYZ(self):
 
         # Launch Google Earth Pro with the selected KML file
         try:
+
+            # subprocess.Popen([earth_path, kml_path])
+            confirm = QMessageBox.question(
+                self,
+                "Open in Google Earth",
+                "This will open Google Earth Pro.\n\nDo you want to continue?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+
+            if confirm != QMessageBox.StandardButton.Yes:
+                return
+
+            # 🔹 EXISTING: launch
             subprocess.Popen([earth_path, kml_path])
+
             # QMessageBox.information(
             #     self,
             #     "Success",
