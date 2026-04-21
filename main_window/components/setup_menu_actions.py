@@ -12,7 +12,7 @@ from menubar.File_menu.open_project import open_project
 from menubar.File_menu.quit_app import quit_app
 from menubar.help_menu.open_about import open_About
 from menubar.help_menu.open_manual import open_manual
-from menubar.report_menu.generate.digsheet import open_digs
+from menubar.report_menu.generate.digsheet import digsheet_runner
 from menubar.report_menu.generate.final_report import open_Final_Report
 from menubar.report_menu.generate.pipetally import open_pipe_tally
 from menubar.report_menu.generate.preliminary_report import open_Preliminary_Report
@@ -91,7 +91,8 @@ def setup_actions(self):
     a.action_Pipe_Sch.triggered.connect(lambda: open_PipeScheme(self))
     a.Final_Report.triggered.connect(lambda: open_Final_Report(self))
     a.action_Preliminary_Report.triggered.connect(lambda: open_Preliminary_Report(self))
-    a.actionStandard.triggered.connect(lambda: open_digs(self))  # original (by defect no.)
+    # a.actionStandard.triggered.connect(lambda: open_digs(self))  # original (by defect no.)
+    a.actionStandard.triggered.connect(lambda: digsheet_runner(self))
     a.action__pipetally.triggered.connect(lambda: open_pipe_tally(self))
 
     #help section

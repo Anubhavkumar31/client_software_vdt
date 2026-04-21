@@ -19,13 +19,14 @@ myenv/
 .venv/
 env/
 build_env/
-
+venv/
+venv310
 # --- Build & Distribution ---
 build/
 dist/
 *.egg-info/
 *.spec
-
+output/
 # --- PyInstaller ---
 *.spec
 

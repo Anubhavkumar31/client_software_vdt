@@ -13,7 +13,7 @@ import numpy as np
 import matplotlib
 #matplotlib.use("Qt5Agg")   # or "Qt5Agg" depending on your system
 
-matplotlib.use("Agg")
+# matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import tempfile

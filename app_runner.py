@@ -1,6 +1,6 @@
 import sys, traceback
 from pathlib import Path
-
+from PyQt6.QtWidgets import QMessageBox
 
 def global_error_handler(exctype, value, tb):
     # Format error
@@ -43,7 +43,8 @@ except ImportError:
     from PyQt6.QtWebEngineWidgets import QWebEngineView
 
 import matplotlib
-matplotlib.use("Qt5Agg")
+# matplotlib.use("Qt5Agg")
+# matplotlib.use("QtAgg")
 
 
 # PyQt6 Core

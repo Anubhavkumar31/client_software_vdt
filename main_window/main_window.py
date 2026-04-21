@@ -12,7 +12,7 @@ except ImportError:
     from PyQt6.QtWebEngineWidgets import QWebEngineView
 
 import matplotlib
-matplotlib.use("Qt5Agg")
+# matplotlib.use("QtAgg")
 
 from PyQt6 import uic
 from PyQt6.QtCore import QUrl
