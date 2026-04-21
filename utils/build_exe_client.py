@@ -164,10 +164,10 @@ PyInstaller.__main__.run([
     "--noupx",
 
     # 🔥 Prevent bytecode crash
-    "-d", "noarchive",
+    # "-d", "noarchive",
 
     # ❌ DO NOT USE ONEFILE
-    "--onefile",
+    # "--onefile",
 
     "--distpath", DIST_PATH,
     "--workpath", BUILD_PATH,
@@ -235,18 +235,22 @@ PyInstaller.__main__.run([
     # -----------------------------
     # Data folders
     # -----------------------------
-    f"--add-data={os.path.join(ROOT, 'backend')};backend/",
-    f"--add-data={os.path.join(ROOT, 'dig')};dig/",
-    f"--add-data={os.path.join(ROOT, 'final_report')};final_report/",
-    f"--add-data={os.path.join(ROOT, 'main_section_view')};main_section_view/",
-    f"--add-data={os.path.join(ROOT, 'main_window')};main_window/",
-    f"--add-data={os.path.join(ROOT, 'manual')};manual/",
-    f"--add-data={os.path.join(ROOT, 'menubar')};menubar/",
-    f"--add-data={os.path.join(ROOT, 'pages')};pages/",
-    f"--add-data={os.path.join(ROOT, 'pipeline_schema')};pipeline_schema/",
-    f"--add-data={os.path.join(ROOT, 'pipetally')};pipetally/",
-    f"--add-data={os.path.join(ROOT, 'preliminary_report')};preliminary_report/",
+    # f"--add-data={os.path.join(ROOT, 'backend')};backend/",
+    # f"--add-data={os.path.join(ROOT, 'dig')};dig/",
+    # f"--add-data={os.path.join(ROOT, 'final_report')};final_report/",
+    # f"--add-data={os.path.join(ROOT, 'main_section_view')};main_section_view/",
+    # f"--add-data={os.path.join(ROOT, 'main_window')};main_window/",
+    # f"--add-data={os.path.join(ROOT, 'manual')};manual/",
+    # f"--add-data={os.path.join(ROOT, 'menubar')};menubar/",
+    # f"--add-data={os.path.join(ROOT, 'pages')};pages/",
+    # f"--add-data={os.path.join(ROOT, 'pipeline_schema')};pipeline_schema/",
+    # f"--add-data={os.path.join(ROOT, 'pipetally')};pipetally/",
+    # f"--add-data={os.path.join(ROOT, 'preliminary_report')};preliminary_report/",
     f"--add-data={os.path.join(ROOT, 'ui')};ui/",
+    f"--add-data={os.path.join(ROOT, 'main_window', 'ui')};main_window/ui/",
+    f"--add-data={os.path.join(ROOT, 'final_report')};final_report/",
+    f"--add-data={os.path.join(ROOT, 'manual')};manual/",
+    f"--add-data={os.path.join(ROOT, 'preliminary_report')};preliminary_report/",
 
     # -----------------------------
     # Entry
