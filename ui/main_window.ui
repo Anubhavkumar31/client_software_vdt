@@ -537,48 +537,48 @@ QPushButton:flat {
      <bool>false</bool>
     </property>
    </widget>
-   <widget class="QPushButton" name="minTabWidg">
-    <property name="geometry">
-     <rect>
-      <x>1520</x>
-      <y>410</y>
-      <width>38</width>
-      <height>25</height>
-     </rect>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">QPushButton {
-	min-height: 23px;
-    min-width: 30px;
-}
+<!--   <widget class="QPushButton" name="minTabWidg">-->
+<!--    <property name="geometry">-->
+<!--     <rect>-->
+<!--      <x>1520</x>-->
+<!--      <y>410</y>-->
+<!--      <width>38</width>-->
+<!--      <height>25</height>-->
+<!--     </rect>-->
+<!--    </property>-->
+<!--    <property name="styleSheet">-->
+<!--     <string notr="true">QPushButton {-->
+<!--	min-height: 23px;-->
+<!--    min-width: 30px;-->
+<!--}-->
 
-QPushButton:pressed {
-    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                                      stop: 0 #dadbde, stop: 1 #f6f7fa);
-}
+<!--QPushButton:pressed {-->
+<!--    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,-->
+<!--                                      stop: 0 #dadbde, stop: 1 #f6f7fa);-->
+<!--}-->
 
-QPushButton:flat {
-    border: none; /* no border for a flat push button */
-}
-</string>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-    <property name="icon">
-     <iconset>
-      <normaloff>icons/minus.png</normaloff>icons/minus.png</iconset>
-    </property>
-    <property name="iconSize">
-     <size>
-      <width>20</width>
-      <height>20</height>
-     </size>
-    </property>
-    <property name="flat">
-     <bool>true</bool>
-    </property>
-   </widget>
+<!--QPushButton:flat {-->
+<!--    border: none; /* no border for a flat push button */-->
+<!--}-->
+<!--</string>-->
+<!--    </property>-->
+<!--    <property name="text">-->
+<!--     <string/>-->
+<!--    </property>-->
+<!--    <property name="icon">-->
+<!--     <iconset>-->
+<!--      <normaloff>icons/minus.png</normaloff>icons/minus.png</iconset>-->
+<!--    </property>-->
+<!--    <property name="iconSize">-->
+<!--     <size>-->
+<!--      <width>20</width>-->
+<!--      <height>20</height>-->
+<!--     </size>-->
+<!--    </property>-->
+<!--    <property name="flat">-->
+<!--     <bool>true</bool>-->
+<!--    </property>-->
+<!--   </widget>-->
    <widget class="QWidget" name="verticalLayoutWidget_2">
     <property name="geometry">
      <rect>
@@ -1145,7 +1145,7 @@ QPushButton:flat {
    <zorder>maxTabWidg</zorder>
    <zorder>verticalLayoutWidget_2</zorder>
    <zorder>tabWidgetM</zorder>
-   <zorder>minTabWidg</zorder>
+<!--   <zorder>minTabWidg</zorder>-->
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">

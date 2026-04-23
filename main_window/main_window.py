@@ -15,11 +15,11 @@ import matplotlib
 # matplotlib.use("QtAgg")
 
 from PyQt6 import uic
-from PyQt6.QtCore import QUrl
+from PyQt6.QtCore import QUrl, QTimer
 
 # PyQt6 Widgets
 from PyQt6.QtWidgets import (
-    QMainWindow, QVBoxLayout, QDialog, QTextEdit, QPushButton
+    QMainWindow, QVBoxLayout, QDialog, QTextEdit, QPushButton, QWidget, QFrame, QApplication
 )
 
 from reportlab.pdfgen import canvas  # noqa
@@ -76,7 +76,108 @@ class MyMainWindow(QMainWindow):
         setup_canvas_and_statusbar(self)
         setup_menu_actions(self)
         setup_initial_ui_state(self)
+        debug_all(self.centralWidget())
+        # QTimer.singleShot(2000, lambda: self.debug_reverse_hide_1(32, 33, True))
+        # from PyQt6.QtWidgets import QScrollBar, QWidget
+        #
+        # for w in self.findChildren(QWidget):
+        #     w.setStyleSheet("border: 1px solid red;")
 
+    def debug_reverse_hide(self):
+        from PyQt6.QtWidgets import QApplication, QWidget
+        import time
+
+        print("\n=== REVERSE DEBUG START ===")
+
+        widgets = self.findChildren(QWidget)
+        print("Total widgets:", len(widgets))
+
+        # Reverse order
+        widgets = list(reversed(widgets))
+
+        for i, w in enumerate(widgets):
+            try:
+                g = w.geometry()
+
+                print(f"\n[{i}] HIDING:")
+                print("  Class:", type(w))
+                print("  Name:", w.objectName())
+                print("  Geometry:", g)
+
+                # Highlight BEFORE hiding
+                w.setStyleSheet("background: yellow;")
+                QApplication.processEvents()
+
+                # Slow down so you can SEE it
+                time.sleep(0.5)
+
+                # Hide it
+                w.hide()
+                QApplication.processEvents()
+
+                # 👇 IMPORTANT: you watch screen here
+                # when the tiny bar disappears → check THIS print
+
+            except Exception as e:
+                print("Error:", e)
+
+    def debug_reverse_hide_1(self, start=0, end=50, process_all=False):
+        from PyQt6.QtWidgets import QApplication, QWidget
+        import time
+
+        print("\n=== REVERSE DEBUG START ===")
+
+        widgets = self.findChildren(QWidget)
+        print("Total widgets:", len(widgets))
+
+        # Reverse order
+        widgets = list(reversed(widgets))
+
+        # Clamp range safely
+        start = max(0, start)
+        end = min(len(widgets), end)
+        if process_all:
+            start = 0
+            end = len(widgets)
+
+        print(f"Processing range: {start} → {end}")
+
+        for i in range(start, end):
+            w = widgets[i]
+
+            try:
+                g = w.geometry()
+
+                print(f"\n[{i}] HIDING:")
+                print("  Class:", type(w))
+                print("  Name:", w.objectName())
+                print("  Geometry:", g)
+
+                # Highlight BEFORE hiding
+                w.setStyleSheet("background: yellow;")
+                QApplication.processEvents()
+
+                time.sleep(0.5)
+
+                # Hide it
+                w.hide()
+                QApplication.processEvents()
+
+            except Exception as e:
+                print("Error:", e)
+
+    # def mousePressEvent(self, event):
+    #     widget = self.childAt(event.pos())
+    #
+    #     print("------ CLICK TRACE ------")
+    #     while widget:
+    #         print(
+    #             "Widget:", widget,
+    #             "| Class:", type(widget),
+    #             "| Name:", widget.objectName(),
+    #             "| Geometry:", widget.geometry()
+    #         )
+    #         widget = widget.parentWidget()
 
     def _show_watermark(self):
         try:
@@ -87,8 +188,9 @@ class MyMainWindow(QMainWindow):
         except Exception:
             self.web_view.setUrl(QUrl())
         self.bottom_stack.setCurrentIndex(0)
-        self.web_view2.setUrl(QUrl())
+        # self.web_view2.setUrl(QUrl())
 
+        self.web_view2.setHtml("<h1>Test</h1>")
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if hasattr(self, "_select_pipe_container") and self._select_pipe_container.isVisible():
@@ -152,3 +254,11 @@ class MyMainWindow(QMainWindow):
         # Show dialog
         dlg = ClusterSummaryDialog(cluster_df, self)
         dlg.exec()
+
+def debug_all(widget, indent=0):
+    pad = "  " * indent
+    print(f"{pad}{type(widget).__name__} | {widget.objectName()} | {widget.geometry()}")
+
+    for child in widget.children():
+        if hasattr(child, "geometry"):
+            debug_all(child, indent + 1)

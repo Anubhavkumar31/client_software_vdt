@@ -720,6 +720,7 @@ def _build_main_section(self):
         left_px=1300,
         right_px=570
     )
+    self.main_top_scrollbar.hide()
 
     # ======================================================================
     # SINGLE CHART SCROLLBAR SYNC LOGIC
@@ -874,7 +875,7 @@ def _build_main_section(self):
         self,
         "proxTopBar",
         web_layout,
-        bar_h=10,
+        bar_h=100,
         left_px=1300,
         right_px=570
     )
