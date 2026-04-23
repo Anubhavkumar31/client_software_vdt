@@ -360,14 +360,12 @@ class Digsheet:
                 font=("Arial", 9),
             ).grid(row=r, column=0, sticky="w", padx=(10, 6), pady=(2, 2))
 
-            tk.Entry(
+            tk.Label(
                 left_frame,
-                textvariable=var,
-                width=40,
+                textvariable=var,  # 🔥 automatically updates
                 bg="white",
-                bd=0,
-                highlightthickness=0,
-                relief="flat",
+                anchor="w",
+                font=("Arial", 9),
             ).grid(row=r, column=1, sticky="ew", padx=(0, 10), pady=(2, 2))
 
         left_frame.grid_columnconfigure(0, weight=0)
