@@ -70,77 +70,6 @@ def info(msg: str):
 # --------------------------- Main App Class -----------------------------
 
 class PipelineApp:
-    # def __init__(self, root, pipe_tally=None):
-    #     print("PipelineApp __init__ started")
-    #     self.root = root
-    #     self.pipe_tally = r"C:\client_software\pickle9\pipetally_main\Pipe_Tally_8inch (1).xlsx"
-    #     #print(self.pipe_tally)
-    #     self.root.title("Pipeline Scheme Report & Pipe Number Visualizer")
-    #     try:
-    #         self.root.iconbitmap(resource_path('pipeline_schema/LOGO-withoutbg.ico'))
-    #     except Exception:
-    #         pass
-    #
-    #     self.root.geometry("1200x800+150+60")
-    #     self.root.minsize(1100, 700)
-    #
-    #     # DB
-    #     self.conn = None
-    #     self.cursor = None
-    #
-    #     # Data
-    #     self.data = pd.DataFrame()
-    #     self.chunks = []          # list[pd.DataFrame] grouped by 'Pipe Number'
-    #     self.current_page = 0     # slot paging (0-based)
-    #     self.chunks_per_page = 100
-    #
-    #     # Canvas state
-    #     self.canvas_scale = 1.0
-    #     self._tooltip_win = None
-    #     self._pan_start = None
-    #     self.pipe_item_map = {}
-    #
-    #     # Styling
-    #     self._init_style()
-    #
-    #     # Layout
-    #     self._build_top_toolbar()
-    #     self._build_body()
-    #     self._build_statusbar()
-    #
-    #     # Branding
-    #    # self._load_logo()
-    #
-    #     # DB connect
-    #     self._connect_db()
-    #
-    #     # Excel load (robust)
-    #
-    #
-    #     # self._read_excel()
-    #     #
-    #     # # Populate & render
-    #     # self._make_chunks()
-    #     # self._populate_slot_menu()
-    #     # self.display_page(0)
-    #     # self._update_status("Ready.")
-    #
-    #     # self._update_status("Starting...")
-    #     #
-    #     # # Delay heavy work until window is visible
-    #     # self.root.after(300, self._delayed_load)
-    #     #
-    #     # self._update_status("App Started")
-    #
-    #     self._update_status("Starting...")
-    #
-    #     print("FORCE LOADING PIPE SCHEME DATA")
-    #     self._read_excel()
-    #     self._make_chunks()
-    #     self._populate_slot_menu()
-    #     self.display_page(0)
-    #
-    #     self._update_status("Ready")
     def __init__(self, root, pipe_tally=None):
         import traceback
 
@@ -151,7 +80,7 @@ class PipelineApp:
             self.root = root
 
             print("STEP 2: Pipe tally path")
-            self.pipe_tally = r"C:\client_software\pickle9\pipetally_main\Pipe_Tally_8inch (1).xlsx"
+            self.pipe_tally = pipe_tally
 
             print("STEP 3: Window title")
             self.root.title("Pipeline Scheme Report & Pipe Number Visualizer")
@@ -1243,23 +1172,20 @@ class PipelineApp:
 
 #
 def run_pipe_schema(pipe_tally=None):
-    import traceback
     import ttkbootstrap as tb
 
     print("PIPE SCHEMA FUNCTION START")
+    print("PIPE TALLY RECEIVED:", pipe_tally)
 
-    try:
-        root = tb.Window(themename="flatly")
+    root = tb.Window(themename="flatly")  # always new Tk window
 
-        app = PipelineApp(root, pipe_tally=pipe_tally)
+    app = PipelineApp(root, pipe_tally=pipe_tally)
 
-        root.protocol("WM_DELETE_WINDOW", app.close)
+    root.protocol("WM_DELETE_WINDOW", app.close)
 
-        root.mainloop()
+    root.mainloop()
 
-    except Exception as e:
-        print("PIPE SCHEMA ERROR:", e)
-        traceback.print_exc()
+    return app
 
 if __name__ == "__main__":
     import sys, traceback

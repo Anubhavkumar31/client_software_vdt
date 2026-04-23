@@ -160,58 +160,77 @@ def _hide_create_project_message(self):
 
 
 
-def _auto_load_pipe_tally(self, root: str) -> bool:
-        # Look for pipe tally files inside pipetally_main subfolder
+def _auto_load_pipe_tally(self, root: str):
+    import os
+    import pandas as pd
+
     pipetally_dir = os.path.join(root, "pipetally_main")
+
     if not os.path.isdir(pipetally_dir):
-        print(f"[Warning] pipetally_main directory not found in {root}")
+        print(f"[Error] pipetally_main directory not found in {root}")
         self.pipe_tally = None
-        return False
+        return False, None
 
-    candidates = [
-        os.path.join(pipetally_dir, "pipe_tally.xlsx"),
-        os.path.join(pipetally_dir, "pipe_tally.csv"),
-    ]
-
-    # Also scan for any tally-related files in the pipetally_main directory
+    # ✅ Step 1: find only files starting with pipe_tally
+    candidates = []
     for f in os.listdir(pipetally_dir):
         name = f.lower()
-        if name.endswith((".xlsx", ".xls", ".csv")):
+
+        if name.startswith("pipe_tally") and name.endswith((".xlsx", ".xls", ".csv")):
             candidates.append(os.path.join(pipetally_dir, f))
-    seen = set()
-    for path in candidates:
-        if not path or path in seen:
-            continue
-        seen.add(path)
-        if not os.path.exists(path): continue
-        try:
-            if path.lower().endswith((".xlsx", ".xls")):
-                df = pd.read_excel(path)
-            else:
-                df = pd.read_csv(path)
-            df.columns = [str(c).strip() for c in df.columns]
 
-            # ✅ Round numeric columns to 3 decimal places
-            numeric_columns = [
-                'Depth %', 'Depth (mm)', 'ERF (ASME B31G)', 'Psafe (ASME B31G) Barg',
-                'Abs. Distance (m)', 'Distance to U/S GW(m)', 'Length (mm)',
-                'Width (mm)', 'WT (mm)', 'Pipe Length (mm)'
-            ]
-            for col in numeric_columns:
-                if col in df.columns:
-                    df[col] = pd.to_numeric(df[col], errors='coerce').round(3)
+    print("PIPE TALLY CANDIDATES:", candidates)
 
-            missing = [c for c in self.REQUIRED_TALLY_COLS if c not in df.columns]
-            if missing:
-                print(f"[pipe_tally] Loaded {os.path.basename(path)} (missing cols: {missing})")
-            else:
-                print(f"[pipe_tally] Loaded {os.path.basename(path)}")
-            self.pipe_tally = df
-            return True, path
-        except Exception as e:
-            print(f"[pipe_tally] Failed to load {path}: {e}")
-    self.pipe_tally = None
-    return False, pipetally_dir
+    # ❌ Step 2: no file found
+    if len(candidates) == 0:
+        self.pipe_tally = None
+        msg = "No pipe_tally file found in pipetally_main folder."
+        print("[ERROR]", msg)
+        self.open_Error(msg)
+        return False, None
+
+    # ❌ Step 3: more than one found
+    if len(candidates) > 1:
+        self.pipe_tally = None
+        msg = "Multiple pipe_tally files found. Only one is allowed in pipetally_main."
+        print("[ERROR]", msg)
+        self.open_Error(msg)
+        return False, None
+
+    # ✅ Step 4: exactly one file
+    path = candidates[0]
+
+    try:
+        print(f"[LOADING] {os.path.basename(path)}")
+
+        if path.lower().endswith((".xlsx", ".xls")):
+            df = pd.read_excel(path)
+        else:
+            df = pd.read_csv(path)
+
+        df.columns = [str(c).strip() for c in df.columns]
+
+        # ✅ optional: numeric cleanup
+        numeric_columns = [
+            'Depth %', 'Depth (mm)', 'ERF (ASME B31G)', 'Psafe (ASME B31G) Barg',
+            'Abs. Distance (m)', 'Distance to U/S GW(m)', 'Length (mm)',
+            'Width (mm)', 'WT (mm)', 'Pipe Length (mm)'
+        ]
+
+        for col in numeric_columns:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').round(3)
+
+        self.pipe_tally = df
+
+        print(f"[SUCCESS] Loaded {os.path.basename(path)}")
+        return True, path
+
+    except Exception as e:
+        print(f"[ERROR] Failed to load {path}: {e}")
+        self.open_Error(f"Failed to load pipe_tally file:\n{e}")
+        self.pipe_tally = None
+        return False, None
 
 
 
