@@ -20,15 +20,16 @@ def setup_canvas_and_statusbar(self):
     self.canvas = PlotWindow(self, width=5, height=4, dpi=100)
 
     self.setStatusBar(QStatusBar(self))
+
     self.current_message = 'App running'
     self.statusBar().showMessage('           Status:      ' + self.current_message)
-
+    self.statusBar().setSizeGripEnabled(False)
     right_container = QWidget()
     rl = QHBoxLayout(right_container)
     rl.setContentsMargins(0, 0, 0, 0)
-    self.right_status_label = QLabel('0.0s    ')
-    rl.addWidget(self.right_status_label)
-    self.statusBar().addPermanentWidget(right_container)
+    # self.right_status_label = QLabel('0.0s    ')
+    # rl.addWidget(self.right_status_label)
+    self.statusBar().addPermanentWidget(right_container, 1)
 
     self.timer = QTimer()
     self.timer.timeout.connect(lambda : _tick(self))

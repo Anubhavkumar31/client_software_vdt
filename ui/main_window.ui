@@ -485,58 +485,58 @@ QTabBar QToolButton::left-arrow {
      </layout>
     </widget>
    </widget>
-   <widget class="QPushButton" name="maxTabWidg">
-    <property name="geometry">
-     <rect>
-      <x>1520</x>
-      <y>940</y>
-      <width>41</width>
-      <height>31</height>
-     </rect>
-    </property>
-    <property name="autoFillBackground">
-     <bool>false</bool>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">QPushButton {
-	min-height: 23px;
-    min-width: 30px;
-	background-color: rgb(136, 136, 136);
-}
+<!--   <widget class="QPushButton" name="maxTabWidg">-->
+<!--    <property name="geometry">-->
+<!--     <rect>-->
+<!--      <x>1520</x>-->
+<!--      <y>940</y>-->
+<!--      <width>41</width>-->
+<!--      <height>31</height>-->
+<!--     </rect>-->
+<!--    </property>-->
+<!--    <property name="autoFillBackground">-->
+<!--     <bool>false</bool>-->
+<!--    </property>-->
+<!--    <property name="styleSheet">-->
+<!--     <string notr="true">QPushButton {-->
+<!--	min-height: 23px;-->
+<!--    min-width: 30px;-->
+<!--	background-color: rgb(136, 136, 136);-->
+<!--}-->
 
-QPushButton:pressed {
-    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                                      stop: 0 #dadbde, stop: 1 #f6f7fa);
-}
+<!--QPushButton:pressed {-->
+<!--    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,-->
+<!--                                      stop: 0 #dadbde, stop: 1 #f6f7fa);-->
+<!--}-->
 
-QPushButton:flat {
-    border: none; /* no border for a flat push button */
-}
-</string>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-    <property name="icon">
-     <iconset>
-      <normaloff>icons/cascade.png</normaloff>icons/cascade.png</iconset>
-    </property>
-    <property name="iconSize">
-     <size>
-      <width>16</width>
-      <height>16</height>
-     </size>
-    </property>
-    <property name="autoDefault">
-     <bool>false</bool>
-    </property>
-    <property name="default">
-     <bool>true</bool>
-    </property>
-    <property name="flat">
-     <bool>false</bool>
-    </property>
-   </widget>
+<!--QPushButton:flat {-->
+<!--    border: none; /* no border for a flat push button */-->
+<!--}-->
+<!--</string>-->
+<!--    </property>-->
+<!--    <property name="text">-->
+<!--     <string/>-->
+<!--    </property>-->
+<!--    <property name="icon">-->
+<!--     <iconset>-->
+<!--      <normaloff>icons/cascade.png</normaloff>icons/cascade.png</iconset>-->
+<!--    </property>-->
+<!--    <property name="iconSize">-->
+<!--     <size>-->
+<!--      <width>16</width>-->
+<!--      <height>16</height>-->
+<!--     </size>-->
+<!--    </property>-->
+<!--    <property name="autoDefault">-->
+<!--     <bool>false</bool>-->
+<!--    </property>-->
+<!--    <property name="default">-->
+<!--     <bool>true</bool>-->
+<!--    </property>-->
+<!--    <property name="flat">-->
+<!--     <bool>false</bool>-->
+<!--    </property>-->
+<!--   </widget>-->
 <!--   <widget class="QPushButton" name="minTabWidg">-->
 <!--    <property name="geometry">-->
 <!--     <rect>-->
@@ -1142,7 +1142,7 @@ QPushButton:flat {
      </item>
     </layout>
    </widget>
-   <zorder>maxTabWidg</zorder>
+<!--   <zorder>maxTabWidg</zorder>-->
    <zorder>verticalLayoutWidget_2</zorder>
    <zorder>tabWidgetM</zorder>
 <!--   <zorder>minTabWidg</zorder>-->

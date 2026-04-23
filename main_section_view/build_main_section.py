@@ -875,7 +875,7 @@ def _build_main_section(self):
         self,
         "proxTopBar",
         web_layout,
-        bar_h=100,
+        bar_h=10,
         left_px=1300,
         right_px=570
     )

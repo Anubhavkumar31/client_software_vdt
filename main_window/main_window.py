@@ -77,7 +77,7 @@ class MyMainWindow(QMainWindow):
         setup_menu_actions(self)
         setup_initial_ui_state(self)
         debug_all(self.centralWidget())
-        # QTimer.singleShot(2000, lambda: self.debug_reverse_hide_1(32, 33, True))
+        QTimer.singleShot(2000, lambda: self.debug_reverse_hide_1(0, 163, False))
         # from PyQt6.QtWidgets import QScrollBar, QWidget
         #
         # for w in self.findChildren(QWidget):
