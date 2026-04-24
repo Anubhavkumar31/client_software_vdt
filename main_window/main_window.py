@@ -77,49 +77,12 @@ class MyMainWindow(QMainWindow):
         setup_menu_actions(self)
         setup_initial_ui_state(self)
         debug_all(self.centralWidget())
-        QTimer.singleShot(2000, lambda: self.debug_reverse_hide_1(0, 163, False))
+        # QTimer.singleShot(2000, lambda: self.debug_reverse_hide_1(0, 163, False))
         # from PyQt6.QtWidgets import QScrollBar, QWidget
         #
         # for w in self.findChildren(QWidget):
         #     w.setStyleSheet("border: 1px solid red;")
 
-    def debug_reverse_hide(self):
-        from PyQt6.QtWidgets import QApplication, QWidget
-        import time
-
-        print("\n=== REVERSE DEBUG START ===")
-
-        widgets = self.findChildren(QWidget)
-        print("Total widgets:", len(widgets))
-
-        # Reverse order
-        widgets = list(reversed(widgets))
-
-        for i, w in enumerate(widgets):
-            try:
-                g = w.geometry()
-
-                print(f"\n[{i}] HIDING:")
-                print("  Class:", type(w))
-                print("  Name:", w.objectName())
-                print("  Geometry:", g)
-
-                # Highlight BEFORE hiding
-                w.setStyleSheet("background: yellow;")
-                QApplication.processEvents()
-
-                # Slow down so you can SEE it
-                time.sleep(0.5)
-
-                # Hide it
-                w.hide()
-                QApplication.processEvents()
-
-                # 👇 IMPORTANT: you watch screen here
-                # when the tiny bar disappears → check THIS print
-
-            except Exception as e:
-                print("Error:", e)
 
     def debug_reverse_hide_1(self, start=0, end=50, process_all=False):
         from PyQt6.QtWidgets import QApplication, QWidget

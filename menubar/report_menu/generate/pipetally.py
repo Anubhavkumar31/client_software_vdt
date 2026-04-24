@@ -5,97 +5,80 @@ from PyQt6.QtWidgets import QMessageBox, QInputDialog
 from pathlib import Path
 
 def open_pipe_tally(self):
-    # Check if a project is open
+    import os
+    from pathlib import Path
+    from PyQt6.QtWidgets import QMessageBox
+
+    # 1. Check project
     if not self.project_is_open or not self.project_root:
         QMessageBox.warning(
             self,
             "No Project Open",
-            "Please create/open a project first to access the pipe tally file.\n\n"
-            "Steps:\n"
-            "1. Go to File → Create Project\n"
-            "2. Select a project folder\n"
-            "3. Then try accessing Pipe Tally again"
+            "Please open or create a project first."
         )
         return
 
-    if not hasattr(self, 'pipe_tally') or self.pipe_tally is None:
-        QMessageBox.warning(
-            self,
-            "No Pipe Tally Loaded",
-            "No pipe tally data is currently loaded from this project."
-        )
-        return
-
-    # Search for pipe tally files ONLY in the project root directory (not subdirectories)
-    pipe_tally_files = []
     project_path = Path(self.project_root)
+    pipetally_path = project_path / "pipetally_main"
 
-    # Define pattern to match pipe tally related files (case-insensitive)
-    # Matches: pipetally, pipe_tally, tally_pipe, pipe-tally, etc.
-    import re
-    tally_pattern = re.compile(r'.*(pipe.*tally|tally.*pipe|pipetally|pipe_tally|pipe-tally).*\.(xlsx?|csv)$',
-                               re.IGNORECASE)
-
-    # Search ONLY in project root (not subdirectories)
-    # Search ONLY in pipetally_main subfolder
-    pipetally_main_path = project_path / "pipetally_main"
-    if not pipetally_main_path.is_dir():
+    # 2. Check folder exists
+    if not pipetally_path.exists():
         QMessageBox.warning(
             self,
-            "Pipetally Directory Not Found",
-            f"Could not find 'pipetally_main' folder in the project directory:\n{self.project_root}\n\n"
-            "Please ensure the pipetally_main folder exists in your project."
+            "Missing Folder",
+            f"'pipetally_main' folder not found in:\n{self.project_root}"
         )
         return
 
+    # 3. Find files starting with "pipetally_main"
     try:
-        for file_path in pipetally_main_path.iterdir():  # Only direct children of pipetally_main
-            if file_path.is_file() and tally_pattern.match(file_path.name):
-                pipe_tally_files.append(str(file_path))
-
+        matching_files = [
+            f for f in pipetally_path.iterdir()
+            if f.is_file() and f.name.lower().startswith("pipetally_main")
+        ]
     except Exception as e:
+        QMessageBox.critical(self, "Error", f"Error reading folder:\n{e}")
+        return
+
+    # 4. No file found
+    if len(matching_files) == 0:
+        QMessageBox.warning(
+            self,
+            "No File Found",
+            "No file starting with 'pipetally_main' found in the pipetally_main folder."
+        )
+        return
+
+    # 5. More than one file found
+    if len(matching_files) > 1:
         QMessageBox.critical(
             self,
-            "Error",
-            f"Error searching for pipe tally files:\n{e}"
+            "Multiple Files Found",
+            "There can only be ONE file starting with 'pipetally_main' inside the pipetally_main folder.\n"
+            "Please keep only one such file."
         )
         return
 
-    if not pipe_tally_files:
-        QMessageBox.warning(
-            self,
-            "Pipe Tally File Not Found",
-            f"Could not find any pipe tally files in the project root directory:\n{self.project_root}\n\n"
-            "Looking for files containing: 'pipetally', 'pipe_tally', 'tally_pipe', etc.\n"
-            "Note: Only searching in the root folder, not inside pipe subdirectories.\n\n"
-            "The pipe tally data is loaded in memory, but the source file could not be located."
-        )
-        return
+    # 6. Confirmation before opening
+    file_to_open = matching_files[0]
+    file_name = file_to_open.name
 
-    # If multiple files found, let user choose
-    pipe_tally_file = None
-    if len(pipe_tally_files) == 1:
-        pipe_tally_file = pipe_tally_files[0]
-    else:
-        # Show selection dialog for multiple pipe tally files
-        file_names = [os.path.basename(f) for f in pipe_tally_files]
-        selected_file, ok = QInputDialog.getItem(
-            self,
-            "Select Pipe Tally File",
-            f"Found {len(pipe_tally_files)} pipe tally files in the root directory. Please select one to open:",
-            file_names,
-            0,
-            False
-        )
-        if ok and selected_file:
-            # Find the full path for the selected file
-            pipe_tally_file = next((f for f in pipe_tally_files if os.path.basename(f) == selected_file), None)
+    reply = QMessageBox.question(
+        self,
+        "Open Pipe Tally",
+        f"This will open '{file_name}' in Microsoft Excel.\n\nDo you want to continue?",
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        QMessageBox.StandardButton.No
+    )
 
-    # Open the selected file
-    if pipe_tally_file:
+    if reply == QMessageBox.StandardButton.Yes:
         try:
-            os.startfile(pipe_tally_file)
+            os.startfile(str(file_to_open))
         except Exception as e:
-            self.open_Error(f"Failed to open pipe tally file:\n{e}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to open file:\n{e}"
+            )
     else:
-        QMessageBox.information(self, "No Selection", "No file was selected.")
+        QMessageBox.information(self, "Cancelled", "Operation cancelled.")

@@ -176,7 +176,7 @@ def _auto_load_pipe_tally(self, root: str):
     for f in os.listdir(pipetally_dir):
         name = f.lower()
 
-        if name.startswith("pipe_tally") and name.endswith((".xlsx", ".xls", ".csv")):
+        if name.startswith("pipetally_main") and name.endswith((".xlsx", ".xls", ".csv")):
             candidates.append(os.path.join(pipetally_dir, f))
 
     print("PIPE TALLY CANDIDATES:", candidates)
