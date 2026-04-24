@@ -239,21 +239,31 @@ class Digsheet:
     def _build_icons(self):
         """Load valve/bend/flange/flowtee/magnet icons."""
         try:
-            icon_path = os.getcwd() + "/Components/"+ "/dig/"+"/digsheet_icon/"
+            icon_path = os.path.join(
+                os.getcwd(),
+                # "Components",
+                "dig",
+                "digsheet_icon"
+            )
+
             self.valve_img = ImageTk.PhotoImage(
-                Image.open(icon_path + "valve.png").resize((18, 18))
+                Image.open(os.path.join(icon_path, "valve.png")).resize((18, 18))
             )
+
             self.bend_img = ImageTk.PhotoImage(
-                Image.open(icon_path + "bend.png").resize((18, 18))
+                Image.open(os.path.join(icon_path, "bend.png")).resize((18, 18))
             )
+
             self.flange_img = ImageTk.PhotoImage(
-                Image.open(icon_path + "flange.png").resize((18, 18))
+                Image.open(os.path.join(icon_path, "flange.png")).resize((18, 18))
             )
+
             self.flowtee_img = ImageTk.PhotoImage(
-                Image.open(icon_path + "flowtee.png").resize((18, 18))
+                Image.open(os.path.join(icon_path, "flowtee.png")).resize((18, 18))
             )
+
             self.magnet_img = ImageTk.PhotoImage(
-                Image.open(icon_path + "magnet.png").resize((18, 18))
+                Image.open(os.path.join(icon_path, "magnet.png")).resize((18, 18))
             )
         except Exception as e:
             print("Image loading error:", e)
@@ -374,7 +384,13 @@ class Digsheet:
         left_frame.grid_columnconfigure(1, weight=1)
 
         try:
-            icon_path_vdt = os.getcwd() +  "/Components/"+ "/dig/"+"/digsheet_icon/" + "vdt-logo.png"
+            icon_path_vdt = os.path.join(
+                os.getcwd(),
+                # "Components",
+                "dig",
+                "digsheet_icon",
+                "vdt-logo.png"
+            )
             logo_img = Image.open(
                 icon_path_vdt
             ).resize((100, 100))
