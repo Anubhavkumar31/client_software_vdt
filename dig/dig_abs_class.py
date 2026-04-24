@@ -335,8 +335,15 @@ class DigsheetABS:
 
         # logo
         try:
+            icon_path_vdt = os.path.join(
+                os.getcwd(),
+                # "Components",
+                "dig",
+                "digsheet_icon",
+                "vdt-logo.png"
+            )
             logo_img = Image.open(
-                r"F:\work_new\client_software\PIE_dv_new\ui\icons\vdt-logo.png"
+                icon_path_vdt
             ).resize((100, 100))
             logo_tk = ImageTk.PhotoImage(logo_img)
             logo_lbl = tk.Label(self.client_desc_frame, image=logo_tk, bg="white")
