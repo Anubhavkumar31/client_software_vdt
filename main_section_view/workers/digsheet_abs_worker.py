@@ -2,12 +2,14 @@ import os
 import subprocess
 import sys
 import tempfile
+import traceback
 import uuid
 
 from PyQt6.QtWidgets import QMessageBox
 
 from typing import Optional
 
+from dig.dig_abs_class import run_digsheet
 
 
 def resource_path(relative_path):
@@ -30,34 +32,40 @@ def open_digsheet_by_abs_from_selection_con(self):
         if not abs_text: return
 
         tally_pkl = _dump_tally_to_temp(self.pipe_tally)
-        dig_py_abs = resource_path(os.path.join("client_software_vdt", "dig", "digsheet_abs.py"))
-        if not os.path.exists(dig_py_abs):
-            QMessageBox.critical(self, "Script not found", f"Missing: {dig_py_abs}");
-            return
 
+        print("SELF:", self)
+        print("SELF.parent():", self.parent())
+        print("SELF.parent().parent():", getattr(self.parent(), "parent", None))
+        print("SELF.config:", getattr(self, "config", None))
+        print("PARENT.config:", getattr(self.parent(), "config", None))
+
+        run_digsheet(self, tally_pkl, abs_text, self.project_root)
+        # dig_py_abs = resource_path(os.path.join("client_software_vdt", "dig", "digsheet_abs.py"))
+        # if not os.path.exists(dig_py_abs):
+        #     QMessageBox.critical(self, "Script not found", f"Missing: {dig_py_abs}");
+        #     return
+        #
+        #
         # if getattr(sys, "frozen", False):
-        #     subprocess.Popen([sys.executable, "--run-digsheet-abs", tally_pkl, str(abs_text)])
+        #     subprocess.Popen([
+        #         sys.executable,
+        #         "--run-digsheet-abs",
+        #         tally_pkl,
+        #         str(abs_text),
+        #         self.project_root  # ✅ Pass project root
+        #     ])
         # else:
-        #     subprocess.Popen([sys.executable, dig_py_abs, tally_pkl, str(abs_text)])
-        if getattr(sys, "frozen", False):
-            subprocess.Popen([
-                sys.executable,
-                "--run-digsheet-abs",
-                tally_pkl,
-                str(abs_text),
-                self.project_root  # ✅ Pass project root
-            ])
-        else:
-            subprocess.Popen([
-                sys.executable,
-                dig_py_abs,
-                tally_pkl,
-                str(abs_text),
-                self.project_root  # ✅ Pass project root
-            ])
+        #     subprocess.Popen([
+        #         sys.executable,
+        #         dig_py_abs,
+        #         tally_pkl,
+        #         str(abs_text),
+        #         self.project_root  # ✅ Pass project root
+        #     ])
 
     except Exception as e:
         self.open_Error(f"Error opening ABS-distance digsheet:\n{e}")
+        traceback.print_exc()
 
 def _get_selected_abs_distance_from_defect_table(self) -> Optional[str]:
     tw = self.ui.tableWidgetDefect

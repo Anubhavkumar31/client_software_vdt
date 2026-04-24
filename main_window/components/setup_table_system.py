@@ -1,7 +1,10 @@
+import traceback
+
 from PIL.ImageQt import QPixmap
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QAbstractItemView, QWidget, QVBoxLayout, QFrame, QLabel, QSizePolicy
 
+from main_section_view.workers.digsheet_abs_worker import _abs_col_index_silent
 from main_section_view.workers.table_data_worker import _setup_table_styling
 from main_section_view.utils import update_digsheet_button_state
 
@@ -64,18 +67,59 @@ def setup_table_system(self):
 
     try: tw.itemSelectionChanged.disconnect()
     except: pass
-    tw.itemSelectionChanged.connect(lambda : update_digsheet_button_state(self))
-
+    # tw.itemSelectionChanged.connect(lambda : update_digsheet_button_state(self))
+    tw.itemSelectionChanged.connect(lambda: on_defect_selection_changed(self))
     try: tw.cellClicked.disconnect()
     except: pass
-    tw.cellClicked.connect(lambda *_: update_digsheet_button_state(self))
-
+    # tw.cellClicked.connect(lambda *_: update_digsheet_button_state(self))
+    # tw.cellClicked.connect(lambda *_: on_defect_selection_changed(self))
     _setup_no_defects_label(self)
     _setup_select_pipe_label(self)
     _setup_create_project_label(self)
     _show_create_project_message(self)
     _setup_table_styling(self)
 
+def on_defect_selection_changed(self):
+    # Existing logic (DON’T remove this)
+    update_digsheet_button_state(self)
+
+    # Your debug print
+    debug_print_selected_defect(self)
+
+def debug_print_selected_defect(self):
+    tw = self.ui.tableWidgetDefect
+
+    sel_model = tw.selectionModel()
+    rows = [idx.row() for idx in sel_model.selectedRows()] or [i.row() for i in tw.selectedIndexes()]
+    rows = list(dict.fromkeys(rows))
+
+    if len(rows) != 1:
+        return
+
+    row = rows[0]
+
+    # ---- Absolute Distance ----
+    abs_col = _abs_col_index_silent(self)
+    abs_val = ""
+    if abs_col is not None:
+        item = tw.item(row, abs_col)
+        if item:
+            abs_val = item.text().strip()
+
+    # ---- s_no (Defect No) ----
+    s_no_val = ""
+    for c in range(tw.columnCount()):
+        hdr = tw.horizontalHeaderItem(c)
+        name = hdr.text().strip().lower() if hdr else ""
+        if name == "defect_id":
+            item = tw.item(row, c)
+            if item:
+                s_no_val = item.text().strip()
+            break
+    try:
+        print(f"ROW CLICKED → Defect_id: {s_no_val} | ABS: {abs_val}")
+    except Exception as e:
+        traceback.print_exc()
 
 def _setup_create_project_label(self):
     """Create a centered overlay for 'Create Project' message"""

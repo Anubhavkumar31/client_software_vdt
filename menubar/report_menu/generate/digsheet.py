@@ -46,11 +46,8 @@
 #     except Exception as e:
 #         self.open_Error(f"An error occurred: {e}")
 #
-from dig.digsheet_class import Digsheet
+from dig.digsheet_class import Digsheet, dig_run
 
 
 def digsheet_runner(self):
-    pipe_tally = "D:\Anubhav\softwares\client software\pickle9 - Copy\pipetally_main\Pipe_Tally_12inch_new (1).xlsx"
-    project = "D:\Anubhav\softwares\client software\pickle9 - Copy\pipetally_main"
-    app = Digsheet(pipe_tally_file=pipe_tally, project_root=project)
-    app.run()
+    dig_run(self)

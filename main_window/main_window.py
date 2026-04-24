@@ -76,7 +76,7 @@ class MyMainWindow(QMainWindow):
         setup_canvas_and_statusbar(self)
         setup_menu_actions(self)
         setup_initial_ui_state(self)
-        debug_all(self.centralWidget())
+        # debug_all(self.centralWidget())
         # QTimer.singleShot(2000, lambda: self.debug_reverse_hide_1(0, 163, False))
         # from PyQt6.QtWidgets import QScrollBar, QWidget
         #
@@ -129,18 +129,7 @@ class MyMainWindow(QMainWindow):
             except Exception as e:
                 print("Error:", e)
 
-    # def mousePressEvent(self, event):
-    #     widget = self.childAt(event.pos())
-    #
-    #     print("------ CLICK TRACE ------")
-    #     while widget:
-    #         print(
-    #             "Widget:", widget,
-    #             "| Class:", type(widget),
-    #             "| Name:", widget.objectName(),
-    #             "| Geometry:", widget.geometry()
-    #         )
-    #         widget = widget.parentWidget()
+
 
     def _show_watermark(self):
         try:

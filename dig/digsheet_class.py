@@ -715,6 +715,7 @@ class Digsheet:
 
         except Exception as e:
             print(f"Error loading pipe_tally: {e}")
+            traceback.print_exc()
             import sys
             sys.exit(1)
 
@@ -733,8 +734,8 @@ class Digsheet:
             pipe_tally_file = self.pipe_tally_file
             project_root = self.project_root
 
-            csv_path = os.path.join(project_root, "constants.csv")
-            xlsx_path = os.path.join(project_root, "constants.xlsx")
+            csv_path = os.path.join(project_root, "/constants/", "constants.csv")
+            xlsx_path = os.path.join(project_root, "/constants/", "constants.xlsx")
             constants_file = csv_path if os.path.exists(csv_path) else xlsx_path
             print(f"constants_file path: {constants_file}")
 
@@ -2607,6 +2608,21 @@ class Digsheet:
     def run(self):
         self.root.mainloop()
 
+
+
+def dig_run(self):
+    pipe_tally = self.pipetally_dir
+    project = self.project_root
+
+    try:
+        print("pipetally path for digsheet defect based", pipe_tally)
+        print("project root for digsheet defect based", project)
+    except Exception as e:
+        print("error defect based digsheet: ", e)
+        traceback.print_exc()
+
+    app = Digsheet(pipe_tally_file=pipe_tally, project_root=project)
+    app.run()
 
 # ----------------------------------------------------------------------
 #  CLI entry
