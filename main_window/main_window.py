@@ -1,5 +1,6 @@
 import os
 import sys
+import traceback
 from pathlib import Path
 
 from menubar.view_menu.open_cluster import ClusterSummaryDialog
@@ -131,18 +132,48 @@ class MyMainWindow(QMainWindow):
 
 
 
+    # def _show_watermark(self):
+    #     try:
+    #         html_path = Path(resource_path("ui/icons/VDT_watermark.html"))
+    #         base_url = QUrl.fromLocalFile(str(html_path.parent) + "/")
+    #         with open(html_path, "r", encoding="utf-8") as f:
+    #             self.web_view.setHtml(f.read(), base_url)
+    #     except Exception:
+    #         traceback.print_exc()
+    #         self.web_view.setUrl(QUrl())
+    #     self.bottom_stack.setCurrentIndex(0)
+    #     self.web_view2.setUrl(QUrl())
+
+    from pathlib import Path
+    from PyQt6.QtCore import QUrl
+    import traceback
+
     def _show_watermark(self):
         try:
             html_path = Path(resource_path("ui/icons/VDT_watermark.html"))
-            base_url = QUrl.fromLocalFile(str(html_path.parent) + "/")
-            with open(html_path, "r", encoding="utf-8") as f:
-                self.web_view.setHtml(f.read(), base_url)
-        except Exception:
-            self.web_view.setUrl(QUrl())
-        self.bottom_stack.setCurrentIndex(0)
-        # self.web_view2.setUrl(QUrl())
 
-        self.web_view2.setHtml("<h1>Test</h1>")
+            # 🔍 Debug prints
+            print("[WATERMARK] HTML PATH:", html_path)
+            print("[WATERMARK] EXISTS:", html_path.exists())
+            print("[WATERMARK] PARENT:", html_path.parent)
+
+            base_url = QUrl.fromLocalFile(str(html_path.parent) + "/")
+
+            with open(html_path, "r", encoding="utf-8") as f:
+                html_content = f.read()
+
+            print("[WATERMARK] HTML LOADED (length):", len(html_content))
+
+            self.web_view.setHtml(html_content, base_url)
+
+        except Exception:
+            print("[WATERMARK] ERROR:")
+            traceback.print_exc()
+            self.web_view.setUrl(QUrl())
+
+        self.bottom_stack.setCurrentIndex(0)
+        self.web_view2.setUrl(QUrl())
+
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if hasattr(self, "_select_pipe_container") and self._select_pipe_container.isVisible():
