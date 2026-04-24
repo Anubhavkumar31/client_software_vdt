@@ -245,3 +245,4 @@ def debug_all(widget, indent=0):
     for child in widget.children():
         if hasattr(child, "geometry"):
             debug_all(child, indent + 1)
+

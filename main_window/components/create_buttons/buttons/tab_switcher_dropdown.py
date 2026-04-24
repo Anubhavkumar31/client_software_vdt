@@ -3,6 +3,23 @@ import os
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QComboBox
 
+import sys
+from pathlib import Path
+
+def resource_path(relative_path: str) -> str:
+    """
+    Get absolute path to resource, works for dev and PyInstaller EXE.
+    """
+    if getattr(sys, 'frozen', False):
+        # Running in PyInstaller bundle
+        base_path = Path(sys._MEIPASS)
+    else:
+        # Running in normal Python
+        base_path = Path(__file__).resolve().parents[4]
+        # print("base path: " , base_path)
+
+    return str(base_path / relative_path)
+
 
 def create_tabSwitcher_dropdown(self):
     """
@@ -16,7 +33,10 @@ def create_tabSwitcher_dropdown(self):
     self.tabSwitcherDropdown.setMaximumWidth(150)
 
     # Style the dropdown to match your other buttons
-    arrow_path = os.path.join(os.path.dirname(__file__), "ui", "icons", "arrow_down.svg").replace("\\", "/")
+    from pathlib import Path
+
+    arrow_path = Path(resource_path("ui/icons/arrow_down.svg")).as_posix()
+    # print("arrow path: ", arrow_path)
 
     self.tabSwitcherDropdown.setStyleSheet(f"""
               QComboBox {{

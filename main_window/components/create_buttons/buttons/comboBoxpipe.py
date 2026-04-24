@@ -1,13 +1,28 @@
 import os
+import sys
 
 from PyQt6 import QtWidgets
 from PyQt6.QtWidgets import QComboBox
+from pathlib import Path
+def resource_path(relative_path: str) -> str:
+    """
+    Get absolute path to resource, works for dev and PyInstaller EXE.
+    """
+    if getattr(sys, 'frozen', False):
+        # Running in PyInstaller bundle
+        base_path = Path(sys._MEIPASS)
+    else:
+        # Running in normal Python
+        base_path = Path(__file__).resolve().parents[4]
+        # print("base path: " , base_path)
+
+    return str(base_path / relative_path)
 
 
 def comboBoxPipe_setup(self):
     self.ui.comboBoxPipe.setEditable(True)
 
-    arrow_path = os.path.join(os.path.dirname(__file__), "ui", "icons", "arrow_down.svg").replace("\\", "/")
+    arrow_path = Path(resource_path("ui/icons/arrow_down.svg")).as_posix()
 
     self.ui.comboBoxPipe.setStyleSheet(f"""
                QComboBox {{
