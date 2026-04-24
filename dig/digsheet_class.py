@@ -734,8 +734,8 @@ class Digsheet:
             pipe_tally_file = self.pipe_tally_file
             project_root = self.project_root
 
-            csv_path = os.path.join(project_root, "/constants/", "constants.csv")
-            xlsx_path = os.path.join(project_root, "/constants/", "constants.xlsx")
+            csv_path = os.path.join(project_root, "constants", "constants.csv")
+            xlsx_path = os.path.join(project_root, "constants", "constants.xlsx")
             constants_file = csv_path if os.path.exists(csv_path) else xlsx_path
             print(f"constants_file path: {constants_file}")
 
