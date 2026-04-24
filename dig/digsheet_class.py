@@ -50,6 +50,8 @@ class Digsheet:
         pipe_tally_file: path to pipe_tally.pkl (or xlsx converted to pkl).
         project_root   : folder containing constants.xlsx / constants.csv, etc.
         """
+
+        self._constants_logged = False
         # ---- external inputs ----
         self.pipe_tally_file = pipe_tally_file
         self.project_root = project_root
@@ -737,7 +739,8 @@ class Digsheet:
             csv_path = os.path.join(project_root, "constants", "constants.csv")
             xlsx_path = os.path.join(project_root, "constants", "constants.xlsx")
             constants_file = csv_path if os.path.exists(csv_path) else xlsx_path
-            print(f"constants_file path: {constants_file}")
+            if not self._constants_logged:
+                print(f"constants_file path: {constants_file}")
 
             self.df = self.load_pipe_tally(pipe_tally_file)
 
@@ -765,16 +768,20 @@ class Digsheet:
                             return ser.iloc[0]
                 return ""
 
-            print("[constants] columns:", list(const_df.columns))
-            print(
-                "[constants] picked:",
-                "CLIENT->",
-                colmap.get("CLIENT_NAME_DESCRIPTION"),
-                "PIPELINE_NAME->",
-                colmap.get("PIPELINE_NAME_DESCRIPTION"),
-                "PIPELINE_SECTION->",
-                colmap.get("PIPELINE_SECTION_DESCRIPTION"),
-            )
+            if not self._constants_logged:
+
+                print("[constants] columns:", list(const_df.columns))
+                print(
+                    "[constants] picked:",
+                    "CLIENT->",
+                    colmap.get("CLIENT_NAME_DESCRIPTION"),
+                    "PIPELINE_NAME->",
+                    colmap.get("PIPELINE_NAME_DESCRIPTION"),
+                    "PIPELINE_SECTION->",
+                    colmap.get("PIPELINE_SECTION_DESCRIPTION"),
+                )
+
+                self._constants_logged = True
 
             self.client_var.set(_first_val("CLIENT_NAME_DESCRIPTION"))
             self.pipeline_name_var.set(_first_val("PIPELINE_NAME_DESCRIPTION"))
