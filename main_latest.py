@@ -4748,7 +4748,7 @@ class MyMainWindow(QMainWindow):
 
 
     def open_manual(self):
-        p = resource_path(os.path.join("manual", "user_manual.pdf"))
+        p = resource_path(os.path.join("backend/resources/manual", "user_manual.pdf"))
         if os.path.exists(p): os.startfile(p)
         else: self.open_Error("User manual is not found.")
 

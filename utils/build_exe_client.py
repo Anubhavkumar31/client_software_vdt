@@ -167,7 +167,7 @@ PyInstaller.__main__.run([
     # "-d", "noarchive",
 
     # ❌ DO NOT USE ONEFILE
-    # "--onefile",
+    "--onefile",
 
     "--distpath", DIST_PATH,
     "--workpath", BUILD_PATH,
