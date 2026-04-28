@@ -12,7 +12,7 @@ def open_PipeScheme(self):
     print("pipetally path:", self.pipetally_dir)
 
     try:
-        from pipeline_schema.pipeline_schema import run_pipe_schema
+        from menubar.report_menu.pipeline_schema.pipeline_schema import run_pipe_schema
 
         run_pipe_schema(pipe_tally=self.pipetally_dir)  # ✅ no parent
 
