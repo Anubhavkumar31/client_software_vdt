@@ -15,6 +15,7 @@ def create_pipe_tally(p_df, output_folder='Client_Pipes',output_callback=None):
     grouped = p_df.groupby('Pipe Number')
     
     for pipe_number, group in grouped:
+        pipe_number = int(float(pipe_number))
         folder_path = Path(output_folder) / f'Pipe_{pipe_number}'
         folder_path.mkdir(exist_ok=True)
         

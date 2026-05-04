@@ -60,42 +60,255 @@ INITIAL_READ = 0.0      # At 400mm, F1H1 detects defect at 11:00 with roll 39.93
 UPPER_SENS_MUL = 1
 LOWER_SENS_MUL = 3
 # -1 / 0 / None / "auto" => auto (CPU-1, at least 1). Or set an int, e.g. 4
-WORKERS = 4
+WORKERS = 8
 # ------------------------------------------------
 
 
-def pre_process_data(datafile, pipe_number, output_folder, total_sensors, column_names, minute_sensors, degree_sensors, sensor_type):
+# def pre_process_data(datafile, pipe_number, output_folder, total_sensors, column_names, minute_sensors, degree_sensors, sensor_type):
+#
+#     datafile_original = datafile.copy(deep=True)
+#     df_new_tab9 = pd.DataFrame(
+#         datafile,
+#         columns=column_names
+#     )
+#
+#     df_new_tab10 = df_new_tab9.copy()
+#     sensor_columns = df_new_tab9.columns.tolist()
+#
+#     # Denoising using Savitzky-Golay filter
+#     window_length = 15
+#     polyorder = 2
+#     for col in sensor_columns:
+#         data = df_new_tab9[col].values
+#         time_index = np.arange(len(df_new_tab9))
+#         trend = np.polyval(np.polyfit(time_index, data, 2), time_index)
+#         data_denoised = savgol_filter(data - trend, window_length, polyorder)
+#         df_new_tab9[col] = data_denoised
+#
+#     df_raw_straight = df_new_tab9.copy()
+#
+#     # Setting bounds and applying conditions
+#     sens_mean = df_new_tab9.abs().mean()
+#     standard_deviation = df_new_tab9.std(axis=0, skipna=True)
+#
+#     mean_plus_sigma = sens_mean + UPPER_SENS_MUL * standard_deviation
+#     mean_negative_sigma = sens_mean - LOWER_SENS_MUL * standard_deviation
+#
+#     # Apply noise filtering to zero-out in-bound values
+#     for col in df_new_tab9.columns:
+#         if col in mean_plus_sigma.index and col in mean_negative_sigma.index:
+#             df_new_tab9[col] = np.where(
+#                 (df_new_tab9[col] >= mean_negative_sigma[col]) &
+#                 (df_new_tab9[col] <= mean_plus_sigma[col]),
+#                 0,
+#                 df_new_tab9[col]
+#             )
+#
+#     initial_read = INITIAL_READ
+#     roll = datafile['ROLL'] - initial_read
+#
+#     def degrees_to_hours_minutes2(degrees):
+#         if (degrees < 0):
+#             degrees = degrees % 360
+#         elif degrees >= 360:
+#             degrees %= 360
+#         degrees_per_second = 360 / (12 * 60 * 60)
+#         total_seconds = degrees / degrees_per_second
+#         hours = int(total_seconds // 3600)
+#         minutes = int((total_seconds % 3600) // 60)
+#         seconds = int(total_seconds % 60)
+#         return f"{hours:02d}:{minutes:02d}"
+#
+#     def add_sensor_keys(d):
+#         for e in d:
+#             new_dict = {**e}
+#             for i in range(1, total_sensors):
+#                 new_dict[f'Roll_Sensor_{i}'] = e['Roll_Sensor_0'] + (degree_sensors * i)
+#             yield new_dict
+#
+#     def check_time_range(time_str):
+#         start_time = list(time_dict_1.keys())[0]
+#         end_time_dt = datetime.strptime(list(time_dict_1.keys())[1], '%H:%M') - timedelta(seconds=1)
+#         end_time = list(time_dict_1.keys())[1]
+#         time_to_check = datetime.strptime(time_str, '%H:%M')
+#         start_time_dt = datetime.strptime(start_time, '%H:%M')
+#         return start_time_dt <= time_to_check <= end_time_dt
+#
+#     d = []
+#     for pos in roll:
+#         d.append({f"Roll_Sensor_0": pos})
+#
+#     upd_d = list(add_sensor_keys(d))
+#     oriData = pd.DataFrame.from_dict(data=upd_d)
+#     clockData = oriData.applymap(degrees_to_hours_minutes2)
+#
+#     test_clockData = clockData.copy()
+#
+#     # Parse flexibly with mixed formats (works for both HH:MM and HH:MM:SS)
+#     test_clockData = test_clockData.apply(pd.to_datetime, format='mixed')
+#
+#     # Now format the datetime objects to strings 'HH:MM' dropping seconds
+#     test_clockData = test_clockData.applymap(lambda x: x.strftime('%H:%M'))
+#     test_clockData = test_clockData.applymap(lambda x: x.replace('23:', '11:') if isinstance(x, str) and x.startswith('23:') else x)
+#     test_clockData = test_clockData.applymap(lambda x: x.replace('22:', '10:') if isinstance(x, str) and x.startswith('22:') else x)
+#     test_clockData = test_clockData.applymap(lambda x: x.replace('12:', '00:') if isinstance(x, str) and x.startswith('12:') else x)
+#
+#     test_clockData = test_clockData.rename(columns=dict(zip(test_clockData.columns, df_new_tab9.columns)))
+#
+#     def create_time_dict():
+#         time_list = [timedelta(minutes=i * minute_sensors) for i in range(total_sensors)]
+#         time_ranges_2 = [(datetime.min + t).strftime('%H:%M') for t in time_list]
+#         return {key: [] for key in time_ranges_2}
+#
+#     time_dict_1 = create_time_dict()
+#     rang = list(time_dict_1.keys())
+#
+#     for _, row in test_clockData.iterrows():
+#         xl = list(row)
+#         xd = dict(row)
+#         xkeys = list(xd.keys())
+#         c = 0
+#         for _, dval in xd.items():
+#             if check_time_range(dval):
+#                 ind = xl.index(dval)
+#                 _ = xl[ind:] + xl[:ind]  # not used later but kept for clarity
+#                 break
+#
+#         curr = ind
+#         while True:
+#             ck = xkeys[curr]
+#             time_dict_1[rang[c]].append((curr, ck, xd[ck]))
+#             c += 1
+#             curr = (curr + 1) % len(xkeys)
+#             if curr == ind:
+#                 break
+#
+#     map_ori_sens = pd.DataFrame(time_dict_1)
+#
+#     val_ori_sens = map_ori_sens.copy()
+#
+#     def extract_string(cell):
+#         return cell[1]
+#
+#     val_ori_sens = val_ori_sens.applymap(extract_string)
+#
+#     test_val = val_ori_sens.copy()
+#
+#     for r, e in val_ori_sens.iterrows():
+#         c = 0
+#         for _, tup_value in e.items():
+#             cell_v = df_new_tab9.at[r, tup_value]
+#             test_val.iloc[r, c] = cell_v
+#             c += 1
+#
+#     map_val_sens = pd.DataFrame(index=test_val.index, columns=test_val.columns)
+#     for column in test_val.columns:
+#         for i in range(test_val.shape[0]):
+#             map_value = map_ori_sens.loc[i, column]
+#             test_value = test_val.loc[i, column]
+#             map_val_sens.loc[i, column] = (*map_value, test_value)
+#     if sensor_type == "Hall":
+#         create_plots_hall(df_new_tab9, df_raw_straight, datafile, test_val, map_ori_sens, pipe_number, output_folder,df_new_tab10, datafile_original)
+#     else:
+#         create_plots_proximity(df_new_tab9, df_raw_straight, datafile, test_val, map_ori_sens, pipe_number, output_folder,df_new_tab10, datafile_original)
+#     return datafile, df_new_tab9, datafile_original, test_val, map_ori_sens, df_new_tab10
 
+def pre_process_data(
+    datafile,
+    pipe_number,
+    output_folder,
+    total_sensors,
+    column_names,
+    minute_sensors,
+    degree_sensors,
+    sensor_type,
+    debug=False
+):
+    import time
+
+    # -----------------------------
+    # Debug helper
+    # -----------------------------
+    dbg_start = time.time()
+
+    def dbg(msg):
+        if debug:
+            elapsed = round(time.time() - dbg_start, 2)
+            print(
+                f"[PIPE {pipe_number} | {sensor_type}] {msg} | {elapsed}s",
+                flush=True
+            )
+
+    dbg("START pre_process_data")
+
+    # -----------------------------
+    # Initial copies
+    # -----------------------------
     datafile_original = datafile.copy(deep=True)
+    dbg("1: datafile_original copy complete")
+
     df_new_tab9 = pd.DataFrame(
         datafile,
         columns=column_names
     )
+    dbg(f"2: df_new_tab9 created | shape={df_new_tab9.shape}")
 
     df_new_tab10 = df_new_tab9.copy()
-    sensor_columns = df_new_tab9.columns.tolist()
+    dbg("3: df_new_tab10 copy complete")
 
+    sensor_columns = df_new_tab9.columns.tolist()
+    dbg(f"4: sensor_columns loaded | count={len(sensor_columns)}")
+
+    # -----------------------------
     # Denoising using Savitzky-Golay filter
+    # -----------------------------
     window_length = 15
     polyorder = 2
-    for col in sensor_columns:
+
+    dbg("5: starting denoise loop")
+
+    for idx, col in enumerate(sensor_columns):
+        if debug and idx % 10 == 0:
+            dbg(f"5.{idx}: denoising {col}")
+
         data = df_new_tab9[col].values
         time_index = np.arange(len(df_new_tab9))
-        trend = np.polyval(np.polyfit(time_index, data, 2), time_index)
-        data_denoised = savgol_filter(data - trend, window_length, polyorder)
+
+        trend = np.polyval(
+            np.polyfit(time_index, data, 2),
+            time_index
+        )
+
+        data_denoised = savgol_filter(
+            data - trend,
+            window_length,
+            polyorder
+        )
+
         df_new_tab9[col] = data_denoised
 
+    dbg("6: denoise loop complete")
+
     df_raw_straight = df_new_tab9.copy()
-    
+    dbg("7: df_raw_straight copy complete")
+
+    # -----------------------------
     # Setting bounds and applying conditions
+    # -----------------------------
+    dbg("8: calculating means/std")
+
     sens_mean = df_new_tab9.abs().mean()
     standard_deviation = df_new_tab9.std(axis=0, skipna=True)
 
     mean_plus_sigma = sens_mean + UPPER_SENS_MUL * standard_deviation
     mean_negative_sigma = sens_mean - LOWER_SENS_MUL * standard_deviation
 
-    # Apply noise filtering to zero-out in-bound values
-    for col in df_new_tab9.columns:
+    dbg("9: applying noise filtering")
+
+    for idx, col in enumerate(df_new_tab9.columns):
+        if debug and idx % 20 == 0:
+            dbg(f"9.{idx}: filtering {col}")
+
         if col in mean_plus_sigma.index and col in mean_negative_sigma.index:
             df_new_tab9[col] = np.where(
                 (df_new_tab9[col] >= mean_negative_sigma[col]) &
@@ -104,114 +317,311 @@ def pre_process_data(datafile, pipe_number, output_folder, total_sensors, column
                 df_new_tab9[col]
             )
 
+    dbg("10: noise filtering complete")
+
+    # -----------------------------
+    # Roll prep
+    # -----------------------------
     initial_read = INITIAL_READ
     roll = datafile['ROLL'] - initial_read
 
+    dbg("11: roll normalization complete")
+
     def degrees_to_hours_minutes2(degrees):
-        if (degrees < 0):
+        if degrees < 0:
             degrees = degrees % 360
         elif degrees >= 360:
             degrees %= 360
+
         degrees_per_second = 360 / (12 * 60 * 60)
         total_seconds = degrees / degrees_per_second
+
         hours = int(total_seconds // 3600)
         minutes = int((total_seconds % 3600) // 60)
-        seconds = int(total_seconds % 60)
+
         return f"{hours:02d}:{minutes:02d}"
 
     def add_sensor_keys(d):
         for e in d:
             new_dict = {**e}
+
             for i in range(1, total_sensors):
-                new_dict[f'Roll_Sensor_{i}'] = e['Roll_Sensor_0'] + (degree_sensors * i)
+                new_dict[f'Roll_Sensor_{i}'] = (
+                    e['Roll_Sensor_0'] + (degree_sensors * i)
+                )
+
             yield new_dict
 
     def check_time_range(time_str):
         start_time = list(time_dict_1.keys())[0]
-        end_time_dt = datetime.strptime(list(time_dict_1.keys())[1], '%H:%M') - timedelta(seconds=1)
-        end_time = list(time_dict_1.keys())[1]
+
+        end_time_dt = (
+            datetime.strptime(
+                list(time_dict_1.keys())[1],
+                '%H:%M'
+            ) - timedelta(seconds=1)
+        )
+
         time_to_check = datetime.strptime(time_str, '%H:%M')
         start_time_dt = datetime.strptime(start_time, '%H:%M')
+
         return start_time_dt <= time_to_check <= end_time_dt
 
+    # -----------------------------
+    # Build roll sensor map
+    # -----------------------------
+    dbg("12: building roll sensor seed list")
+
     d = []
-    for pos in roll:
-        d.append({f"Roll_Sensor_0": pos})
+
+    for idx, pos in enumerate(roll):
+        if debug and idx % 5000 == 0:
+            dbg(f"12.{idx}: roll seed progress")
+
+        d.append({'Roll_Sensor_0': pos})
+
+    dbg("13: expanding sensor keys")
 
     upd_d = list(add_sensor_keys(d))
+
+    dbg("14: creating oriData dataframe")
+
     oriData = pd.DataFrame.from_dict(data=upd_d)
+
+    dbg(f"15: oriData created | shape={oriData.shape}")
+
+    dbg("16: converting degrees to clock")
+
     clockData = oriData.applymap(degrees_to_hours_minutes2)
+
+    dbg("17: clockData created")
 
     test_clockData = clockData.copy()
 
-    # Parse flexibly with mixed formats (works for both HH:MM and HH:MM:SS)
-    test_clockData = test_clockData.apply(pd.to_datetime, format='mixed')
+    dbg("18: parsing datetime mixed format")
 
-    # Now format the datetime objects to strings 'HH:MM' dropping seconds
-    test_clockData = test_clockData.applymap(lambda x: x.strftime('%H:%M'))
-    test_clockData = test_clockData.applymap(lambda x: x.replace('23:', '11:') if isinstance(x, str) and x.startswith('23:') else x)
-    test_clockData = test_clockData.applymap(lambda x: x.replace('22:', '10:') if isinstance(x, str) and x.startswith('22:') else x)
-    test_clockData = test_clockData.applymap(lambda x: x.replace('12:', '00:') if isinstance(x, str) and x.startswith('12:') else x)
+    test_clockData = test_clockData.apply(
+        pd.to_datetime,
+        format='mixed'
+    )
 
-    test_clockData = test_clockData.rename(columns=dict(zip(test_clockData.columns, df_new_tab9.columns)))
+    dbg("19: formatting datetime strings")
+
+    test_clockData = test_clockData.applymap(
+        lambda x: x.strftime('%H:%M')
+    )
+
+    test_clockData = test_clockData.applymap(
+        lambda x: x.replace('23:', '11:')
+        if isinstance(x, str) and x.startswith('23:')
+        else x
+    )
+
+    test_clockData = test_clockData.applymap(
+        lambda x: x.replace('22:', '10:')
+        if isinstance(x, str) and x.startswith('22:')
+        else x
+    )
+
+    test_clockData = test_clockData.applymap(
+        lambda x: x.replace('12:', '00:')
+        if isinstance(x, str) and x.startswith('12:')
+        else x
+    )
+
+    dbg("20: renaming clockData columns")
+
+    test_clockData = test_clockData.rename(
+        columns=dict(
+            zip(
+                test_clockData.columns,
+                df_new_tab9.columns
+            )
+        )
+    )
+
+    # -----------------------------
+    # Time dict
+    # -----------------------------
+    dbg("21: creating time dictionary")
 
     def create_time_dict():
-        time_list = [timedelta(minutes=i * minute_sensors) for i in range(total_sensors)]
-        time_ranges_2 = [(datetime.min + t).strftime('%H:%M') for t in time_list]
+        time_list = [
+            timedelta(minutes=i * minute_sensors)
+            for i in range(total_sensors)
+        ]
+
+        time_ranges_2 = [
+            (datetime.min + t).strftime('%H:%M')
+            for t in time_list
+        ]
+
         return {key: [] for key in time_ranges_2}
 
     time_dict_1 = create_time_dict()
     rang = list(time_dict_1.keys())
 
-    for _, row in test_clockData.iterrows():
+    dbg("22: remapping sensor timeline")
+
+    for row_idx, row in test_clockData.iterrows():
+        if debug and row_idx % 2000 == 0:
+            dbg(f"22.{row_idx}: timeline remap progress")
+
         xl = list(row)
         xd = dict(row)
         xkeys = list(xd.keys())
         c = 0
+
         for _, dval in xd.items():
             if check_time_range(dval):
                 ind = xl.index(dval)
-                _ = xl[ind:] + xl[:ind]  # not used later but kept for clarity
                 break
 
         curr = ind
+
         while True:
             ck = xkeys[curr]
-            time_dict_1[rang[c]].append((curr, ck, xd[ck]))
+
+            time_dict_1[rang[c]].append(
+                (curr, ck, xd[ck])
+            )
+
             c += 1
             curr = (curr + 1) % len(xkeys)
+
             if curr == ind:
                 break
 
+    dbg("23: timeline remap complete")
+
+    # -----------------------------
+    # Build mapped dataframes
+    # -----------------------------
     map_ori_sens = pd.DataFrame(time_dict_1)
+
+    dbg(f"24: map_ori_sens created | shape={map_ori_sens.shape}")
 
     val_ori_sens = map_ori_sens.copy()
 
     def extract_string(cell):
         return cell[1]
 
+    dbg("25: extracting sensor labels")
+
     val_ori_sens = val_ori_sens.applymap(extract_string)
 
     test_val = val_ori_sens.copy()
 
+    # -----------------------------
+    # STAGE 26 DEBUG
+    # -----------------------------
+    dbg("26: mapping sensor values")
+
+    total_rows_26 = val_ori_sens.shape[0]
+    total_cols_26 = val_ori_sens.shape[1]
+    total_iter_26 = total_rows_26 * total_cols_26
+
+    dbg(
+        f"26.DEBUG SUMMARY | "
+        f"Rows={total_rows_26:,} | "
+        f"Cols={total_cols_26:,} | "
+        f"Total Inner Iterations={total_iter_26:,} "
+        f"({round(total_iter_26 / 1_000_000, 2)}M)"
+    )
+
     for r, e in val_ori_sens.iterrows():
+        # if debug:
+            # dbg(
+            #     f"26.OUTER LOOP | "
+            #     f"Row {r+1}/{total_rows_26:,} | "
+            #     f"Inner loop size={len(e):,}"
+            # )
+
         c = 0
-        for _, tup_value in e.items():
+
+        for inner_idx, (_, tup_value) in enumerate(e.items()):
+            # if debug and inner_idx == 0:
+                # dbg(
+                #     f"26.INNER START | "
+                #     f"Row={r+1} | "
+                #     f"Columns this row={len(e):,}"
+                # )
+
             cell_v = df_new_tab9.at[r, tup_value]
             test_val.iloc[r, c] = cell_v
             c += 1
 
-    map_val_sens = pd.DataFrame(index=test_val.index, columns=test_val.columns)
-    for column in test_val.columns:
+    dbg("27: creating map_val_sens")
+
+    map_val_sens = pd.DataFrame(
+        index=test_val.index,
+        columns=test_val.columns
+    )
+    total_rows_27 = test_val.shape[0]
+    total_cols_27 = test_val.shape[1]
+    total_iter_27 = total_rows_27 * total_cols_27
+
+    dbg(
+        f"27.DEBUG SUMMARY | "
+        f"Rows={total_rows_27:,} | "
+        f"Cols={total_cols_27:,} | "
+        f"Total Iterations={total_iter_27:,} "
+        f"({round(total_iter_27 / 1_000_000, 2)}M)"
+    )
+    for col_idx, column in enumerate(test_val.columns):
+        if debug and col_idx % 20 == 0:
+            dbg(f"27.{col_idx}: map_val_sens column progress")
+
         for i in range(test_val.shape[0]):
             map_value = map_ori_sens.loc[i, column]
             test_value = test_val.loc[i, column]
-            map_val_sens.loc[i, column] = (*map_value, test_value)
+
+            map_val_sens.loc[i, column] = (
+                *map_value,
+                test_value
+            )
+
+    dbg("28: plotting stage")
+
+    # -----------------------------
+    # Plotting
+    # -----------------------------
     if sensor_type == "Hall":
-        create_plots_hall(df_new_tab9, df_raw_straight, datafile, test_val, map_ori_sens, pipe_number, output_folder,df_new_tab10, datafile_original)
+        create_plots_hall(
+            df_new_tab9,
+            df_raw_straight,
+            datafile,
+            test_val,
+            map_ori_sens,
+            pipe_number,
+            output_folder,
+            df_new_tab10,
+            datafile_original
+        )
+
     else:
-        create_plots_proximity(df_new_tab9, df_raw_straight, datafile, test_val, map_ori_sens, pipe_number, output_folder,df_new_tab10, datafile_original)
-    return datafile, df_new_tab9, datafile_original, test_val, map_ori_sens, df_new_tab10
+        create_plots_proximity(
+            df_new_tab9,
+            df_raw_straight,
+            datafile,
+            test_val,
+            map_ori_sens,
+            pipe_number,
+            output_folder,
+            df_new_tab10,
+            datafile_original
+        )
+
+    dbg("29: COMPLETE pre_process_data")
+
+    return (
+        datafile,
+        df_new_tab9,
+        datafile_original,
+        test_val,
+        map_ori_sens,
+        df_new_tab10
+    )
 
 
 def _find_pipe_tally_file(pipe_number: Union[str, int], folder_path: str) -> Optional[str]:
@@ -1102,12 +1512,18 @@ def _resolve_workers(workers):
 #         traceback.print_exc()
 #         return f"Error loading {os.path.basename(pkl_path)}: {e}"
 
-
+import time
+from datetime import datetime
 
 def _process_one_pkl(pkl_path, output_folder):
+    start_time = time.time()
+    start_clock = datetime.now().strftime("%H:%M:%S")
+
+
     sensor_type = ["Hall", "Proximity"]
     try:
-        pipe_number = Path(pkl_path).stem
+        pipe_number = int(Path(pkl_path).stem)
+        print(f"\n🟢 PIPE {pipe_number} START: {start_clock}", flush=True)
         pipe_folder = Path(output_folder) / f"Pipe_{pipe_number}"
         pipe_folder.mkdir(exist_ok=True)
 
@@ -1126,19 +1542,126 @@ def _process_one_pkl(pkl_path, output_folder):
         minute_sensors_prox = prox["minute"]
         degree_sensors_prox = prox["degree"]
 
-        for sensor_type in sensor_type:
-            if sensor_type == "Hall":
-                print(f"HALL SENSOR DETAILS ----> total_sensors_count_hall: {total_sensors_count_hall}, column_names_hall: {column_names_hall}, minute_sensors_hall: {minute_sensors_hall}, degree_sensors_hall: {degree_sensors_hall}\n\n")
-                dfile = pre_process_data(data, pipe_number, output_folder, total_sensors_count_hall, column_names_hall, minute_sensors_hall, degree_sensors_hall, sensor_type)
-            else:
-                # print(f"HALL SENSOR DETAILS ----> total_sensors_count_hall: {total_sensors_count_hall}, column_names_hall: {column_names_hall}, minute_sensors_hall: {minute_sensors_hall}, degree_sensors_hall: {degree_sensors_hall}\n\n")
-                dfile, df_new_tab9, datafile_original, test_val, map_ori_sens, df_new_tab10= pre_process_data(data, pipe_number, output_folder, total_sensors_count_prox, column_names_prox, minute_sensors_prox, degree_sensors_prox, sensor_type)
-                # folder_path = f'{output_folder}/Pipe_{pipe_number}'
-                # os.makedirs(folder_path, exist_ok=True)
-                # save_interactive_heatmap_proximity(df_new_tab9, datafile_original, test_val, map_ori_sens, folder_path, pipe_number, df_new_tab10)
+        # for sensor_type in sensor_type:
+        #     if sensor_type == "Hall":
+        #         print(f"HALL SENSOR DETAILS ----> total_sensors_count_hall: {total_sensors_count_hall}, column_names_hall: {column_names_hall}, minute_sensors_hall: {minute_sensors_hall}, degree_sensors_hall: {degree_sensors_hall}\n\n")
+        #         dfile = pre_process_data(data, pipe_number, output_folder, total_sensors_count_hall, column_names_hall, minute_sensors_hall, degree_sensors_hall, sensor_type)
+        #     else:
+        #         dfile, df_new_tab9, datafile_original, test_val, map_ori_sens, df_new_tab10= pre_process_data(data, pipe_number, output_folder, total_sensors_count_prox, column_names_prox, minute_sensors_prox, degree_sensors_prox, sensor_type)
+        #
+
+        # Replace your current sensor loop with this fully wrapped debug version
+
+        for current_sensor_type in sensor_type:
+            try:
+                print(
+                    f"\n==================================================\n"
+                    f"🚀 START SENSOR TYPE: {current_sensor_type}\n"
+                    f"PIPE: {pipe_number}\n"
+                    f"==================================================",
+                    flush=True
+                )
+
+                # -----------------------------
+                # HALL
+                # -----------------------------
+                if current_sensor_type == "Hall":
+                    print(
+                        f"📌 HALL SENSOR DETAILS:\n"
+                        f"total_sensors_count_hall: {total_sensors_count_hall}\n"
+                        f"column_count_hall: {len(column_names_hall)}\n"
+                        f"minute_sensors_hall: {minute_sensors_hall}\n"
+                        f"degree_sensors_hall: {degree_sensors_hall}\n"
+                        f"first_10_cols: {column_names_hall[:10]}\n",
+                        flush=True
+                    )
+
+                    print("➡ ABOUT TO ENTER pre_process_data(Hall)", flush=True)
+
+                    dfile = pre_process_data(
+                        data,
+                        pipe_number,
+                        output_folder,
+                        total_sensors_count_hall,
+                        column_names_hall,
+                        minute_sensors_hall,
+                        degree_sensors_hall,
+                        current_sensor_type,
+                        debug=True
+                    )
+
+                    print("✅ FINISHED pre_process_data(Hall)", flush=True)
+
+                # -----------------------------
+                # PROXIMITY
+                # -----------------------------
+                else:
+                    print(
+                        f"📌 PROX SENSOR DETAILS:\n"
+                        f"total_sensors_count_prox: {total_sensors_count_prox}\n"
+                        f"column_count_prox: {len(column_names_prox)}\n"
+                        f"minute_sensors_prox: {minute_sensors_prox}\n"
+                        f"degree_sensors_prox: {degree_sensors_prox}\n"
+                        f"first_10_cols: {column_names_prox[:10]}\n",
+                        flush=True
+                    )
+
+                    print("➡ ABOUT TO ENTER pre_process_data(Proximity)", flush=True)
+
+                    (
+                        dfile,
+                        df_new_tab9,
+                        datafile_original,
+                        test_val,
+                        map_ori_sens,
+                        df_new_tab10
+                    ) = pre_process_data(
+                        data,
+                        pipe_number,
+                        output_folder,
+                        total_sensors_count_prox,
+                        column_names_prox,
+                        minute_sensors_prox,
+                        degree_sensors_prox,
+                        current_sensor_type,
+                        debug=True
+                    )
+
+                    print("✅ FINISHED pre_process_data(Proximity)", flush=True)
+
+                print(
+                    f"🏁 COMPLETED SENSOR TYPE: {current_sensor_type}\n",
+                    flush=True
+                )
+
+            except Exception as e:
+                import traceback
+
+                print(
+                    f"\n❌ CRASH INSIDE SENSOR LOOP\n"
+                    f"PIPE: {pipe_number}\n"
+                    f"SENSOR TYPE: {current_sensor_type}\n"
+                    f"ERROR: {str(e)}\n"
+                    f"{traceback.format_exc()}\n",
+                    flush=True
+                )
+
+                # Optional hard stop so you instantly know where it failed
+                raise
         # Save the Excel
         xlsx_path = pipe_folder / f"Pipe_{pipe_number}.xlsx"
         dfile.to_excel(xlsx_path, index=False)
+
+        end_time = time.time()
+        end_clock = datetime.now().strftime("%H:%M:%S")
+
+        total_time = round(end_time - start_time, 2)
+
+        print(
+            f"🔴 PIPE {pipe_number} END: {end_clock} | "
+            f"TOTAL: {total_time}s ({round(total_time / 60, 2)} min)\n",
+            flush=True
+        )
 
         return f"Processed {os.path.basename(pkl_path)} and saved to {pipe_folder}"
     except Exception as e:
@@ -1194,39 +1717,197 @@ def count_pattern_minute_degree(datafile_path):
 
 
 
+# def create_html_and_csv_from_pkl(
+#     pkl_folder='pipes3',
+#     output_folder='Client_Pipes',
+#     output_callback=None,
+#     workers=WORKERS
+# ):
+#     Path(output_folder).mkdir(exist_ok=True)
+#
+#     # collect .pkl file paths
+#     pkl_paths = [
+#         str(Path(pkl_folder) / f)
+#         for f in os.listdir(pkl_folder)
+#         if f.lower().endswith('.pkl')
+#     ]
+#
+#     if not pkl_paths:
+#         msg = f"No .pkl files found in {pkl_folder}"
+#         if output_callback: output_callback(msg)
+#         else: print(msg)
+#         return
+#
+#     n_jobs = _resolve_workers(workers)
+#
+#     # fan out work across processes
+#     results = Parallel(n_jobs=n_jobs, backend="loky", prefer="processes")(
+#         delayed(_process_one_pkl)(p, output_folder) for p in pkl_paths
+#     )
+#
+#     # report
+#     for msg in results:
+#         if output_callback: output_callback(msg)
+#         else: print(msg)
 def create_html_and_csv_from_pkl(
     pkl_folder='pipes3',
     output_folder='Client_Pipes',
     output_callback=None,
     workers=WORKERS
 ):
-    Path(output_folder).mkdir(exist_ok=True)
+    import os
+    import traceback
+    from pathlib import Path
+    from joblib import Parallel, delayed
 
-    # collect .pkl file paths
-    pkl_paths = [
-        str(Path(pkl_folder) / f)
-        for f in os.listdir(pkl_folder)
-        if f.lower().endswith('.pkl')
-    ]
-
-    if not pkl_paths:
-        msg = f"No .pkl files found in {pkl_folder}"
-        if output_callback: output_callback(msg)
-        else: print(msg)
+    # -----------------------------
+    # Ensure output folder exists
+    # -----------------------------
+    try:
+        Path(output_folder).mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        err = f"❌ Failed creating output folder '{output_folder}': {e}\n{traceback.format_exc()}"
+        if output_callback:
+            output_callback(err)
+        else:
+            print(err)
         return
 
-    n_jobs = _resolve_workers(workers)
+    # -----------------------------
+    # Collect PKL paths
+    # -----------------------------
+    try:
+        pkl_paths = [
+            str(Path(pkl_folder) / f)
+            for f in os.listdir(pkl_folder)
+            if f.lower().endswith('.pkl')
+        ]
+    except Exception as e:
+        err = f"❌ Failed reading PKL folder '{pkl_folder}': {e}\n{traceback.format_exc()}"
+        if output_callback:
+            output_callback(err)
+        else:
+            print(err)
+        return
 
-    # fan out work across processes
-    results = Parallel(n_jobs=n_jobs, backend="loky", prefer="processes")(
-        delayed(_process_one_pkl)(p, output_folder) for p in pkl_paths
-    )
+    # -----------------------------
+    # No files found
+    # -----------------------------
+    if not pkl_paths:
+        msg = f"⚠ No .pkl files found in {pkl_folder}"
+        if output_callback:
+            output_callback(msg)
+        else:
+            print(msg)
+        return
 
-    # report
+    # -----------------------------
+    # Resolve worker count
+    # -----------------------------
+    try:
+        n_jobs = _resolve_workers(workers)
+    except Exception as e:
+        err = f"❌ Worker resolution failed: {e}\n{traceback.format_exc()}"
+        if output_callback:
+            output_callback(err)
+        else:
+            print(err)
+        return
+
+    # -----------------------------
+    # Safe wrapper for each PKL
+    # -----------------------------
+    # def safe_process(pkl_path):
+    #     try:
+    #         return _process_one_pkl(pkl_path, output_folder)
+    #
+    #     except Exception as e:
+    #         return (
+    #             f"\n❌ ERROR processing file: {pkl_path}\n"
+    #             f"Reason: {str(e)}\n"
+    #             f"{traceback.format_exc()}\n"
+    #         )
+    def safe_process(pkl_path):
+        import os
+        import time
+        import traceback
+        import pandas as pd
+
+        fname = os.path.basename(pkl_path)
+        start = time.time()
+
+        try:
+            # -----------------------------
+            # Basic file load test only
+            # -----------------------------
+            print(f"\n🔍 STARTING: {fname}")
+
+            try:
+                test_obj = pd.read_pickle(pkl_path)
+                print(f"✅ PKL LOAD OK: {fname}")
+
+                if hasattr(test_obj, "shape"):
+                    print(f"📏 SHAPE: {test_obj.shape}")
+
+                if hasattr(test_obj, "columns"):
+                    print(f"📋 COLUMN COUNT: {len(test_obj.columns)}")
+
+            except Exception as load_err:
+                return (
+                    f"\n❌ PKL LOAD FAILED: {fname}\n"
+                    f"{str(load_err)}\n"
+                    f"{traceback.format_exc()}"
+                )
+
+            # -----------------------------
+            # Actual pipeline
+            # -----------------------------
+            result = _process_one_pkl(pkl_path, output_folder)
+
+            elapsed = round(time.time() - start, 2)
+
+            print(f"🏁 FINISHED: {fname} in {elapsed}s")
+
+            return result
+
+        except Exception as e:
+            elapsed = round(time.time() - start, 2)
+
+            return (
+                f"\n❌ ERROR processing file: {fname}\n"
+                f"⏱ Failed after: {elapsed}s\n"
+                f"Reason: {str(e)}\n"
+                f"{traceback.format_exc()}\n"
+            )
+
+    # -----------------------------
+    # Parallel processing
+    # -----------------------------
+    try:
+        results = Parallel(
+            n_jobs=n_jobs,
+            backend="loky",
+            prefer="processes"
+        )(
+            delayed(safe_process)(p) for p in pkl_paths
+        )
+
+    except Exception as e:
+        err = f"❌ Parallel execution crashed: {e}\n{traceback.format_exc()}"
+        if output_callback:
+            output_callback(err)
+        else:
+            print(err)
+        return
+
+    # -----------------------------
+    # Report all results/errors
+    # -----------------------------
     for msg in results:
-        if output_callback: output_callback(msg)
-        else: print(msg)
-
+        if output_callback:
+            output_callback(msg)
+        else:
+            print(msg)
 
 # -------------------- MAIN --------------------
 if __name__ == "__main__":
