@@ -214,6 +214,7 @@ WORKERS = 8
 #     return datafile, df_new_tab9, datafile_original, test_val, map_ori_sens, df_new_tab10
 
 def pre_process_data(
+    pkl_path,
     datafile,
     pipe_number,
     output_folder,
@@ -588,6 +589,7 @@ def pre_process_data(
     # -----------------------------
     if sensor_type == "Hall":
         create_plots_hall(
+            pkl_path,
             df_new_tab9,
             df_raw_straight,
             datafile,
@@ -601,6 +603,7 @@ def pre_process_data(
 
     else:
         create_plots_proximity(
+            pkl_path,
             df_new_tab9,
             df_raw_straight,
             datafile,
@@ -961,13 +964,14 @@ def save_interactive_heatmap(df_new_tab9, datafile, test_val, map_ori_sens, fold
         xanchor="center",
         font=dict(size=18, family="Arial Black")),  # customize font,
         xaxis_title=x_label,
-        yaxis_title="Orientation (12h bands)",
+        yaxis_title=" ",
         width=1500,
         height=500,
         font=dict(size=12),
         xaxis=dict(showgrid=True, gridwidth=1, gridcolor='lightgray'),
         yaxis=dict(showgrid=True, gridwidth=1, gridcolor='lightgray')
     )
+    fig.update_yaxes(autorange="reversed")
     
     # Save the interactive heatmap
     write_plotly_html(fig, f'{folder_path}/hallsensor_heatmap{pipe_number}.html')
@@ -1026,8 +1030,8 @@ def save_interactive_heatmap_proximity(df_new_tab9, datafile, test_val, map_ori_
         x=x_vals.round(2),
         y=y_bands,
         colorscale='jet',
-        # zmin=-4,
-        # zmax=8,
+        zmin=-3,
+        zmax=8,
         # colorbar=dict(title="Sensor Value (%)"),
         showscale=False,
         hoverongaps=False,
@@ -1077,14 +1081,14 @@ def save_interactive_heatmap_proximity(df_new_tab9, datafile, test_val, map_ori_
         xanchor="center",
         font=dict(size=18, family="Arial Black")),  # customize font,
         xaxis_title=x_label,
-        yaxis_title="Orientation (12h bands)",
+        yaxis_title=" ",
         width=1500,
         height=500,
         font=dict(size=12),
         xaxis=dict(showgrid=True, gridwidth=1, gridcolor='lightgray'),
         yaxis=dict(showgrid=True, gridwidth=1, gridcolor='lightgray')
     )
-    
+    fig.update_yaxes(autorange="reversed")
     # Save the interactive heatmap
     write_plotly_html(fig, f'{folder_path}/proximity_heatmap{pipe_number}.html')
 
@@ -1093,12 +1097,12 @@ def save_interactive_heatmap_proximity(df_new_tab9, datafile, test_val, map_ori_
     print(f"Overlays: {'Yes' if overlay_added else 'None found'}")
 
 
-def create_plots_hall(df_new_tab9, df_raw_straight, datafile, test_val, map_ori_sens, pipe_number, output_folder,df_new_tab10, datafile_original):
+def create_plots_hall(pkl_path, df_new_tab9, df_raw_straight, datafile, test_val, map_ori_sens, pipe_number, output_folder,df_new_tab10, datafile_original):
     folder_path = f'{output_folder}/Pipe_{pipe_number}'
     os.makedirs(folder_path, exist_ok=True)
 
     # MultilinePlot (offset stack of sensors)
-    save_lineplot(folder_path, test_val, datafile, pipe_number)
+    save_lineplot(pkl_path, folder_path, test_val, datafile, pipe_number)
 
     # 3D Pipe 
     save_pipe3d(test_val, test_val, folder_path, pipe_number)
@@ -1111,7 +1115,7 @@ def create_plots_hall(df_new_tab9, df_raw_straight, datafile, test_val, map_ori_
     # save_interactive_heatmap_proximity(df_new_tab9, datafile_original, test_val, map_ori_sens, folder_path, pipe_number,df_new_tab10)
 
 
-def create_plots_proximity(df_new_tab9, df_raw_straight, datafile, test_val, map_ori_sens, pipe_number, output_folder,df_new_tab10, datafile_original):
+def create_plots_proximity(pkl_path, df_new_tab9, df_raw_straight, datafile, test_val, map_ori_sens, pipe_number, output_folder,df_new_tab10, datafile_original):
     folder_path = f'{output_folder}/Pipe_{pipe_number}'
     os.makedirs(folder_path, exist_ok=True)
 
@@ -1144,6 +1148,152 @@ def save_heatmap(test_val, datafile, map_ori_sens, folder_path, pipe_number):
 FP_PATTERN = re.compile(r'^F\d+P\d+$', re.IGNORECASE)
 
 
+# def save_proximity_linechart(
+#     folder_path: str,
+#     datafile: pd.DataFrame,
+#     pipe_number,
+#     *,
+#     offset_step: float = 0.10,
+#     dtick: int = 1000,
+#     x_pref: str = "auto"  # "auto" -> ODDO1 if available, else index
+# ):
+#     """
+#     Proximity linechart:
+#       - selects columns matching F#P# (case-insensitive),
+#       - forward-fills data,
+#       - MinMax scales each series to [0,1],
+#       - offsets each series by `offset_step`,
+#       - X-axis = ODDO1 (meters) if present (or if x_pref='oddo1'), else index,
+#       - saves HTML to {folder_path}/proximity_linechart{pipe_number}.html
+#       - ADDS defect markers/labels as vertical lines using PipeTally overlays
+#     """
+#     df = datafile.copy()
+#
+#     # 1) collect F*P* columns
+#     candidates = [c for c in df.columns if isinstance(c, str) and FP_PATTERN.match(c.strip())]
+#     if not candidates:
+#         print(f"No F#P# columns found for pipe {pipe_number}. Skipping proximity linechart.")
+#         return
+#
+#     # 2) ensure numeric (coerce where possible)
+#     res_cols = []
+#     for c in candidates:
+#         if not is_numeric_dtype(df[c]):
+#             coerced = pd.to_numeric(df[c], errors='coerce')
+#             if coerced.notna().any():
+#                 df[c] = coerced
+#         if is_numeric_dtype(df[c]):
+#             res_cols.append(c)
+#     if not res_cols:
+#         print(f"No numeric F#P# columns for pipe {pipe_number}. Skipping proximity linechart.")
+#         return
+#
+#     # 3) forward-fill
+#     df1 = df.fillna(method='ffill')
+#
+#     # 4) choose x-axis (ODDO1 -> index)
+#     if x_pref.lower() == "oddo1" or (x_pref == "auto" and "ODDO1" in df1.columns):
+#         x_vals = (pd.to_numeric(df1["ODDO1"], errors="coerce") / 1000.0).round(3)
+#         x_label = "Abs. Distance (m) — ODDO1"
+#     else:
+#         x_vals = df1.index
+#         x_label = "Index"
+#
+#     # 5) MinMax scale selected columns
+#     scaler = MinMaxScaler()
+#     scaled = scaler.fit_transform(df1[res_cols].to_numpy())
+#     df1.loc[:, res_cols] = scaled
+#
+#     # 6) figure with offsets
+#     fig = go.Figure()
+#     for i, col in enumerate(res_cols):
+#         fig.add_trace(go.Scatter(
+#             x=x_vals,
+#             y=df1[col] + i * offset_step,
+#             name=col,
+#             mode='lines',
+#             line=dict(width=1),
+#             hoverinfo='x+y+name',
+#             showlegend=False
+#         ))
+#
+#     # 7) styling + axis titles + gridlines
+#     fig.update_layout(
+#         title=dict(
+#         text=f"Proximity-Sensor Lineplot — Joint Number {pipe_number}",  # 👈 chart title
+#         x=0.5,        # center
+#         xanchor="center",
+#         font=dict(size=18, family="Arial Black")),  # customize font,
+#         width=1500,
+#         height=650,
+#         margin=dict(l=10, b=20),
+#         paper_bgcolor="#ffffff",
+#         plot_bgcolor='rgb(255, 255, 255)',
+#         title_x=0.5,
+#         font={"family": "courier"},
+#         # legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='left', x=0),
+#         xaxis_title=x_label,
+#         # yaxis_title="Scaled Proximity Sensor (0–1, offset)",
+#     )
+#     # keep titles close to axes
+#     fig.update_xaxes(title_standoff=8, automargin=True, dtick=dtick)
+#     fig.update_yaxes(title_standoff=10, automargin=True)
+#
+#     # light major gridlines
+#     fig.update_xaxes(showgrid=True, gridcolor="rgba(0,0,0,0.10)", gridwidth=1, zeroline=False)
+#     fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.12)", gridwidth=1, zeroline=False)
+#
+#     # optional minor gridlines (comment out if your Plotly build lacks support)
+#     fig.update_xaxes(minor=dict(showgrid=True, gridcolor="rgba(0,0,0,0.05)", gridwidth=0.5))
+#     fig.update_yaxes(minor=dict(showgrid=True, gridcolor="rgba(0,0,0,0.06)", gridwidth=0.5))
+#
+#     # 8) add defect markers/labels as vertical lines (PipeTally overlays)
+#     try:
+#         x_min, x_max = float(np.nanmin(x_vals)), float(np.nanmax(x_vals))
+#     except Exception:
+#         x_min, x_max = (float(df1.index.min()), float(df1.index.max()))
+#
+#     # We only need xs & labels here; pass a small dummy band list to satisfy the function
+#     y_bands_dummy = ["00:00", "06:00"]
+#     pts = _load_overlay_points_for_pipe(pipe_number, y_bands_dummy, folder_path)
+#     if pts is not None:
+#         xs, _, labels = pts
+#
+#         # keep only xs within chart window
+#         xs_labels = [(float(x), str(lbl)) for x, lbl in zip(xs, labels) if x_min <= float(x) <= x_max]
+#
+#         # group identical x's so we draw one line per location, stacking labels
+#         from collections import defaultdict
+#         at_x = defaultdict(list)
+#         for x, lbl in xs_labels:
+#             at_x[x].append(lbl)
+#
+#         for x, lbls in at_x.items():
+#             # vertical guide line
+#             fig.add_shape(
+#                 type="line",
+#                 x0=x, x1=x,
+#                 y0=0, y1=1,
+#                 xref="x",  yref="paper",
+#                 line=dict(color="black", width=1, dash="dot")
+#             )
+#             # label at top margin
+#             fig.add_annotation(
+#                 x=x, y=1.02, xref="x", yref="paper",
+#                 text=", ".join(lbls),
+#                 showarrow=False,
+#                 bgcolor="red",
+#                 bordercolor="black",
+#                 borderwidth=1,
+#                 font=dict(color="white", size=10, family="Arial Black"),
+#                 align="center"
+#             )
+#
+#     # 9) save EXACTLY as requested
+#     write_plotly_html(fig, f'{folder_path}/proximity_linechart{pipe_number}.html')
+#
+#     print(f"Saved {folder_path}/proximity_linechart{pipe_number}.html")
+
 def save_proximity_linechart(
     folder_path: str,
     datafile: pd.DataFrame,
@@ -1151,27 +1301,24 @@ def save_proximity_linechart(
     *,
     offset_step: float = 0.10,
     dtick: int = 1000,
-    x_pref: str = "auto"  # "auto" -> ODDO1 if available, else index
+    x_pref: str = "auto"
 ):
-    """
-    Proximity linechart:
-      - selects columns matching F#P# (case-insensitive),
-      - forward-fills data,
-      - MinMax scales each series to [0,1],
-      - offsets each series by `offset_step`,
-      - X-axis = ODDO1 (meters) if present (or if x_pref='oddo1'), else index,
-      - saves HTML to {folder_path}/proximity_linechart{pipe_number}.html
-      - ADDS defect markers/labels as vertical lines using PipeTally overlays
-    """
+    import numpy as np
+    import pandas as pd
+    from sklearn.preprocessing import MinMaxScaler
+    from scipy.signal import lfilter
+    import plotly.graph_objects as go
+    from collections import defaultdict
+
     df = datafile.copy()
 
     # 1) collect F*P* columns
     candidates = [c for c in df.columns if isinstance(c, str) and FP_PATTERN.match(c.strip())]
     if not candidates:
-        print(f"No F#P# columns found for pipe {pipe_number}. Skipping proximity linechart.")
+        print(f"No F#P# columns found for pipe {pipe_number}. Skipping.")
         return
 
-    # 2) ensure numeric (coerce where possible)
+    # 2) ensure numeric
     res_cols = []
     for c in candidates:
         if not is_numeric_dtype(df[c]):
@@ -1180,14 +1327,15 @@ def save_proximity_linechart(
                 df[c] = coerced
         if is_numeric_dtype(df[c]):
             res_cols.append(c)
+
     if not res_cols:
-        print(f"No numeric F#P# columns for pipe {pipe_number}. Skipping proximity linechart.")
+        print(f"No numeric F#P# columns for pipe {pipe_number}. Skipping.")
         return
 
-    # 3) forward-fill
+    # 3) forward fill
     df1 = df.fillna(method='ffill')
 
-    # 4) choose x-axis (ODDO1 -> index)
+    # 4) X-axis
     if x_pref.lower() == "oddo1" or (x_pref == "auto" and "ODDO1" in df1.columns):
         x_vals = (pd.to_numeric(df1["ODDO1"], errors="coerce") / 1000.0).round(3)
         x_label = "Abs. Distance (m) — ODDO1"
@@ -1195,85 +1343,107 @@ def save_proximity_linechart(
         x_vals = df1.index
         x_label = "Index"
 
-    # 5) MinMax scale selected columns
-    scaler = MinMaxScaler()
-    scaled = scaler.fit_transform(df1[res_cols].to_numpy())
-    df1.loc[:, res_cols] = scaled
+    # ------------------ ✅ PERFECT LOGIC START ------------------
 
-    # 6) figure with offsets
-    fig = go.Figure()
+    # 5) MinMax scaling
+    scaler = MinMaxScaler()
+    scaled_values = scaler.fit_transform(df1[res_cols])
     for i, col in enumerate(res_cols):
+        df1[col] = scaled_values[:, i]
+
+    # 6) smoothing + offset
+    n = 15
+    b = [1.0 / n] * n
+    a = 1
+
+    offsets = [round(i * offset_step, 3) for i in range(len(res_cols))]
+
+    fig = go.Figure()
+
+    for i, col in enumerate(res_cols):
+        yy = lfilter(b, a, df1[col])
         fig.add_trace(go.Scatter(
             x=x_vals,
-            y=df1[col] + i * offset_step,
-            name=col,
+            y=yy + offsets[i],
             mode='lines',
             line=dict(width=1),
             hoverinfo='x+y+name',
-            showlegend=True
+            showlegend=False,
+            name=col
         ))
 
-    # 7) styling + axis titles + gridlines
+    # ------------------ ✅ PERFECT LOGIC END ------------------
+
+    # 7) layout
     fig.update_layout(
         title=dict(
-        text=f"Proximity-Sensor Lineplot — Joint Number {pipe_number}",  # 👈 chart title
-        x=0.5,        # center
-        xanchor="center",
-        font=dict(size=18, family="Arial Black")),  # customize font,
+            text=f"Proximity-Sensor Lineplot — Joint Number {pipe_number}",
+            x=0.5,
+            xanchor="center",
+            font=dict(size=18, family="Arial Black")
+        ),
         width=1500,
-        height=650,
-        margin=dict(l=10, b=20),
-        paper_bgcolor="#ffffff",
-        plot_bgcolor='rgb(255, 255, 255)',
-        title_x=0.5,
-        font={"family": "courier"},
-        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='left', x=0),
+        height=500,
+        margin=dict(l=20, r=20, t=50, b=20),
+        template='plotly_white',
+        showlegend=False,
         xaxis_title=x_label,
-        # yaxis_title="Scaled Proximity Sensor (0–1, offset)",
     )
-    # keep titles close to axes
-    fig.update_xaxes(title_standoff=8, automargin=True, dtick=dtick)
-    fig.update_yaxes(title_standoff=10, automargin=True)
 
-    # light major gridlines
-    fig.update_xaxes(showgrid=True, gridcolor="rgba(0,0,0,0.10)", gridwidth=1, zeroline=False)
-    fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.12)", gridwidth=1, zeroline=False)
 
-    # optional minor gridlines (comment out if your Plotly build lacks support)
-    fig.update_xaxes(minor=dict(showgrid=True, gridcolor="rgba(0,0,0,0.05)", gridwidth=0.5))
-    fig.update_yaxes(minor=dict(showgrid=True, gridcolor="rgba(0,0,0,0.06)", gridwidth=0.5))
+    # 8) clean X ticks (no congestion)
+    num_ticks = 12
+    tick_positions = np.linspace(0, len(x_vals) - 1, num_ticks).astype(int)
 
-    # 8) add defect markers/labels as vertical lines (PipeTally overlays)
+    if hasattr(x_vals, "iloc"):
+        tickvals = [x_vals.iloc[i] for i in tick_positions]
+    else:
+        tickvals = [x_vals[i] for i in tick_positions]
+
+    ticktext = [f"{v:.3f}" for v in tickvals]
+
+    fig.update_xaxes(
+        tickvals=tickvals,
+        ticktext=ticktext,
+        tickfont=dict(size=10),
+        tickangle=0,
+        showgrid=True,
+        gridcolor="rgba(0,0,0,0.10)"
+    )
+
+    fig.update_yaxes(
+        showgrid=True,
+        gridcolor="rgba(0,0,0,0.12)"
+    )
+    fig.update_yaxes(autorange="reversed")
+    # ------------------ OVERLAYS (UNCHANGED) ------------------
+
     try:
         x_min, x_max = float(np.nanmin(x_vals)), float(np.nanmax(x_vals))
     except Exception:
         x_min, x_max = (float(df1.index.min()), float(df1.index.max()))
 
-    # We only need xs & labels here; pass a small dummy band list to satisfy the function
     y_bands_dummy = ["00:00", "06:00"]
     pts = _load_overlay_points_for_pipe(pipe_number, y_bands_dummy, folder_path)
+
     if pts is not None:
         xs, _, labels = pts
 
-        # keep only xs within chart window
         xs_labels = [(float(x), str(lbl)) for x, lbl in zip(xs, labels) if x_min <= float(x) <= x_max]
 
-        # group identical x's so we draw one line per location, stacking labels
-        from collections import defaultdict
         at_x = defaultdict(list)
         for x, lbl in xs_labels:
             at_x[x].append(lbl)
 
         for x, lbls in at_x.items():
-            # vertical guide line
             fig.add_shape(
                 type="line",
                 x0=x, x1=x,
                 y0=0, y1=1,
-                xref="x",  yref="paper",
+                xref="x", yref="paper",
                 line=dict(color="black", width=1, dash="dot")
             )
-            # label at top margin
+
             fig.add_annotation(
                 x=x, y=1.02, xref="x", yref="paper",
                 text=", ".join(lbls),
@@ -1285,89 +1455,260 @@ def save_proximity_linechart(
                 align="center"
             )
 
-    # 9) save EXACTLY as requested
+    # 9) save
     write_plotly_html(fig, f'{folder_path}/proximity_linechart{pipe_number}.html')
 
     print(f"Saved {folder_path}/proximity_linechart{pipe_number}.html")
 
+# def save_lineplot(folder_path, test_val, datafile, pipe_number):
+#     figmlp = go.Figure()
+#     offset_step = 1200
+#     for idx, col in enumerate(test_val.columns):
+#         y_data = test_val[col].values
+#         offset_y_data = y_data + (idx * offset_step)
+#         figmlp.add_trace(go.Scatter(
+#             x=(datafile['ODDO1'] / 1000).round(2),
+#             y=offset_y_data,
+#             mode='lines',
+#             name=col,
+#             line=dict(width=1),
+#             hoverinfo='x+y+name',
+#             showlegend=False
+#         ))
+#
+#     # ----- DEFECT LABELS on hall-sensor stacked line plot -----
+#     try:
+#         x_vals = (pd.to_numeric(datafile['ODDO1'], errors='coerce') / 1000.0).round(2)
+#         y_bands = list(test_val.columns)  # orientation band labels (tick text)
+#         pts = _load_overlay_points_for_pipe(pipe_number, y_bands, folder_path)
+#         if pts is not None:
+#             xs, ys, labels = pts
+#             for x, y_band, label in zip(xs, ys, labels):
+#                 if y_band not in y_bands:
+#                     continue
+#                 # ensure x within range
+#                 if not (np.nanmin(x_vals) <= x <= np.nanmax(x_vals)):
+#                     continue
+#                 y_idx = y_bands.index(y_band)
+#                 y_pos = y_idx * offset_step
+#
+#                 # tiny marker at the band baseline
+#                 figmlp.add_trace(go.Scatter(
+#                     x=[x], y=[y_pos],
+#                     mode="markers",
+#                     marker=dict(size=8, line=dict(width=1, color="black")),
+#                     showlegend=False,
+#                     hoverinfo="skip"
+#                 ))
+#
+#                 # label with small arrow
+#                 figmlp.add_annotation(
+#                     x=x, y=y_pos,
+#                     text=str(label),
+#                     showarrow=True,
+#                     arrowhead=2, arrowsize=1, arrowwidth=1,
+#                     ax=0, ay=-20,  # nudge label above the baseline
+#                     bgcolor="red",
+#                     bordercolor="black",
+#                     font=dict(color="white", size=10, family="Arial Black")
+#                 )
+#     except Exception as e:
+#         print(f"Overlay labels on lineplot failed: {e}")
+#
+#     figmlp.update_layout(
+#         template='plotly_white',
+#         height=500,
+#         width=1500,
+#         margin=dict(l=20, r=20, t=50, b=20),
+#         title=dict(
+#         text=f"Hall-Sensor Lineplot — Joint Number {pipe_number}",  # 👈 chart title
+#         x=0.5,        # center
+#         xanchor="center",
+#         font=dict(size=18, family="Arial Black")  # customize font
+#     )
+#     )
+#     max_ticks = 15
+#     total = len(test_val.columns)
+#     step = 6
+#
+#     tick_indices = list(range(0, total, step))
+#
+#     figmlp.update_yaxes(
+#         tickmode='array',
+#         tickvals=[i * offset_step for i in tick_indices],
+#         ticktext=[test_val.columns[i] for i in tick_indices],
+#         tickfont=dict(size=9),
+#         autorange="reversed"
+#     )
+#     figmlp.update_yaxes(autorange="reversed")
+#     write_plotly_html(figmlp, f'{folder_path}/lineplot{pipe_number}.html')
+def save_lineplot(pkl_path, folder_path, test_val, datafile, pipe_number):
+    import numpy as np
+    import pandas as pd
+    from scipy.signal import savgol_filter, lfilter
+    import plotly.graph_objects as go
 
-
-def save_lineplot(folder_path, test_val, datafile, pipe_number):
     figmlp = go.Figure()
-    offset_step = 1200
-    for idx, col in enumerate(test_val.columns):
-        y_data = test_val[col].values
-        offset_y_data = y_data + (idx * offset_step)
+    offset_step = 1400
+
+    print(f"pkl path recieved for pipe number: {pipe_number} is {pkl_path}")
+    df_pipe = pd.read_pickle(pkl_path)
+
+    F_columns = 36
+    res = [f'F{i}H{j}' for i in range(1, F_columns + 1) for j in range(1, 5)]
+
+    df1 = df_pipe[res].apply(pd.to_numeric, errors='coerce')
+    x_vals = df_pipe['index']
+
+    abs_dist_vals = (df_pipe['ODDO1'] / 1000).values
+
+    x_vals_arr = x_vals.values
+
+    def dist_to_index(dist_m):
+        idx = np.argmin(np.abs(abs_dist_vals - dist_m))
+        return float(x_vals_arr[idx])
+
+    window_length = 15
+    polyorder = 2
+    n = 15
+    b = [1.0 / n] * n
+    a = 1
+
+    for i, col in enumerate(res):
+        data = df1[col].values
+        time_index = np.arange(len(df1))
+
+        coeffs = np.polyfit(time_index, data, polyorder)
+        trend = np.polyval(coeffs, time_index)
+        detrended = data - trend
+
+        smoothed = savgol_filter(detrended, window_length, polyorder)
+        offset_data = smoothed + i * offset_step
+        filtered_data = lfilter(b, a, offset_data)
+
         figmlp.add_trace(go.Scatter(
-            x=(datafile['ODDO1'] / 1000).round(2),
-            y=offset_y_data,
+            x=x_vals,
+            y=filtered_data,
             mode='lines',
-            name=col,
             line=dict(width=1),
-            hoverinfo='x+y+name',
-            showlegend=False
+            showlegend=False,
+            name=col,
+            customdata=abs_dist_vals,
+            hovertemplate=(
+                "<b>%{fullData.name}</b><br>"
+                "Index: %{x}<br>"
+                "Abs Distance: %{customdata:.2f} m<br>"
+                "Amplitude: %{y:.1f}<extra></extra>"
+            )
         ))
 
-    # ----- DEFECT LABELS on hall-sensor stacked line plot -----
+    # ── x-axis tick marks ──
+    valid_mask = ~np.isnan(abs_dist_vals)
+    if valid_mask.any():
+        all_x = x_vals.values[valid_mask]
+        all_d = abs_dist_vals[valid_mask]
+
+        n_ticks = 20
+        idx = np.round(np.linspace(0, len(all_x) - 1, n_ticks)).astype(int)
+        tick_x = all_x[idx]
+        tick_d = all_d[idx]
+
+        figmlp.update_xaxes(
+            tickmode='array',
+            tickvals=tick_x.tolist(),
+            ticktext=[f"{d:.1f}m" for d in tick_d],
+            tickangle=45,
+            tickfont=dict(size=8),
+            title_text="Abs Distance (m)"
+        )
+
+    # ---------- OVERLAYS ----------
     try:
-        x_vals = (pd.to_numeric(datafile['ODDO1'], errors='coerce') / 1000.0).round(2)
-        y_bands = list(test_val.columns)  # orientation band labels (tick text)
+        y_bands = list(test_val.columns)
         pts = _load_overlay_points_for_pipe(pipe_number, y_bands, folder_path)
+
+        print(f"DEBUG: pts = {pts}")
+        print(f"DEBUG: y_bands sample = {y_bands[:5]}")
+        print(f"DEBUG: x_vals range = {float(np.nanmin(x_vals)):.2f} to {float(np.nanmax(x_vals)):.2f}")
+        print(f"DEBUG: abs_dist_vals range = {float(np.nanmin(abs_dist_vals)):.2f} to {float(np.nanmax(abs_dist_vals)):.2f}")
+
         if pts is not None:
             xs, ys, labels = pts
-            for x, y_band, label in zip(xs, ys, labels):
+            print(f"DEBUG: {len(xs)} overlay points loaded")
+            print(f"DEBUG: xs sample    = {xs[:3]}")
+            print(f"DEBUG: ys sample    = {ys[:3]}")
+            print(f"DEBUG: labels sample= {labels[:3]}")
+
+            for x_dist, y_band, label in zip(xs, ys, labels):
+                print(f"\nDEBUG: processing x_dist={x_dist:.2f}, y_band='{y_band}', label='{label}'")
+
                 if y_band not in y_bands:
+                    print(f"  → SKIPPED: y_band '{y_band}' not in y_bands")
                     continue
-                # ensure x within range
+
+                x = dist_to_index(x_dist)
+                print(f"  → mapped x_dist={x_dist:.2f}m to index x={x:.2f}")
+
                 if not (np.nanmin(x_vals) <= x <= np.nanmax(x_vals)):
+                    print(f"  → SKIPPED: x={x:.2f} out of range [{float(np.nanmin(x_vals)):.2f}, {float(np.nanmax(x_vals)):.2f}]")
                     continue
+
                 y_idx = y_bands.index(y_band)
                 y_pos = y_idx * offset_step
+                print(f"  → PLOTTING at x={x:.2f}, y_pos={y_pos}, y_idx={y_idx}")
 
-                # tiny marker at the band baseline
                 figmlp.add_trace(go.Scatter(
-                    x=[x], y=[y_pos],
+                    x=[x],
+                    y=[y_pos],
                     mode="markers",
-                    marker=dict(size=8, line=dict(width=1, color="black")),
+                    marker=dict(size=8, color="red", line=dict(width=1, color="black")),
                     showlegend=False,
-                    hoverinfo="skip"
+                    name=f"{label} @ {x_dist:.2f}m",
+                    hovertemplate=f"<b>{label}</b><br>Abs Dist: {x_dist:.2f} m<br>Band: {y_band}<extra></extra>"
                 ))
 
-                # label with small arrow
                 figmlp.add_annotation(
                     x=x, y=y_pos,
                     text=str(label),
-                    showarrow=True,
-                    arrowhead=2, arrowsize=1, arrowwidth=1,
-                    ax=0, ay=-20,  # nudge label above the baseline
-                    bgcolor="red",
-                    bordercolor="black",
+                    showarrow=True, arrowhead=2,
+                    arrowsize=1, arrowwidth=1,
+                    ax=0, ay=-20,
+                    bgcolor="red", bordercolor="black",
                     font=dict(color="white", size=10, family="Arial Black")
                 )
-    except Exception as e:
-        print(f"Overlay labels on lineplot failed: {e}")
 
+    except Exception as e:
+        import traceback
+        print(f"Overlay labels on lineplot failed: {e}")
+        traceback.print_exc()
+
+    # ---------- LAYOUT ----------
     figmlp.update_layout(
         template='plotly_white',
-        height=500,
-        width=1500,
+        height=500, width=1500,
         margin=dict(l=20, r=20, t=50, b=20),
-        yaxis=dict(
-            tickmode='array',
-            tickvals=[idx * offset_step for idx in range(len(test_val.columns))],
-            ticktext=test_val.columns,
-            tickfont=dict(size=8),
-        ),
+        showlegend=False,
         title=dict(
-        text=f"Hall-Sensor Lineplot — Joint Number {pipe_number}",  # 👈 chart title
-        x=0.5,        # center
-        xanchor="center",
-        font=dict(size=18, family="Arial Black")  # customize font
+            text=f"Hall-Sensor Lineplot — Joint Number {pipe_number}",
+            x=0.5, xanchor="center",
+            font=dict(size=18, family="Arial Black")
+        )
     )
+
+    # ---------- Y AXIS ----------
+    step = 6
+    total = len(res)
+    tick_indices = list(range(0, total, step))
+
+    figmlp.update_yaxes(
+        tickmode='array',
+        tickvals=[i * offset_step for i in tick_indices],
+        ticktext=[res[i] for i in tick_indices],
+        tickfont=dict(size=9),
+        autorange="reversed"
     )
 
     write_plotly_html(figmlp, f'{folder_path}/lineplot{pipe_number}.html')
-
 
 
 
@@ -1579,6 +1920,7 @@ def _process_one_pkl(pkl_path, output_folder):
                     print("➡ ABOUT TO ENTER pre_process_data(Hall)", flush=True)
 
                     dfile = pre_process_data(
+                        pkl_path,
                         data,
                         pipe_number,
                         output_folder,
@@ -1616,6 +1958,7 @@ def _process_one_pkl(pkl_path, output_folder):
                         map_ori_sens,
                         df_new_tab10
                     ) = pre_process_data(
+                        pkl_path,
                         data,
                         pipe_number,
                         output_folder,

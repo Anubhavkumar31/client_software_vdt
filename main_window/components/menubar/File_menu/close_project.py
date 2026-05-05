@@ -1,9 +1,9 @@
 from PyQt6.QtCore import QUrl
 from PyQt6.QtWidgets import QMessageBox
 
-from main_section_view.utils import _toggle_plot_ui
+from main_window.components.main_section_view.utils import _toggle_plot_ui
 from main_window.components.helper_func import _update_project_actions, _close_graphs_view
-from menubar.File_menu.helper_func import _force_full_start_state
+from main_window.components.menubar.File_menu.helper_func import _force_full_start_state
 
 
 def close_project(self):

@@ -46,7 +46,7 @@
 #     except Exception as e:
 #         self.open_Error(f"An error occurred: {e}")
 #
-from dig.digsheet_class import Digsheet, dig_run
+from dig.core_digsheet.digsheet_class import dig_run
 
 
 def digsheet_runner(self):

@@ -1,7 +1,7 @@
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import QDialog, QComboBox
 
-from main_section_view.utils import _current_headers_for_filter, _refresh_table_scrollbars
+from main_window.components.main_section_view.utils import _current_headers_for_filter, _refresh_table_scrollbars
 
 
 # class ColumnFilterDialog(QDialog):

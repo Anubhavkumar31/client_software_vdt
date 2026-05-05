@@ -11,8 +11,8 @@ from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtGui import QStandardItemModel, QStandardItem, QFont
 from PyQt6.QtCore import Qt, QSortFilterProxyModel, QTimer
 
-from menubar.view_menu.apps.pipetallyApp.erf_pipeline import launch_erf_batch
-from menubar.view_menu.apps.pipetallyApp.severity_pipeline import launch_severity
+from main_window.components.menubar.view_menu.apps.pipetallyApp.erf_pipeline import launch_erf_batch
+from main_window.components.menubar.view_menu.apps.pipetallyApp.severity_pipeline import launch_severity
 
 # EXCEL_PATH = r"C:\Users\admin\Downloads\Pipe_Tally_8inch (1).xlsx"
 

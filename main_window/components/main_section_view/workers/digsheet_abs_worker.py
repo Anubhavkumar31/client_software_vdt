@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import QMessageBox
 
 from typing import Optional
 
-from dig.dig_abs_class import run_digsheet
+from dig.core_digsheet.dig_abs_class import run_digsheet
 
 
 def resource_path(relative_path):

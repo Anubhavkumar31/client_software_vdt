@@ -1,7 +1,7 @@
 from PyQt6.QtCore import QTimer
 
-from main_section_view.helpers_temp import _reset_splitter_ratio, tab_switcher2
-from main_section_view.utils import update_digsheet_button_state
+from main_window.components.main_section_view.helpers_temp import _reset_splitter_ratio, tab_switcher2
+from main_window.components.main_section_view.utils import update_digsheet_button_state
 
 
 def ondropdowntabchanged_con(self, index: int):

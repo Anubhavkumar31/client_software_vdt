@@ -7,9 +7,9 @@ from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QAbstractTableModel, Q
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QProgressBar, QHBoxLayout, QMessageBox
 from glob import glob
 
-from main_section_view.helpers_temp import _arm_topbar, _arm_main_topbar, tab_switcher2
-from main_section_view.workers.table_data_worker import on_table_data_ready_con
-from main_section_view.utils import update_digsheet_button_state
+from main_window.components.main_section_view.helpers_temp import _arm_topbar, _arm_main_topbar, tab_switcher2
+from main_window.components.main_section_view.workers.table_data_worker import on_table_data_ready_con
+from main_window.components.main_section_view.utils import update_digsheet_button_state
 
 
 def load_selected_pipe_con(self):

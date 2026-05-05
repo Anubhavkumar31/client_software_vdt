@@ -4,7 +4,7 @@ from PyQt6.QtCore import QTimer, Qt, QUrl, pyqtSignal
 from PyQt6.QtWebEngineCore import QWebEnginePage
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 
-from main_section_view.utils import update_digsheet_button_state
+from main_window.components.main_section_view.utils import update_digsheet_button_state
 from ui.graphs_ui import GraphApp
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QMessageBox, QDialog

@@ -5,7 +5,7 @@ from PyQt6.QtCore import Qt, QEvent
 from PyQt6.QtGui import QStandardItem
 from PyQt6.QtWidgets import QAbstractItemView, QMessageBox
 
-from main_section_view.workers.digsheet_abs_worker import _is_graph_tab_ok, _has_valid_abs_selection
+from main_window.components.main_section_view.workers.digsheet_abs_worker import _is_graph_tab_ok, _has_valid_abs_selection
 
 
 

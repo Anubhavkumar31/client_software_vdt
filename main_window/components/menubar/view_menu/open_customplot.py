@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QMessageBox
 
-from menubar.view_menu.apps.customPlotApp import ExcelDualAxisZoomChart
+from main_window.components.menubar.view_menu.apps.customPlotApp import ExcelDualAxisZoomChart
 
 
 def open_customplot(self):

@@ -19,8 +19,8 @@ from PyQt6.QtWidgets import (
     QAbstractItemView, QAbstractScrollArea, QProgressBar
 )
 from PyQt6 import QtWidgets
-from main_section_view.helpers_temp import _arm_topbar
-from main_section_view.utils import _apply_heatmap_layout, _refresh_table_scrollbars
+from main_window.components.main_section_view.helpers_temp import _arm_topbar
+from main_window.components.main_section_view.utils import _apply_heatmap_layout, _refresh_table_scrollbars
 
 SCROLLBAR_STYLE = """
 QScrollBar:vertical {

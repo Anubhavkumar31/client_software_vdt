@@ -6,7 +6,7 @@ from PyQt6.QtGui import QStandardItemModel
 from PyQt6.QtWidgets import QTableWidgetItem, QHeaderView
 
 # from main_window.main_window import setup_table_scroll
-from main_section_view.utils import _current_headers_for_filter, _refresh_table_scrollbars, BACKEND_LOCKED_COLS, \
+from main_window.components.main_section_view.utils import _current_headers_for_filter, _refresh_table_scrollbars, BACKEND_LOCKED_COLS, \
     update_digsheet_button_state
 
 

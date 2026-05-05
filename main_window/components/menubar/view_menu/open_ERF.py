@@ -12,7 +12,7 @@
 #
 #     # Start ERF calculator in a background thread
 #     threading.Thread(target=run_erf, daemon=True).start()
-from menubar.view_menu.apps.erfapp import ERFWindow
+from main_window.components.menubar.view_menu.apps.erfapp import ERFWindow
 
 def open_ERF(self):
     if not hasattr(self, "erf_window") or self.erf_window is None:

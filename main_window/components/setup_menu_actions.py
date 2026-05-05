@@ -4,26 +4,26 @@ from PyQt6.QtGui import QPen, QPolygonF, QPainter
 from PyQt6.QtWidgets import QMessageBox, QGraphicsPolygonItem, QGraphicsView, QGraphicsScene, QPushButton, QLineEdit, \
     QLabel
 
-from main_section_view.helpers_temp import _on_middle_tab_changed, syncdropdownwithtabs, _connect_guarded_graph_controls
-from main_section_view.workers.load_button_working import load_prev_pipe, load_next_pipe
-from main_section_view.utils import update_load_button_state
-from menubar.File_menu.close_project import close_project
-from menubar.File_menu.open_project import open_project
-from menubar.File_menu.quit_app import quit_app
-from menubar.help_menu.open_about import open_About
-from menubar.help_menu.open_manual import open_manual
-from menubar.report_menu.generate.digsheet import digsheet_runner
-from menubar.report_menu.generate.final_report import open_Final_Report
-from menubar.report_menu.generate.pipetally import open_pipe_tally
-from menubar.report_menu.generate.preliminary_report import open_Preliminary_Report
-from menubar.report_menu.open_PipeScheme import open_PipeScheme
-from menubar.report_menu.open_pipehigh import open_PipeHigh
-from menubar.view_menu.open_ERF import open_ERF
-from menubar.view_menu.open_XYZ import open_XYZ
-from menubar.view_menu.open_customplot import open_customplot
-from menubar.view_menu.open_graphs import open_graphs
-from menubar.view_menu.open_pipe_locator import open_pipe_locator
-from menubar.view_menu.open_pipetally import open_pipetally
+from main_window.components.main_section_view.helpers_temp import _on_middle_tab_changed, syncdropdownwithtabs, _connect_guarded_graph_controls
+from main_window.components.main_section_view.workers.load_button_working import load_prev_pipe, load_next_pipe
+from main_window.components.main_section_view.utils import update_load_button_state
+from main_window.components.menubar.File_menu.close_project import close_project
+from main_window.components.menubar.File_menu.open_project import open_project
+from main_window.components.menubar.File_menu.quit_app import quit_app
+from main_window.components.menubar.help_menu.open_about import open_About
+from main_window.components.menubar.help_menu.open_manual import open_manual
+from main_window.components.menubar.report_menu.generate.digsheet import digsheet_runner
+from main_window.components.menubar.report_menu.generate.final_report import open_Final_Report
+from main_window.components.menubar.report_menu.generate.pipetally import open_pipe_tally
+from main_window.components.menubar.report_menu.generate.preliminary_report import open_Preliminary_Report
+from main_window.components.menubar.report_menu.open_PipeScheme import open_PipeScheme
+from main_window.components.menubar.report_menu.open_pipehigh import open_PipeHigh
+from main_window.components.menubar.view_menu.open_ERF import open_ERF
+from main_window.components.menubar.view_menu.open_XYZ import open_XYZ
+from main_window.components.menubar.view_menu.open_customplot import open_customplot
+from main_window.components.menubar.view_menu.open_graphs import open_graphs
+from main_window.components.menubar.view_menu.open_pipe_locator import open_pipe_locator
+from main_window.components.menubar.view_menu.open_pipetally import open_pipetally
 
 
 def setup_menu_actions(self):
@@ -56,7 +56,7 @@ def setup_menu_actions(self):
     self.ui.tabWidgetM.currentChanged.connect(lambda index: syncdropdownwithtabs(self, index))
 
 
-from test_main import ExcelDualAxisZoomChart
+
 
 
 

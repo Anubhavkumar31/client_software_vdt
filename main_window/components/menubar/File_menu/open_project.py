@@ -5,9 +5,9 @@ import pandas as pd
 from PyQt6 import QtWidgets
 from PyQt6.QtWidgets import QMessageBox, QFileDialog
 
-from main_section_view.utils import _toggle_plot_ui
+from main_window.components.main_section_view.utils import _toggle_plot_ui
 from main_window.components.helper_func import _update_project_actions
-from menubar.File_menu.helper_func import _force_full_start_state
+from main_window.components.menubar.File_menu.helper_func import _force_full_start_state
 
 
 def open_project(self):

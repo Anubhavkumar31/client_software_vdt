@@ -4,7 +4,7 @@ import pandas as pd
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QAction
 
-from main_section_view.utils import _toggle_plot_ui
+from main_window.components.main_section_view.utils import _toggle_plot_ui
 from main_window.components.helper_func import _update_project_actions
 
 
