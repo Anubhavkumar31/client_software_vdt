@@ -1105,7 +1105,7 @@ def create_plots_hall(pkl_path, df_new_tab9, df_raw_straight, datafile, test_val
     save_lineplot(pkl_path, folder_path, test_val, datafile, pipe_number)
 
     # 3D Pipe 
-    save_pipe3d(test_val, test_val, folder_path, pipe_number)
+    save_pipe3d(test_val, test_val, folder_path, pipe_number, pkl_path)
 
     # inside create_plots(...) or wherever you save other charts:
     # save_proximity_linechart(folder_path, datafile, pipe_number)
@@ -1738,86 +1738,194 @@ def save_lineplot_raw(folder_path, test_val, pipe_number):
 
 
 
-def save_pipe3d(data, data_cp, folder_path, pipe_number):
-    if not isinstance(data, np.ndarray):
-        data = np.asarray(data)  # test_val
+# def save_pipe3d(data, data_cp, folder_path, pipe_number):
+#     if not isinstance(data, np.ndarray):
+#         data = np.asarray(data)  # test_val
+#
+#     # ↓ add: subsample big grids
+#     if data.shape[0] > 1500:
+#         data = data[::2, :]          # halve rows
+#     if data.shape[1] > 128:
+#         data = data[:, ::1]          # keep cols (or ::2 if needed)
+#
+#     num_rows, num_cols = data.shape
+#
+#     theta = np.linspace(0, 2 * np.pi, num_cols)
+#     z = np.linspace(0, 1, num_rows)
+#     theta, z = np.meshgrid(theta, z)
+#
+#     radius = 109.5   # OD = 219mm, R = OD/2
+#     odometer = num_rows
+#
+#     # Cartesian Coords
+#     x = odometer * z
+#     y = radius * np.cos(theta)
+#     zc = radius * np.sin(theta)
+#
+#     fig = go.Figure(data=[go.Surface(
+#         x=x,
+#         y=zc,
+#         z=y,
+#         surfacecolor=data,
+#         colorscale='jet',
+#         customdata=data_cp
+#     )])
+#
+#     camera = dict(eye=dict(x=0., y=5, z=0.), up=dict(x=0, y=1, z=0))
+#
+#     odometer_start = 0
+#     odometer_end = odometer
+#
+#     fig.add_trace(go.Scatter3d(
+#         x=[odometer_start, odometer_end], y=[radius, radius], z=[0, 0],
+#         text=["3"], mode='text', textposition="middle center",
+#         marker=dict(size=0), name="3pm",
+#         textfont=dict(size=20, color="#61090c")
+#     ))
+#     fig.add_trace(go.Scatter3d(
+#         x=[odometer_start, odometer_end], y=[-radius, -radius], z=[0, 0],
+#         text=["9"], mode='text', textposition="middle center",
+#         marker=dict(size=0), name="9pm",
+#         textfont=dict(size=20, color="#61090c")
+#     ))
+#     fig.add_trace(go.Scatter3d(
+#         x=[odometer_start, odometer_end], y=[0, 0], z=[radius, radius],
+#         text=["6"], mode='text', textposition="middle center",
+#         marker=dict(size=0), name="6pm",
+#         textfont=dict(size=20, color="#61090c")
+#     ))
+#     fig.add_trace(go.Scatter3d(
+#         x=[odometer_start, odometer_end], y=[0, 0], z=[-radius, -radius],
+#         text=["12"], mode='text', textposition="middle center",
+#         marker=dict(size=0), name="12pm",
+#         textfont=dict(size=20, color="#61090c")
+#     ))
+#
+#     fig.update_layout(
+#         scene=dict(
+#             xaxis_title='Odometer',
+#             yaxis_title='Radial Length',
+#             zaxis_title='Radial Length',
+#             aspectmode='data',
+#             aspectratio=dict(x=1, y=1, z=0.5),
+#             camera=camera
+#         ),
+#         height=500,
+#         width=1500,
+#         title='Pipe Visualization',
+#         margin=dict(l=20, r=20, t=50, b=20),
+#     )
+#
+#     write_plotly_html(fig, f'{folder_path}/pipe3d{pipe_number}.html')
+def save_pipe3d(data, data_cp, folder_path, pipe_number, pkl_path):
+    import numpy as np
+    import pandas as pd
+    import plotly.graph_objects as go
 
-    # ↓ add: subsample big grids
+    df_pipe = pd.read_pickle(pkl_path)
+    oddo_vals = (df_pipe['ODDO1'] / 1000).values
+
+    if not isinstance(data, np.ndarray):
+        data = np.asarray(data)
+
     if data.shape[0] > 1500:
-        data = data[::2, :]          # halve rows
+        data = data[::2, :]
+        oddo_vals = oddo_vals[::2]
     if data.shape[1] > 128:
-        data = data[:, ::1]          # keep cols (or ::2 if needed)
+        data = data[:, ::2]
 
     num_rows, num_cols = data.shape
 
+    if len(oddo_vals) != num_rows:
+        oddo_vals = np.interp(
+            np.linspace(0, 1, num_rows),
+            np.linspace(0, 1, len(oddo_vals)),
+            oddo_vals
+        )
+
     theta = np.linspace(0, 2 * np.pi, num_cols)
-    z = np.linspace(0, 1, num_rows)
-    theta, z = np.meshgrid(theta, z)
+    theta_grid, _ = np.meshgrid(theta, np.zeros(num_rows))
 
-    radius = 109.5   # OD = 219mm, R = OD/2
-    odometer = num_rows
+    radius = 109.5
+    odometer_start = float(np.nanmin(oddo_vals))
+    odometer_end   = float(np.nanmax(oddo_vals))
+    dist_range     = odometer_end - odometer_start
 
-    # Cartesian Coords
-    x = odometer * z
-    y = radius * np.cos(theta)
-    zc = radius * np.sin(theta)
+    x  = np.outer(oddo_vals, np.ones(num_cols))
+    y  = radius * np.cos(theta_grid)
+    zc = radius * np.sin(theta_grid)
 
     fig = go.Figure(data=[go.Surface(
-        x=x,
-        y=zc,
-        z=y,
+        x=x, y=y, z=zc,
         surfacecolor=data,
         colorscale='jet',
-        customdata=data_cp
+        customdata=data_cp,
+        showscale=False,
+        hovertemplate='Dist: %{x:.2f} m<br>Value: %{surfacecolor:.2f}<extra></extra>'
     )])
 
-    camera = dict(eye=dict(x=0., y=5, z=0.), up=dict(x=0, y=1, z=0))
+    clock_labels = [
+        dict(y=0,       z=radius,  text="12", name="12 o'clock"),
+        dict(y=radius,  z=0,       text="3",  name="3 o'clock"),
+        dict(y=0,       z=-radius, text="6",  name="6 o'clock"),
+        dict(y=-radius, z=0,       text="9",  name="9 o'clock"),
+    ]
 
-    odometer_start = 0
-    odometer_end = odometer
+    for cl in clock_labels:
+        fig.add_trace(go.Scatter3d(
+            x=[odometer_start, odometer_end],
+            y=[cl['y'], cl['y']],
+            z=[cl['z'], cl['z']],
+            text=[cl['text'], cl['text']],
+            mode='text',
+            textposition="middle center",
+            marker=dict(size=0),
+            name=cl['name'],
+            textfont=dict(size=16, color="#61090c"),
+            showlegend=False
+        ))
 
-    fig.add_trace(go.Scatter3d(
-        x=[odometer_start, odometer_end], y=[radius, radius], z=[0, 0],
-        text=["3"], mode='text', textposition="middle center",
-        marker=dict(size=0), name="3pm",
-        textfont=dict(size=20, color="#61090c")
-    ))
-    fig.add_trace(go.Scatter3d(
-        x=[odometer_start, odometer_end], y=[-radius, -radius], z=[0, 0],
-        text=["9"], mode='text', textposition="middle center",
-        marker=dict(size=0), name="9pm",
-        textfont=dict(size=20, color="#61090c")
-    ))
-    fig.add_trace(go.Scatter3d(
-        x=[odometer_start, odometer_end], y=[0, 0], z=[radius, radius],
-        text=["6"], mode='text', textposition="middle center",
-        marker=dict(size=0), name="6pm",
-        textfont=dict(size=20, color="#61090c")
-    ))
-    fig.add_trace(go.Scatter3d(
-        x=[odometer_start, odometer_end], y=[0, 0], z=[-radius, -radius],
-        text=["12"], mode='text', textposition="middle center",
-        marker=dict(size=0), name="12pm",
-        textfont=dict(size=20, color="#61090c")
-    ))
-   
+    # ── aspect ratio: normalize x to same scale as y/z ──
+    # x range is dist_range (metres), y/z range is 2*radius
+    # we want x to visually appear ~6x longer than the diameter
+    x_ratio = max(4, min((dist_range / (2 * radius)) * 6, 14))
+
+    # ── camera: distance scales with x_ratio so full pipe fits ──
+    cam_dist = 1.5 + x_ratio * 0.3  # pull back more for longer pipes
+    camera = dict(
+        eye=dict(x=cam_dist, y=-cam_dist * 0.4, z=cam_dist * 0.5),
+        up=dict(x=0, y=0, z=1),
+        center=dict(x=0, y=0, z=0)
+    )
+
     fig.update_layout(
         scene=dict(
-            xaxis_title='Odometer',
-            yaxis_title='Radial Length',
-            zaxis_title='Radial Length',
-            aspectmode='data',
-            aspectratio=dict(x=1, y=1, z=0.5),
-            camera=camera
+            xaxis_title='Abs Distance (m)',
+            yaxis_title='',
+            zaxis_title='',
+            aspectmode='manual',
+            aspectratio=dict(x=x_ratio, y=1, z=1),
+            camera=camera,
+            xaxis=dict(
+                showgrid=True,
+                range=[odometer_start, odometer_end],
+                autorange=False
+            ),
+            yaxis=dict(showgrid=False, showticklabels=False),
+            zaxis=dict(showgrid=False, showticklabels=False),
         ),
-        height=500,
+        scene_dragmode='orbit',
+        height=600,
         width=1500,
-        title='Pipe Visualization',
+        title=dict(
+            text=f'Pipe 3D Visualization — Joint {pipe_number}',
+            x=0.5, xanchor='center',
+            font=dict(size=18, family='Arial Black')
+        ),
         margin=dict(l=20, r=20, t=50, b=20),
     )
 
     write_plotly_html(fig, f'{folder_path}/pipe3d{pipe_number}.html')
-
 
 
 
