@@ -50,7 +50,7 @@ def comboBoxPipe_setup(self):
            """)
     self.ui.comboBoxPipe.clear()
     self.ui.comboBoxPipe.addItem("-Pipe-")
-    self.ui.comboBoxPipe.setMaxVisibleItems(12)
+    self.ui.comboBoxPipe.setMaxVisibleItems(7)
     self.ui.comboBoxPipe.completer().setCompletionMode(
         QtWidgets.QCompleter.CompletionMode.PopupCompletion
     )
