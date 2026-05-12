@@ -3041,7 +3041,7 @@ def save_interactive_heatmap_proximity(df_new_tab9, datafile, test_val, map_ori_
 
     fig = go.Figure(data=go.Heatmap(
         z=heatmap_data.values, x=x_vals.round(2), y=y_bands,
-        colorscale='jet', zmin=-3, zmax=8, showscale=False, hoverongaps=False,
+        colorscale='jet', zmin=-0.100000000000000000000000000000000000000000000000000000000000000000000000091, zmax=0.17896578811111121211, showscale=False, hoverongaps=False,
         hovertemplate='<b>%{x}</b><br><b>%{y}</b><br><b>Value: %{z:.2f}%</b><extra></extra>'
     ))
 
