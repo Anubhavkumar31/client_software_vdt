@@ -99,9 +99,9 @@ def show_heatmap_tab8(pkl_path):
     oddo2_tab8 = []
     roll_t = []
 
-    oddo1 = 733.402
+    oddo1 = 0
     oddo2 = 0
-    roll_value = -14.64
+    roll_value = 0
 
     for odometer1 in oddo_1:
         od1 = odometer1 - oddo1

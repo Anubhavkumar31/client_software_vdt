@@ -248,7 +248,7 @@ PyInstaller.__main__.run([
     # f"--add-data={os.path.join(ROOT, 'preliminary_report')};preliminary_report/",
     f"--add-data={os.path.join(ROOT, 'ui')};ui/",
     f"--add-data={os.path.join(ROOT, 'main_window', 'ui')};main_window/ui/",
-    f"--add-data={os.path.join(ROOT, 'manual')};manual/",
+    f"--add-data={os.path.join(ROOT, 'backend', 'resources','manual')};backend/resources/manual/",
     f"--add-data={os.path.join(ROOT, 'dig', 'digsheet_icon')};dig/",
 
     # -----------------------------

@@ -7,7 +7,7 @@ import seaborn as sns
 num_of_sensors = 36
 minute = 720 / num_of_sensors
 degree = minute / 2
-pkl_path = r"D:\Anubhav\softwares\client software\Data\project_oil_sample\pickle_data\150.pkl"
+pkl_path = r"D:\Anubhav\softwares\client software\client_software_vdt\test.pkl"
 
 
 def plot_clock_heatmap_t8(pkl_path):
@@ -23,7 +23,10 @@ def plot_clock_heatmap_t8(pkl_path):
     fig, ax2 = plt.subplots(figsize=(20, 8))
     fig.subplots_adjust(bottom=0.213, left=0.077, top=0.855, right=1.000)
 
-    heat_map_obj = sns.heatmap(d1, cmap='jet', ax=ax2, vmin=-0.01, vmax=0.07)
+    vmin = -0.1
+    vmax = 0.3
+
+    heat_map_obj = sns.heatmap(d1, cmap='jet', ax=ax2, vmin=vmin, vmax=vmax)
     heat_map_obj.set(xlabel="Index", ylabel="Clock")
 
     ax2.set_xticklabels(ax2.get_xticklabels(), size=9)
