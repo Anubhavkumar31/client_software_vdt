@@ -116,14 +116,132 @@ def _defect_color(depth: float):
 
 # ── Core overlay drawing ──────────────────────────────────────────────────────
 
+# def _draw_bbox_overlays(fig, pipe_number: int, defects_csv_path: str,
+#                         y_bands: list, x_vals: pd.Series, pipetally_path) -> bool:
+#     """
+#     x_vals  — the heatmap x series (datafile['index'])
+#     y_bands — clock labels ['00:00','00:05',...] from test_val.columns
+#     start_index/end_index in CSV match datafile['index'] values directly.
+#     start_sensor/end_sensor are 0-based positions into y_bands.
+#     """
+#     defects_df = _load_defects_df(defects_csv_path)
+#     if defects_df.empty:
+#         return False
+#
+#     pipe_defects = defects_df[
+#         defects_df['pipe_id'].astype(str) == str(pipe_number)
+#     ].reset_index(drop=True)
+#
+#     if pipe_defects.empty:
+#         print(f"[bbox] No defects for pipe {pipe_number}")
+#         return False
+#
+#     n_bands       = len(y_bands)
+#     idx_min       = float(x_vals.min())
+#     idx_max       = float(x_vals.max())
+#     overlay_added = False
+#     drawn_count   = 0
+#
+#     for defect_counter, row in pipe_defects.iterrows():
+#         label_num = defect_counter + 1
+#
+#         start_reading = float(row.get('start_index', 0) or 0)
+#         end_reading   = float(row.get('end_index',   0) or 0)
+#         if start_reading > end_reading:
+#             start_reading, end_reading = end_reading, start_reading
+#
+#         if end_reading < idx_min or start_reading > idx_max:
+#             print(f"  [Defect #{label_num}] index {start_reading:.0f}-{end_reading:.0f} "
+#                   f"outside pipe range {idx_min:.0f}-{idx_max:.0f} — skipped")
+#             continue
+#
+#         start_sensor = int(float(row.get('start_sensor', 0) or 0))
+#         end_sensor   = int(float(row.get('end_sensor',   0) or 0))
+#         if start_sensor > end_sensor:
+#             start_sensor, end_sensor = end_sensor, start_sensor
+#         start_sensor = max(0, min(start_sensor, n_bands - 1))
+#         end_sensor   = max(0, min(end_sensor,   n_bands - 1))
+#
+#         depth = float(row.get('depth_new', 0) or 0)
+#         fill_color, line_color = _defect_color(depth)
+#
+#         # exactly like figx112
+#         fig.add_shape(
+#             type='rect',
+#             # x0=start_reading - 0.5,
+#             # x1=end_reading   + 0.5,
+#             x0=x_vals[int(start_reading)],
+#             x1=x_vals[int(end_reading)],
+#             y0=start_sensor  - 0.5,
+#             y1=end_sensor    + 0.5,
+#             line=dict(color='black', width=2),
+#             fillcolor=fill_color,
+#             layer='above'
+#         )
+#
+#         fig.add_annotation(
+#             x=(start_reading + end_reading) / 2,
+#             y=start_sensor - 1,
+#             text=str(label_num),
+#             showarrow=False,
+#             font=dict(color=line_color, size=10),
+#             bgcolor='white',
+#             bordercolor='black',
+#             borderwidth=1
+#         )
+#
+#         orient      = row.get('orientation',              'N/A')
+#         dim_cls     = row.get('dimension_classification', 'N/A')
+#         defect_type = row.get('defect_type',              'N/A')
+#         length_mm   = row.get('length',                   'N/A')
+#         width_mm    = row.get('width_final', row.get('Width', 'N/A'))
+#         abs_dist    = row.get('absolute_distance',        'N/A')
+#
+#         # fig.add_trace(go.Scatter(
+#         #     # x=[(start_reading + end_reading) / 2],
+#         #     x=[x_vals[int((start_reading + end_reading) / 2)]],
+#         #     y=[(start_sensor  + end_sensor)  / 2],
+#         #     mode='markers',
+#         #     marker=dict(size=12, color=line_color, opacity=0.0),
+#         #     hovertemplate=(
+#         #         f"<b>Defect #{label_num}</b><br>"
+#         #         f"Pipe: {pipe_number}<br>"
+#         #         f"Depth: {depth:.0f}%<br>"
+#         #         f"Orientation: {orient}<br>"
+#         #         f"Classification: {dim_cls}<br>"
+#         #         f"Type: {defect_type}<br>"
+#         #         f"Length: {length_mm} mm<br>"
+#         #         f"Width: {width_mm} mm<br>"
+#         #         f"Abs. Distance: {abs_dist} m<extra></extra>"
+#         #     ),
+#         #     showlegend=False,
+#         # ))
+#
+#         overlay_added = True
+#         drawn_count  += 1
+#         clock_s = y_bands[start_sensor] if start_sensor < n_bands else '?'
+#         clock_e = y_bands[end_sensor]   if end_sensor   < n_bands else '?'
+#         print(f"  [Defect #{label_num}] x={start_reading:.0f}-{end_reading:.0f}  "
+#               f"sensor={start_sensor}-{end_sensor} ({clock_s}→{clock_e})")
+#
+#     print(f"[bbox] Pipe {pipe_number}: drew {drawn_count} box(es)")
+#     return overlay_added
+
+
+
+def _load_pipetally_df(pipetally_path: str) -> pd.DataFrame:
+    df = pd.read_excel(pipetally_path, sheet_name="Pipetally")
+    df = df.dropna(subset=['Pipe Number', 'Abs. Distance (m)'])
+    df['Pipe Number']       = df['Pipe Number'].astype(int).astype(str)
+    df['Abs. Distance (m)'] = df['Abs. Distance (m)'].astype(float).round(6)
+    df['Feature Type']      = df['Feature Type'].fillna('').str.strip().str.lower()
+    return df
+
+
 def _draw_bbox_overlays(fig, pipe_number: int, defects_csv_path: str,
-                        y_bands: list, x_vals: pd.Series) -> bool:
-    """
-    x_vals  — the heatmap x series (datafile['index'])
-    y_bands — clock labels ['00:00','00:05',...] from test_val.columns
-    start_index/end_index in CSV match datafile['index'] values directly.
-    start_sensor/end_sensor are 0-based positions into y_bands.
-    """
+                        y_bands: list, x_vals: pd.Series,
+                        pipetally_path: str) -> bool:
+
     defects_df = _load_defects_df(defects_csv_path)
     if defects_df.empty:
         return False
@@ -136,14 +254,41 @@ def _draw_bbox_overlays(fig, pipe_number: int, defects_csv_path: str,
         print(f"[bbox] No defects for pipe {pipe_number}")
         return False
 
+    pipetally_df = _load_pipetally_df(pipetally_path)
+    pipe_tally   = pipetally_df[
+        pipetally_df['Pipe Number'] == str(pipe_number)
+    ].reset_index(drop=True)
+
+    print(f"[bbox] Pipe {pipe_number} — {len(pipe_defects)} in CSV, {len(pipe_tally)} in pipetally")
+
     n_bands       = len(y_bands)
     idx_min       = float(x_vals.min())
     idx_max       = float(x_vals.max())
     overlay_added = False
     drawn_count   = 0
 
-    for defect_counter, row in pipe_defects.iterrows():
-        label_num = defect_counter + 1
+    for _, row in pipe_defects.iterrows():
+        abs_dist = round(float(row.get('absolute_distance', -1) or -1), 6)
+
+        # ── pipetally cross-check ────────────────────────────────────────────
+        tally_match = pipe_tally[pipe_tally['Abs. Distance (m)'] == abs_dist]
+
+        if tally_match.empty:
+            print(f"  [s_no=?? abs={abs_dist}] — not in pipetally, skip")
+            continue
+
+        tally_row    = tally_match.iloc[0]
+        s_no         = int(tally_row['s_no'])
+        feature_type = tally_row['Feature Type']
+
+        if feature_type == '':
+            print(f"  [s_no={s_no}] — blank feature type, skip")
+            continue
+
+        if feature_type != 'metal loss':
+            print(f"  [s_no={s_no}] — '{feature_type}' not Metal Loss, skip")
+            continue
+        # ────────────────────────────────────────────────────────────────────
 
         start_reading = float(row.get('start_index', 0) or 0)
         end_reading   = float(row.get('end_index',   0) or 0)
@@ -151,8 +296,7 @@ def _draw_bbox_overlays(fig, pipe_number: int, defects_csv_path: str,
             start_reading, end_reading = end_reading, start_reading
 
         if end_reading < idx_min or start_reading > idx_max:
-            print(f"  [Defect #{label_num}] index {start_reading:.0f}-{end_reading:.0f} "
-                  f"outside pipe range {idx_min:.0f}-{idx_max:.0f} — skipped")
+            print(f"  [s_no={s_no}] — out of heatmap range, skip")
             continue
 
         start_sensor = int(float(row.get('start_sensor', 0) or 0))
@@ -165,15 +309,12 @@ def _draw_bbox_overlays(fig, pipe_number: int, defects_csv_path: str,
         depth = float(row.get('depth_new', 0) or 0)
         fill_color, line_color = _defect_color(depth)
 
-        # exactly like figx112
         fig.add_shape(
             type='rect',
-            # x0=start_reading - 0.5,
-            # x1=end_reading   + 0.5,
             x0=x_vals[int(start_reading)],
             x1=x_vals[int(end_reading)],
-            y0=start_sensor  - 0.5,
-            y1=end_sensor    + 0.5,
+            y0=start_sensor - 0.5,
+            y1=end_sensor   + 0.5,
             line=dict(color='black', width=2),
             fillcolor=fill_color,
             layer='above'
@@ -182,7 +323,7 @@ def _draw_bbox_overlays(fig, pipe_number: int, defects_csv_path: str,
         fig.add_annotation(
             x=(start_reading + end_reading) / 2,
             y=start_sensor - 1,
-            text=str(label_num),
+            text=str(s_no),
             showarrow=False,
             font=dict(color=line_color, size=10),
             bgcolor='white',
@@ -190,46 +331,24 @@ def _draw_bbox_overlays(fig, pipe_number: int, defects_csv_path: str,
             borderwidth=1
         )
 
-        orient      = row.get('orientation',              'N/A')
-        dim_cls     = row.get('dimension_classification', 'N/A')
-        defect_type = row.get('defect_type',              'N/A')
-        length_mm   = row.get('length',                   'N/A')
-        width_mm    = row.get('width_final', row.get('Width', 'N/A'))
-        abs_dist    = row.get('absolute_distance',        'N/A')
-
-        # fig.add_trace(go.Scatter(
-        #     # x=[(start_reading + end_reading) / 2],
-        #     x=[x_vals[int((start_reading + end_reading) / 2)]],
-        #     y=[(start_sensor  + end_sensor)  / 2],
-        #     mode='markers',
-        #     marker=dict(size=12, color=line_color, opacity=0.0),
-        #     hovertemplate=(
-        #         f"<b>Defect #{label_num}</b><br>"
-        #         f"Pipe: {pipe_number}<br>"
-        #         f"Depth: {depth:.0f}%<br>"
-        #         f"Orientation: {orient}<br>"
-        #         f"Classification: {dim_cls}<br>"
-        #         f"Type: {defect_type}<br>"
-        #         f"Length: {length_mm} mm<br>"
-        #         f"Width: {width_mm} mm<br>"
-        #         f"Abs. Distance: {abs_dist} m<extra></extra>"
-        #     ),
-        #     showlegend=False,
-        # ))
+        clock_s = y_bands[start_sensor] if start_sensor < n_bands else '?'
+        clock_e = y_bands[end_sensor]   if end_sensor   < n_bands else '?'
+        print(f"  [s_no={s_no}] ✓ drawn"
+              f" | x={start_reading:.0f}-{end_reading:.0f} sensors={start_sensor}-{end_sensor} ({clock_s}→{clock_e})"
+              f" | pipetally → pipe={tally_row['Pipe Number']} abs={tally_row['Abs. Distance (m)']}")
 
         overlay_added = True
         drawn_count  += 1
-        clock_s = y_bands[start_sensor] if start_sensor < n_bands else '?'
-        clock_e = y_bands[end_sensor]   if end_sensor   < n_bands else '?'
-        print(f"  [Defect #{label_num}] x={start_reading:.0f}-{end_reading:.0f}  "
-              f"sensor={start_sensor}-{end_sensor} ({clock_s}→{clock_e})")
 
-    print(f"[bbox] Pipe {pipe_number}: drew {drawn_count} box(es)")
+    print(f"[bbox] Pipe {pipe_number}: drew {drawn_count}/{len(pipe_defects)} box(es)")
     return overlay_added
+
+
+
 
 def save_interactive_heatmap_v2(
     df_new_tab9, datafile, test_val, map_ori_sens,
-    folder_path, pipe_number, df_new_tab10
+    folder_path, pipe_number, df_new_tab10, pipetally_path, file_saved_callback=None
 ):
     df_plot_rearranged, df_raw_plot = pre_process_for_interactive_heatmap(
         df_new_tab10, datafile, test_val, map_ori_sens
@@ -274,7 +393,7 @@ def save_interactive_heatmap_v2(
     print(f"Defects found for pipe {pipe_number}:", len(pipe_check))
     print(pipe_check[['start_index', 'end_index', 'start_sensor', 'end_sensor']].to_string())
 
-    _draw_bbox_overlays(fig, pipe_number, DEFECTS_CSV, y_bands, x_vals)
+    _draw_bbox_overlays(fig, pipe_number, DEFECTS_CSV, y_bands, x_vals, pipetally_path)
 
     # tick labels show metres instead of raw index
     n_ticks     = 20
@@ -314,6 +433,8 @@ def save_interactive_heatmap_v2(
         ]
     )
 
-    out_path = f'{folder_path}/hallsensor_heatmap_v2_{pipe_number}.html'
+    out_path = f'{folder_path}/hallsensor_heatmap{pipe_number}.html'
     write_plotly_html(fig, out_path)
+    if file_saved_callback:
+        file_saved_callback(pipe_number, "Hall Heatmap")
     print(f'Saved hall heatmap v2: {out_path}')

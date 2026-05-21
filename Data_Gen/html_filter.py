@@ -249,6 +249,7 @@ def pre_process_data(
     minute_sensors,
     degree_sensors,
     sensor_type,
+    pipetally_path,
     debug=False
 ):
     import time
@@ -379,13 +380,13 @@ def pre_process_data(
         create_plots_hall(
             pkl_path, df_new_tab9, df_raw_straight, datafile,
             test_val, map_ori_sens, pipe_number, output_folder,
-            df_new_tab10, datafile_original
+            df_new_tab10, datafile_original, pipetally_path
         )
     else:
         create_plots_proximity(
             pkl_path, df_new_tab9, df_raw_straight, datafile,
             test_val, map_ori_sens, pipe_number, output_folder,
-            df_new_tab10, datafile_original
+            df_new_tab10, datafile_original, pipetally_path
         )
 
     dbg("29: COMPLETE pre_process_data")
@@ -677,20 +678,20 @@ def save_interactive_heatmap_proximity(df_new_tab9, datafile, test_val, map_ori_
         hovertemplate='<b>%{x}</b><br><b>%{y}</b><br><b>Value: %{z:.2f}%</b><extra></extra>'
     ))
 
-    overlay_added = False
-    pts = _load_overlay_points_for_pipe(pipe_number, y_bands, folder_path)
-    if pts is not None:
-        xs, ys, labels = pts
-        for x, y_band, label in zip(xs, ys, labels):
-            if x_vals.min() <= x <= x_vals.max() and y_band in y_bands:
-                y_idx = y_bands.index(y_band)
-                fig.add_shape(type="rect",
-                    x0=x-0.05, y0=y_idx-0.35, x1=x+0.05, y1=y_idx+0.35,
-                    line=dict(color="black", width=2), fillcolor="rgba(255,0,0,0.6)")
-                fig.add_annotation(x=x, y=y_idx, text=label, showarrow=False,
-                    font=dict(color="white", size=8, family="Arial Black"),
-                    bgcolor="red", bordercolor="black", borderwidth=1)
-                overlay_added = True
+    # overlay_added = False
+    # pts = _load_overlay_points_for_pipe(pipe_number, y_bands, folder_path)
+    # if pts is not None:
+    #     xs, ys, labels = pts
+    #     for x, y_band, label in zip(xs, ys, labels):
+    #         if x_vals.min() <= x <= x_vals.max() and y_band in y_bands:
+    #             y_idx = y_bands.index(y_band)
+    #             fig.add_shape(type="rect",
+    #                 x0=x-0.05, y0=y_idx-0.35, x1=x+0.05, y1=y_idx+0.35,
+    #                 line=dict(color="black", width=2), fillcolor="rgba(255,0,0,0.6)")
+    #             fig.add_annotation(x=x, y=y_idx, text=label, showarrow=False,
+    #                 font=dict(color="white", size=8, family="Arial Black"),
+    #                 bgcolor="red", bordercolor="black", borderwidth=1)
+    #             overlay_added = True
 
     fig.update_layout(
         title=dict(text=f"Proximity-Sensor Heatmap — Joint Number {pipe_number}",
@@ -703,7 +704,7 @@ def save_interactive_heatmap_proximity(df_new_tab9, datafile, test_val, map_ori_
     fig.update_yaxes(autorange="reversed")
     write_plotly_html(fig, f'{folder_path}/proximity_heatmap{pipe_number}.html')
     print(f"Saved proximity heatmap: {folder_path}/proximity_heatmap{pipe_number}.html")
-    print(f"Overlays: {'Yes' if overlay_added else 'None found'}")
+    # print(f"Overlays: {'Yes' if overlay_added else 'None found'}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1077,20 +1078,20 @@ def _load_defects_df(csv_path: str) -> pd.DataFrame:
 # ───────────────────────────────────────────────────────────────────────
 
 
-def create_plots_hall(pkl_path, df_new_tab9, df_raw_straight, datafile, test_val, map_ori_sens, pipe_number, output_folder, df_new_tab10, datafile_original):
+def create_plots_hall(pkl_path, df_new_tab9, df_raw_straight, datafile, test_val, map_ori_sens, pipe_number, output_folder, df_new_tab10, datafile_original, pipetally_path):
     folder_path = f'{output_folder}/Pipe_{pipe_number}'
     os.makedirs(folder_path, exist_ok=True)
-    # save_lineplot(pkl_path, folder_path, test_val, datafile, pipe_number)
-    # save_pipe3d(test_val, test_val, folder_path, pipe_number, pkl_path)
+    save_lineplot(pkl_path, folder_path, test_val, datafile, pipe_number)
+    save_pipe3d(test_val, test_val, folder_path, pipe_number, pkl_path)
     # save_interactive_heatmap(df_new_tab9, datafile_original, test_val, map_ori_sens, folder_path, pipe_number, df_new_tab10)
-    save_interactive_heatmap_v2(df_new_tab9, datafile_original, test_val, map_ori_sens, folder_path, pipe_number, df_new_tab10)
+    save_interactive_heatmap_v2(df_new_tab9, datafile_original, test_val, map_ori_sens, folder_path, pipe_number, df_new_tab10, pipetally_path)
 
 
-def create_plots_proximity(pkl_path, df_new_tab9, df_raw_straight, datafile, test_val, map_ori_sens, pipe_number, output_folder, df_new_tab10, datafile_original):
+def create_plots_proximity(pkl_path, df_new_tab9, df_raw_straight, datafile, test_val, map_ori_sens, pipe_number, output_folder, df_new_tab10, datafile_original, pipetally_path):
     folder_path = f'{output_folder}/Pipe_{pipe_number}'
     os.makedirs(folder_path, exist_ok=True)
-    # save_proximity_linechart(folder_path, datafile, pipe_number)
-    # save_interactive_heatmap_proximity(df_new_tab9, datafile_original, test_val, map_ori_sens, folder_path, pipe_number, df_new_tab10)
+    save_proximity_linechart(folder_path, datafile, pipe_number)
+    save_interactive_heatmap_proximity(df_new_tab9, datafile_original, test_val, map_ori_sens, folder_path, pipe_number, df_new_tab10)
 
 
 def save_heatmap(test_val, datafile, map_ori_sens, folder_path, pipe_number):
@@ -1282,27 +1283,27 @@ def save_proximity_linechart(
                      tickangle=0, showgrid=True, gridcolor="rgba(0,0,0,0.10)")
     fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.12)")
 
-    # Overlays
-    try:
-        x_min, x_max = float(np.nanmin(x_vals)), float(np.nanmax(x_vals))
-    except Exception:
-        x_min, x_max = float(df.index.min()), float(df.index.max())
-
-    y_bands_dummy = ["00:00", "06:00"]
-    pts = _load_overlay_points_for_pipe(pipe_number, y_bands_dummy, folder_path)
-    if pts is not None:
-        xs, _, labels = pts
-        at_x = defaultdict(list)
-        for x, lbl in [(float(x), str(l)) for x, l in zip(xs, labels) if x_min <= float(x) <= x_max]:
-            at_x[x].append(lbl)
-        for x, lbls in at_x.items():
-            fig.add_shape(type="line", x0=x, x1=x, y0=0, y1=1,
-                          xref="x", yref="paper",
-                          line=dict(color="black", width=1, dash="dot"))
-            fig.add_annotation(x=x, y=1.02, xref="x", yref="paper",
-                                text=", ".join(lbls), showarrow=False,
-                                bgcolor="red", bordercolor="black", borderwidth=1,
-                                font=dict(color="white", size=10, family="Arial Black"))
+    # # Overlays
+    # try:
+    #     x_min, x_max = float(np.nanmin(x_vals)), float(np.nanmax(x_vals))
+    # except Exception:
+    #     x_min, x_max = float(df.index.min()), float(df.index.max())
+    #
+    # y_bands_dummy = ["00:00", "06:00"]
+    # pts = _load_overlay_points_for_pipe(pipe_number, y_bands_dummy, folder_path)
+    # if pts is not None:
+    #     xs, _, labels = pts
+    #     at_x = defaultdict(list)
+    #     for x, lbl in [(float(x), str(l)) for x, l in zip(xs, labels) if x_min <= float(x) <= x_max]:
+    #         at_x[x].append(lbl)
+    #     for x, lbls in at_x.items():
+    #         fig.add_shape(type="line", x0=x, x1=x, y0=0, y1=1,
+    #                       xref="x", yref="paper",
+    #                       line=dict(color="black", width=1, dash="dot"))
+    #         fig.add_annotation(x=x, y=1.02, xref="x", yref="paper",
+    #                             text=", ".join(lbls), showarrow=False,
+    #                             bgcolor="red", bordercolor="black", borderwidth=1,
+    #                             font=dict(color="white", size=10, family="Arial Black"))
 
     write_plotly_html(fig, f'{folder_path}/proximity_linechart{pipe_number}.html')
     print(f"Saved {folder_path}/proximity_linechart{pipe_number}.html")
@@ -1367,35 +1368,35 @@ def save_lineplot(pkl_path, folder_path, test_val, datafile, pipe_number):
             tickangle=45, tickfont=dict(size=8), title_text="Abs Distance (m)"
         )
 
-    try:
-        y_bands = list(test_val.columns)
-        pts = _load_overlay_points_for_pipe(pipe_number, y_bands, folder_path)
-        print(f"DEBUG: pts = {pts}")
-        if pts is not None:
-            xs, ys, labels = pts
-            for x_dist, y_band, label in zip(xs, ys, labels):
-                if y_band not in y_bands:
-                    continue
-                x = dist_to_index(x_dist)
-                if not (np.nanmin(x_vals) <= x <= np.nanmax(x_vals)):
-                    continue
-                y_idx = y_bands.index(y_band)
-                y_pos = y_idx * offset_step
-                figmlp.add_trace(go.Scatter(
-                    x=[x], y=[y_pos], mode="markers",
-                    marker=dict(size=8, color="red", line=dict(width=1, color="black")),
-                    showlegend=False, name=f"{label} @ {x_dist:.2f}m",
-                    hovertemplate=f"<b>{label}</b><br>Abs Dist: {x_dist:.2f} m<br>Band: {y_band}<extra></extra>"
-                ))
-                figmlp.add_annotation(
-                    x=x, y=y_pos, text=str(label), showarrow=True, arrowhead=2,
-                    arrowsize=1, arrowwidth=1, ax=0, ay=-20,
-                    bgcolor="red", bordercolor="black",
-                    font=dict(color="white", size=10, family="Arial Black")
-                )
-    except Exception as e:
-        print(f"Overlay labels on lineplot failed: {e}")
-        traceback.print_exc()
+    # try:
+    #     y_bands = list(test_val.columns)
+    #     pts = _load_overlay_points_for_pipe(pipe_number, y_bands, folder_path)
+    #     print(f"DEBUG: pts = {pts}")
+    #     if pts is not None:
+    #         xs, ys, labels = pts
+    #         for x_dist, y_band, label in zip(xs, ys, labels):
+    #             if y_band not in y_bands:
+    #                 continue
+    #             x = dist_to_index(x_dist)
+    #             if not (np.nanmin(x_vals) <= x <= np.nanmax(x_vals)):
+    #                 continue
+    #             y_idx = y_bands.index(y_band)
+    #             y_pos = y_idx * offset_step
+    #             figmlp.add_trace(go.Scatter(
+    #                 x=[x], y=[y_pos], mode="markers",
+    #                 marker=dict(size=8, color="red", line=dict(width=1, color="black")),
+    #                 showlegend=False, name=f"{label} @ {x_dist:.2f}m",
+    #                 hovertemplate=f"<b>{label}</b><br>Abs Dist: {x_dist:.2f} m<br>Band: {y_band}<extra></extra>"
+    #             ))
+    #             figmlp.add_annotation(
+    #                 x=x, y=y_pos, text=str(label), showarrow=True, arrowhead=2,
+    #                 arrowsize=1, arrowwidth=1, ax=0, ay=-20,
+    #                 bgcolor="red", bordercolor="black",
+    #                 font=dict(color="white", size=10, family="Arial Black")
+    #             )
+    # except Exception as e:
+    #     print(f"Overlay labels on lineplot failed: {e}")
+    #     traceback.print_exc()
 
     figmlp.update_layout(
         template='plotly_white', height=500, width=1500,
@@ -1464,10 +1465,14 @@ def save_pipe3d(data, data_cp, folder_path, pipe_number, pkl_path):
     y  = radius * np.cos(theta_grid)
     zc = radius * np.sin(theta_grid)
 
+    data_cp_arr = np.asarray(data_cp, dtype=np.float64)
+    text_data = np.array([[f"{v:.2f}" for v in row] for row in data_cp_arr])
+
     fig = go.Figure(data=[go.Surface(
         x=x, y=y, z=zc, surfacecolor=data,
-        colorscale='jet', customdata=data_cp, showscale=False,
-        hovertemplate='Dist: %{x:.2f} m<br>Value: %{surfacecolor:.2f}<extra></extra>'
+        colorscale='jet', showscale=False,
+        text=text_data,
+        hovertemplate='Dist: %{x:.2f} m'
     )])
 
     clock_labels = [
@@ -1521,7 +1526,7 @@ def _resolve_workers(workers):
 
 import time as _time_module
 
-def _process_one_pkl(pkl_path, output_folder):
+def _process_one_pkl(pipetally_path, pkl_path, output_folder):
     start_time = _time_module.time()
     start_clock = datetime.now().strftime("%H:%M:%S")
     sensor_type = ["Hall", "Proximity"]
@@ -1555,7 +1560,7 @@ def _process_one_pkl(pkl_path, output_folder):
                         pkl_path, data, pipe_number, output_folder,
                         total_sensors_count_hall, column_names_hall,
                         minute_sensors_hall, degree_sensors_hall,
-                        current_sensor_type, debug=True
+                        current_sensor_type, pipetally_path,debug=True
                     )
                 else:
                     print(f"📌 PROX: count={total_sensors_count_prox}, first_10={column_names_prox[:10]}", flush=True)
@@ -1563,7 +1568,7 @@ def _process_one_pkl(pkl_path, output_folder):
                         pkl_path, data, pipe_number, output_folder,
                         total_sensors_count_prox, column_names_prox,
                         minute_sensors_prox, degree_sensors_prox,
-                        current_sensor_type, debug=True
+                        current_sensor_type, pipetally_path,debug=True
                     )
 
                 print(f"🏁 COMPLETED SENSOR TYPE: {current_sensor_type}\n", flush=True)
@@ -1611,6 +1616,7 @@ def count_pattern_minute_degree(datafile_path):
 
 
 def create_html_and_csv_from_pkl(
+    pipetally_path,
     pkl_folder='pipes3',
     output_folder='Client_Pipes',
     output_callback=None,
@@ -1645,7 +1651,7 @@ def create_html_and_csv_from_pkl(
             print(f"\n🔍 STARTING: {fname}")
             test_obj = pd.read_pickle(pkl_path)
             print(f"✅ PKL LOAD OK: {fname} | shape={getattr(test_obj,'shape','?')}")
-            result = _process_one_pkl(pkl_path, output_folder)
+            result = _process_one_pkl(pipetally_path, pkl_path, output_folder)
             print(f"🏁 FINISHED: {fname} in {round(time.time()-start,2)}s")
             return result
         except Exception as e:
