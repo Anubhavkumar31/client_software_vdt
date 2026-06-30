@@ -67,6 +67,7 @@ from pages.errorBox import Error_Dialog  # noqa
 from backend.heatmap import HeatmapWindow as hm, pre_process, pre_process2  # noqa
 
 
+
 def resource_path(relative_path):
     """
     Resolve paths relative to the project root (client_software_vdt),

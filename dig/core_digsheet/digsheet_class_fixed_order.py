@@ -239,10 +239,14 @@ class Digsheet:
     def _build_icons(self):
         """Load valve/bend/flange/flowtee/magnet icons."""
         try:
+            # icon_path = os.path.join(
+            #     os.getcwd(),
+            #     # "Components",
+            #     # "dig",
+            #     "digsheet_icon"
+            # )
             icon_path = os.path.join(
-                os.getcwd(),
-                # "Components",
-                "dig",
+                os.path.abspath(os.path.join(os.getcwd(), "..")),
                 "digsheet_icon"
             )
 
@@ -384,10 +388,16 @@ class Digsheet:
         left_frame.grid_columnconfigure(1, weight=1)
 
         try:
+            # icon_path_vdt = os.path.join(
+            #     os.getcwd(),
+            #     # "Components",
+            #     # "dig",
+            #     "digsheet_icon",
+            #     "vdt-logo.png"
+            # )
+
             icon_path_vdt = os.path.join(
-                os.getcwd(),
-                # "Components",
-                "dig",
+                os.path.abspath(os.path.join(os.getcwd(), "..")),
                 "digsheet_icon",
                 "vdt-logo.png"
             )
@@ -857,14 +867,14 @@ class Digsheet:
                 "x": mid_x - 190,
                 "arrow_x": mid_x - 200,
                 "text_x": mid_x - 160,
-                "source": features_upstream[::-1],
+                "source": features_upstream,
                 "index": 1,
             },
             {
                 "x": mid_x - 90,
                 "arrow_x": mid_x - 100,
                 "text_x": mid_x - 60,
-                "source": features_upstream[::-1],
+                "source": features_upstream,
                 "index": 0,
             },
             {
@@ -875,7 +885,7 @@ class Digsheet:
                 "index": 0,
             },
             {
-                "x": mid_x + 210,
+                "x": mid_x + 230,
                 "arrow_x": mid_x + 220,
                 "text_x": mid_x + 180,
                 "source": features_downstream,
@@ -955,7 +965,7 @@ class Digsheet:
 
         bend_slots = [
             {
-                "source": bends_upstream[::-1],
+                "source": bends_upstream,
                 "index": 2,
                 "x_name": mid_x - 230,
                 "x_dist": mid_x - 230,
@@ -965,7 +975,7 @@ class Digsheet:
                 "arrow_text_x": mid_x - 215,
             },
             {
-                "source": bends_upstream[::-1],
+                "source": bends_upstream,
                 "index": 1,
                 "x_name": mid_x - 140,
                 "x_dist": mid_x - 140,
@@ -975,7 +985,7 @@ class Digsheet:
                 "arrow_text_x": mid_x - 125,
             },
             {
-                "source": bends_upstream[::-1],
+                "source": bends_upstream,
                 "index": 0,
                 "x_name": mid_x - 50,
                 "x_dist": mid_x - 50,
@@ -1850,7 +1860,7 @@ class Digsheet:
                 return
             row = row.iloc[0]
 
-            self.pipe_id_var.set(str(row.iloc[3]))
+            self.pipe_id_var.set(str(int(float(row.iloc[3]))))
             self.length_var.set(str(row.iloc[4]))
             self.wt_var.set(str(row.iloc[11]))
 
@@ -2651,8 +2661,11 @@ def dig_run(self):
 #  CLI entry
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
-    pipe_tally = r"C:\Users\admin\Downloads\Pipe_Tally_12inch_new (1).xlsx"
-    project = "D:\Anubhav\softwares\client software\Data\project_oil_sample"
+    pipe_tally = r"D:\Anubhav\softwares\client software\Data\project_oil_sample\pipetally_main\pipetally_main_12inch_new (1).xlsx"
+    project = "D:\Anubhav\softwares\client software\dig_data\example"
+
+
+    # pipe_tally =
     if len(sys.argv) > 2:
         pipe_tally = sys.argv[1]
         project = sys.argv[2]

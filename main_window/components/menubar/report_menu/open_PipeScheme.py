@@ -6,13 +6,14 @@
 #         subprocess.Popen([sys.executable, pipeline_path, self.project_root])
 #     except Exception as e:
 #         self.open_Error(f"Error running Pipeline Schema:\n{e}")
+from main_window.components.menubar.report_menu.pipeline_schema.pipeline_schema import run_pipe_schema
 
 
 def open_PipeScheme(self):
     print("pipetally path:", self.pipetally_dir)
 
     try:
-        from menubar.report_menu.pipeline_schema.pipeline_schema import run_pipe_schema
+
 
         run_pipe_schema(pipe_tally=self.pipetally_dir)  # ✅ no parent
 

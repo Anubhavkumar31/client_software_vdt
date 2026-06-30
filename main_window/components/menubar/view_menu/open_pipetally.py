@@ -18,6 +18,9 @@ from main_window.components.menubar.view_menu.apps.pipetallyApp.severity_pipelin
 
 
 # ================= ENTERPRISE TOOL BAR =================
+from main_window.debug_config import DEBUG
+from main_window.error_handler import handle_error, logger
+
 
 class PipeTallyToolPanel(QFrame):
     def __init__(self, parent):
@@ -98,7 +101,14 @@ class PipeTallyToolPanel(QFrame):
         self.parent.get_filtered_dataframe().to_excel(path, index=False)
         QMessageBox.information(self, "Exported", "Pipe tally exported successfully!")
 
-
+class NumericSortProxyModel(QSortFilterProxyModel):
+    def lessThan(self, left, right):
+        l_data = self.sourceModel().data(left, Qt.ItemDataRole.DisplayRole)
+        r_data = self.sourceModel().data(right, Qt.ItemDataRole.DisplayRole)
+        try:
+            return float(l_data) < float(r_data)
+        except (ValueError, TypeError):
+            return str(l_data) < str(r_data)
 # ================= MAIN VIEWER =================
 
 class PipeTallyViewer(QMainWindow):
@@ -146,7 +156,7 @@ class PipeTallyViewer(QMainWindow):
             for c, col in enumerate(df.columns):
                 val = df.iloc[r, c]
 
-                if col == "Pipe Number" and not pd.isna(val):
+                if col == ("Pipe Number", "s_no") and not pd.isna(val):
                     item = QStandardItem()
                     item.setData(int(val), Qt.ItemDataRole.DisplayRole)
                 elif pd.isna(val):
@@ -161,7 +171,7 @@ class PipeTallyViewer(QMainWindow):
                 model.setItem(r, c, item)
 
         # -------- Sorting + Filtering --------
-        self.proxy = QSortFilterProxyModel()
+        self.proxy = NumericSortProxyModel()
         self.proxy.setSourceModel(model)
         self.proxy.setSortRole(Qt.ItemDataRole.DisplayRole)
         self.proxy.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
@@ -172,7 +182,7 @@ class PipeTallyViewer(QMainWindow):
         self.table.horizontalHeader().setStretchLastSection(True)
 
         self.table.sortByColumn(
-            df.columns.get_loc("Pipe Number"),
+            df.columns.get_loc("s_no"),
             Qt.SortOrder.AscendingOrder
         )
 
@@ -250,7 +260,7 @@ class PipeTallyViewer(QMainWindow):
             for c, col in enumerate(df.columns):
                 val = df.iloc[r, c]
 
-                if col == "Pipe Number" and not pd.isna(val):
+                if col == ("Pipe Number", "s_no") and not pd.isna(val):
                     item = QStandardItem()
                     item.setData(int(val), Qt.ItemDataRole.DisplayRole)
                 elif pd.isna(val):
@@ -268,7 +278,7 @@ class PipeTallyViewer(QMainWindow):
 
         # Keep original sorting behavior
         self.table.sortByColumn(
-            df.columns.get_loc("Pipe Number"),
+            df.columns.get_loc("s_no"),
             Qt.SortOrder.AscendingOrder
         )
 
@@ -308,50 +318,77 @@ class PipeTallySpinner(QDialog):
 class PipeTallyExcelLoader(QThread):
     progress = pyqtSignal(int)
     finished = pyqtSignal(object)
+    error = pyqtSignal(str)
 
     def __init__(self, path):
         super().__init__()
         self.path = path
 
     def run(self):
-        import openpyxl
-        wb = openpyxl.load_workbook(self.path, read_only=True)
-        ws = wb.active
-        total = ws.max_row - 1
-        rows = []
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(self.path, read_only=True)
+            ws = wb.active
+            total = ws.max_row - 1
+            rows = []
 
-        for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=1):
-            rows.append(row)
-            if i % 500 == 0:
-                self.progress.emit(int((i/total)*100))
+            for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=1):
+                rows.append(row)
+                if i % 500 == 0:
+                    self.progress.emit(int((i/total)*100))
 
-        import pandas as pd
-        df = pd.DataFrame(rows, columns=[c.value for c in ws[1]])
-        self.progress.emit(100)
-        self.finished.emit(df)
+            import pandas as pd
+            df = pd.DataFrame(rows, columns=[c.value for c in ws[1]])
+            self.progress.emit(100)
+            self.finished.emit(df)
+
+        except Exception as e:
+            import traceback
+            self.error.emit(traceback.format_exc())
 
 
 def open_pipetally(self, excel_path=None):
-    print(f"inside open pipetally path: {self.pipetally_dir}")
-    if excel_path is None:
-        excel_path = self.pipetally_dir
+    if DEBUG:
+        print(f"inside open pipetally path: {self.pipetally_dir}")
 
-    if hasattr(self, "_pipe_tally_instance") and self._pipe_tally_instance:
-        self._pipe_tally_instance.close()
+    try:
+        if excel_path is None:
+            excel_path = self.pipetally_dir
 
-    self._pipe_spinner = PipeTallySpinner(self)
-    self._pipe_spinner.show()
+        if hasattr(self, "_pipe_tally_instance") and self._pipe_tally_instance:
+            self._pipe_tally_instance.close()
 
-    self._pipe_loader = PipeTallyExcelLoader(excel_path)
-    self._pipe_loader.progress.connect(self._pipe_spinner.set_progress)
-    self._pipe_loader.finished.connect(lambda df: _finish_pipe_tally_load(self, df))
-    self._pipe_loader.start()
+        self._pipe_spinner = PipeTallySpinner(self)
+        self._pipe_spinner.show()
+
+        self._pipe_loader = PipeTallyExcelLoader(excel_path)
+        self._pipe_loader.progress.connect(self._pipe_spinner.set_progress)
+        self._pipe_loader.finished.connect(lambda df: _finish_pipe_tally_load(self, df))
+        self._pipe_loader.error.connect(lambda err: _handle_pipe_load_error(self, err))
+        self._pipe_loader.start()
+
+    except Exception as e:
+        if hasattr(self, "_pipe_spinner") and self._pipe_spinner:
+            self._pipe_spinner.close()  # don't leave spinner stuck on screen
+        # handle_error(self, e, "Failed to open Pipe Tally. Please contact support.")
 
 
+def _handle_pipe_load_error(self, traceback_str):
+    if hasattr(self, "_pipe_spinner") and self._pipe_spinner:
+        self._pipe_spinner.close()
+        self._pipe_spinner = None
 
+    logger.error(traceback_str)
+
+    if DEBUG:
+        print(f"🔥 ERROR OCCURRED:\n{traceback_str}")
+    else:
+        QMessageBox.critical(self, "Error", "Failed to load Pipe Tally.\nPlease check the file path and try again.")
 
 def _finish_pipe_tally_load(self, df):
     # DO NOT close spinner here anymore
+    # print(df['s_no'].tolist())  # ← add this
+    print(f"Total rows: {len(df)}")
 
     self._pipe_tally_instance = PipeTallyViewer(df, parent=self)
     self._pipe_tally_instance.show()
