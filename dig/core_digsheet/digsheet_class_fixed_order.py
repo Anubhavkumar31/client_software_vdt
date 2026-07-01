@@ -38,12 +38,13 @@ class Digsheet:
         5: "Pipe Location",
     }
 
+    margin = 165
     SECTION_THRESHOLDS = {
-        "Client Description":       (0, 0, 175, 40),
-        "Feature Location on Pipe": (5, 32, 170, 93),
-        "Comment":                  (0, 85, 175, 120),
-        "Feature Description":      (0, 110, 175, 0),
-        "Pipe Location":            (0, 107, 190, 220),
+        "Client Description": (-10, -7, 175 - margin, 40),
+        "Feature Location on Pipe": (-5, 32, 170 - margin, 93),
+        "Comment": (-10, 85, 175 - margin, 120),
+        "Feature Description": (-10, 110, 175 - margin, 2),
+        "Pipe Location": (-10, -2, 174 - margin, 10),
     }
 
     def __init__(self, pipe_tally_file=None, project_root=None):
@@ -69,7 +70,6 @@ class Digsheet:
         self.root.resizable(False, False)
         self.root.configure(bg="white")
         self.style = Style()
-
 
         # progress holder handle
         self.progress_frame_ref = None
@@ -242,12 +242,6 @@ class Digsheet:
     def _build_icons(self):
         """Load valve/bend/flange/flowtee/magnet icons."""
         try:
-            # icon_path = os.path.join(
-            #     os.getcwd(),
-            #     # "Components",
-            #     # "dig",
-            #     "digsheet_icon"
-            # )
             icon_path = os.path.join(
                 os.path.abspath(os.path.join(os.getcwd(), "..")),
                 "digsheet_icon"
@@ -381,7 +375,7 @@ class Digsheet:
 
             tk.Label(
                 left_frame,
-                textvariable=var,  # 🔥 automatically updates
+                textvariable=var,
                 bg="white",
                 anchor="w",
                 font=("Arial", 9),
@@ -391,14 +385,6 @@ class Digsheet:
         left_frame.grid_columnconfigure(1, weight=1)
 
         try:
-            # icon_path_vdt = os.path.join(
-            #     os.getcwd(),
-            #     # "Components",
-            #     # "dig",
-            #     "digsheet_icon",
-            #     "vdt-logo.png"
-            # )
-
             icon_path_vdt = os.path.join(
                 os.path.abspath(os.path.join(os.getcwd(), "..")),
                 "digsheet_icon",
@@ -789,16 +775,15 @@ class Digsheet:
                     if key in colmap:
                         ser = (
                             const_df[colmap[key]]
-                            .dropna()
-                            .astype(str)
-                            .str.strip()
+                                .dropna()
+                                .astype(str)
+                                .str.strip()
                         )
                         if not ser.empty:
                             return ser.iloc[0]
                 return ""
 
             if not self._constants_logged:
-
                 print("[constants] columns:", list(const_df.columns))
                 print(
                     "[constants] picked:",
@@ -809,7 +794,6 @@ class Digsheet:
                     "PIPELINE_SECTION->",
                     colmap.get("PIPELINE_SECTION_DESCRIPTION"),
                 )
-
                 self._constants_logged = True
 
             self.client_var.set(_first_val("CLIENT_NAME_DESCRIPTION"))
@@ -1200,8 +1184,8 @@ class Digsheet:
                 if 0 <= clock_angle <= 60 or 300 < clock_angle <= 360:
                     defect_y = box_y_top + 10
                 elif (
-                    60 < clock_angle <= 120
-                    or 240 <= clock_angle <= 300
+                        60 < clock_angle <= 120
+                        or 240 <= clock_angle <= 300
                 ):
                     defect_y = (box_y_top + box_y_bottom) / 2
                 else:
@@ -1263,9 +1247,9 @@ class Digsheet:
 
                 for j, feat in enumerate(found_features):
                     offset_y = (
-                        cy
-                        - (len(found_features) - 1) * spacing // 2
-                        + j * spacing
+                            cy
+                            - (len(found_features) - 1) * spacing // 2
+                            + j * spacing
                     )
 
                     if feat == "valve" and self.valve_img:
@@ -1299,15 +1283,15 @@ class Digsheet:
             pass
 
         for var in (
-            self.pipe_id_var,
-            self.length_var,
-            self.wt_var,
-            self.latitude_var,
-            self.longitude_var,
-            self.altitude_var,
-            self.client_var,
-            self.pipeline_name_var,
-            self.pipeline_section_var,
+                self.pipe_id_var,
+                self.length_var,
+                self.wt_var,
+                self.latitude_var,
+                self.longitude_var,
+                self.altitude_var,
+                self.client_var,
+                self.pipeline_name_var,
+                self.pipeline_section_var,
         ):
             try:
                 var.set("")
@@ -1331,12 +1315,12 @@ class Digsheet:
             pass
 
         for tag in (
-            "upstream_text",
-            "flange_text",
-            "us_arrow",
-            "ds_arrow",
-            "bend_text",
-            "pipe_icon",
+                "upstream_text",
+                "flange_text",
+                "us_arrow",
+                "ds_arrow",
+                "bend_text",
+                "pipe_icon",
         ):
             try:
                 self.pipe_canvas.delete(tag)
@@ -1365,15 +1349,15 @@ class Digsheet:
     def reset_left_panel(self):
         """Reset only the main (left) digsheet area, keep right panel."""
         for var in (
-            self.pipe_id_var,
-            self.length_var,
-            self.wt_var,
-            self.latitude_var,
-            self.longitude_var,
-            self.altitude_var,
-            self.client_var,
-            self.pipeline_name_var,
-            self.pipeline_section_var,
+                self.pipe_id_var,
+                self.length_var,
+                self.wt_var,
+                self.latitude_var,
+                self.longitude_var,
+                self.altitude_var,
+                self.client_var,
+                self.pipeline_name_var,
+                self.pipeline_section_var,
         ):
             try:
                 var.set("")
@@ -1397,12 +1381,12 @@ class Digsheet:
             pass
 
         for tag in (
-            "upstream_text",
-            "flange_text",
-            "us_arrow",
-            "ds_arrow",
-            "bend_text",
-            "pipe_icon",
+                "upstream_text",
+                "flange_text",
+                "us_arrow",
+                "ds_arrow",
+                "bend_text",
+                "pipe_icon",
         ):
             try:
                 self.pipe_canvas.delete(tag)
@@ -1615,18 +1599,38 @@ class Digsheet:
         print(f"✅ Combined image saved to {filepath}")
 
     def capture_sections_image(self, section_start=1, section_end=5):
+        """Capture all sections and merge them into a single image."""
         images = []
+
+        # Force the window to be on top and fully rendered
+        self.root.lift()
+        self.root.focus_force()
+        self.root.update_idletasks()
+        self.root.update()
+        time.sleep(0.3)
+
         for section_id in range(section_start, section_end + 1):
             if section_id not in self.SECTION_MAP:
                 continue
 
-            self.canvas.yview_moveto(0.0 if section_id in [1, 2, 3, 4] else 1.0)
-            self.root.update()
-            time.sleep(0.4)
+            # Scroll to the appropriate position
+            if section_id in [1, 2, 3, 4]:
+                self.canvas.yview_moveto(0.0)
+            elif section_id == 5:
+                self.canvas.yview_moveto(1.0)
+
+            # Force multiple UI updates to ensure rendering is complete
+            for _ in range(3):
+                self.root.update_idletasks()
+                self.root.update()
+                time.sleep(0.1)
+
+            time.sleep(0.3)  # Additional delay
 
             coords = self.get_section_coords()
             name = self.SECTION_MAP[section_id]
             if name not in coords:
+                print(f"Warning: Section '{name}' coordinates not found")
                 continue
 
             x0, y0, x1, y1 = coords[name]
@@ -1634,10 +1638,26 @@ class Digsheet:
                 name, (0, 0, 0, 0)
             )
             bbox = (x0 + dx0, y0 + dy0, x1 + dx1, y1 + dy1)
-            img = ImageGrab.grab(bbox=bbox).convert("RGB")
-            images.append(img)
+
+            try:
+                # Print debug info
+                print(f"Capturing section {name}: bbox={bbox}")
+
+                # Take screenshot
+                img = ImageGrab.grab(bbox=bbox).convert("RGB")
+
+                # Verify image is not empty
+                if img.size[0] > 0 and img.size[1] > 0:
+                    images.append(img)
+                else:
+                    print(f"Warning: Empty image captured for section {name}")
+            except Exception as e:
+                print(f"Error capturing section {name}: {e}")
+                traceback.print_exc()
+                continue
 
         if not images:
+            print("Error: No sections were captured successfully")
             return None
 
         max_w = max(im.width for im in images)
@@ -1649,6 +1669,8 @@ class Digsheet:
                 im = im.resize((max_w, im.height))
             merged.paste(im, (0, y))
             y += im.height
+
+        print(f"Successfully merged {len(images)} sections into one image")
         return merged
 
     def upscale_image(self, img, target_dpi=600, base_dpi=96, scale_limit=2.0):
@@ -2402,7 +2424,7 @@ class Digsheet:
             canvas_prev.delete("all")
             canvas_prev.create_image(0, 0, image=tk_img, anchor="nw")
             canvas_prev.config(scrollregion=(0, 0, new_w, new_h))
-            page_lbl.config(text=f"S. No {dno}  ({idx+1}/{len(images)})")
+            page_lbl.config(text=f"S. No {dno}  ({idx + 1}/{len(images)})")
 
         def _nav(delta):
             i = current_idx.get() + delta
@@ -2520,8 +2542,6 @@ class Digsheet:
             self._show_preview_in_panel(images)
             return
 
-        # (optional) old separate window behaviour could be re-added if you still want it.
-
     def batch_export_with_ui(self, defect_ids, output_mode="pdf", output_path=None):
         self.batch_cancelled = False
 
@@ -2593,11 +2613,27 @@ class Digsheet:
                 self.defect_entry.delete(0, tk.END)
                 self.defect_entry.insert(0, str(dno))
                 self.on_load_click()
-                self.root.update()
-                time.sleep(0.4)
+
+                # Force multiple UI updates to ensure rendering is complete
+                for _ in range(3):
+                    self.root.update_idletasks()
+                    self.root.update()
+                    time.sleep(0.1)
+
+                time.sleep(0.5)  # Additional delay for batch export
 
                 merged = self.capture_sections_image(1, 5)
                 if merged is None:
+                    status_lbl.config(text=f"⚠️ Defect {dno} failed - no image captured")
+                    prog_var.set(idx)
+                    self.root.update()
+                    continue
+
+                # Verify image has content (not just page numbers)
+                if merged.size[0] < 100 or merged.size[1] < 100:
+                    status_lbl.config(text=f"⚠️ Defect {dno} - image too small")
+                    prog_var.set(idx)
+                    self.root.update()
                     continue
 
                 if output_mode == "png":
@@ -2618,22 +2654,39 @@ class Digsheet:
 
             except Exception as e:
                 print(f"Error on defect {dno}: {e}")
+                traceback.print_exc()
+                status_lbl.config(text=f"❌ Error on {dno}")
+                prog_var.set(idx)
+                self.root.update()
 
         if not self.batch_cancelled:
             if output_mode == "pdf" and images:
-                with open(output_path, "wb") as f:
-                    f.write(img2pdf.convert(images))
-                for p in images:
-                    os.remove(p)
-            status_lbl.config(text="✔ Completed")
-            messagebox.showinfo(
-                "Batch Export Completed",
-                f"Your files have been saved successfully.\n\nLocation:\n{output_path}",
-            )
+                try:
+                    with open(output_path, "wb") as f:
+                        f.write(img2pdf.convert(images))
+                    for p in images:
+                        if os.path.exists(p):
+                            os.remove(p)
+                    status_lbl.config(text="✔ Completed")
+                    messagebox.showinfo(
+                        "Batch Export Completed",
+                        f"Your files have been saved successfully.\n\nLocation:\n{output_path}",
+                    )
+                except Exception as e:
+                    messagebox.showerror("Error", f"Failed to create PDF: {e}")
+            elif output_mode == "png":
+                status_lbl.config(text="✔ Completed")
+                messagebox.showinfo(
+                    "Batch Export Completed",
+                    f"Your files have been saved successfully.\n\nLocation:\n{output_path}",
+                )
         else:
             for p in images:
                 if os.path.exists(p):
-                    os.remove(p)
+                    try:
+                        os.remove(p)
+                    except Exception:
+                        pass
 
         self.root.after(2000, progress_frame.destroy)
 
@@ -2643,7 +2696,6 @@ class Digsheet:
 
     def run(self):
         self.root.mainloop()
-
 
 
 def dig_run(self):
@@ -2660,6 +2712,7 @@ def dig_run(self):
     app = Digsheet(pipe_tally_file=pipe_tally, project_root=project)
     app.run()
 
+
 # ----------------------------------------------------------------------
 #  CLI entry
 # ----------------------------------------------------------------------
@@ -2667,8 +2720,6 @@ if __name__ == "__main__":
     pipe_tally = r"D:\Aamna\client_software\data\project_oil_sample\pipetally_main\pipetally_main_12inch_new (1).xlsx"
     project = "D:\Aamna\client_software\data\project_oil_sample\constants"
 
-
-    # pipe_tally =
     if len(sys.argv) > 2:
         pipe_tally = sys.argv[1]
         project = sys.argv[2]
