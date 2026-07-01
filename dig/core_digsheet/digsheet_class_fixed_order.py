@@ -9,6 +9,7 @@ import tempfile
 
 import tkinter as tk
 from tkinter import messagebox, filedialog, ttk
+from ttkbootstrap import Style
 
 import pandas as pd
 from PIL import ImageGrab, Image, ImageTk
@@ -41,8 +42,8 @@ class Digsheet:
         "Client Description":       (0, 0, 175, 40),
         "Feature Location on Pipe": (5, 32, 170, 93),
         "Comment":                  (0, 85, 175, 120),
-        "Feature Description":      (0, 110, 175, 170),
-        "Pipe Location":            (0, 107, 175, 220),
+        "Feature Description":      (0, 110, 175, 0),
+        "Pipe Location":            (0, 107, 190, 220),
     }
 
     def __init__(self, pipe_tally_file=None, project_root=None):
@@ -67,6 +68,8 @@ class Digsheet:
         self.root.state("zoomed")
         self.root.resizable(False, False)
         self.root.configure(bg="white")
+        self.style = Style()
+
 
         # progress holder handle
         self.progress_frame_ref = None
@@ -1461,7 +1464,7 @@ class Digsheet:
         )
 
     def print_all_sections_dialog(self):
-        merged = self.capture_sections_image(1, 5)
+        merged = self.capture_sections_image(1, 4)
         if merged is None:
             messagebox.showerror("Error", "No sections captured")
             return
@@ -2661,8 +2664,8 @@ def dig_run(self):
 #  CLI entry
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
-    pipe_tally = r"D:\Anubhav\softwares\client software\Data\project_oil_sample\pipetally_main\pipetally_main_12inch_new (1).xlsx"
-    project = "D:\Anubhav\softwares\client software\dig_data\example"
+    pipe_tally = r"D:\Aamna\client_software\data\project_oil_sample\pipetally_main\pipetally_main_12inch_new (1).xlsx"
+    project = "D:\Aamna\client_software\data\project_oil_sample\constants"
 
 
     # pipe_tally =

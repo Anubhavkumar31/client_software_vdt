@@ -6,26 +6,19 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget,
     QVBoxLayout, QHBoxLayout,
     QPushButton, QFileDialog,
-    QListWidget, QLabel, QMessageBox, QComboBox, QFrame
+    QListWidget, QLabel, QMessageBox, QComboBox, QFrame, QScrollArea,
+    QSizePolicy
 )
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtCore import QUrl
+from PyQt6.QtCore import QUrl, Qt
 
 
 # ===================== RESIZABLE WEB VIEW =====================
-
-# class ResizableWebView(QWebEngineView):
-#     def resizeEvent(self, event):
-#         super().resizeEvent(event)
-#         self.page().runJavaScript(
-#             "if (window.chart) { chart.resize(); }"
-#         )
 class ResizableWebView(QWebEngineView):
     pass
 
 
 # ===================== ECHARTS HTML (THEME AWARE) =====================
-
 HTML = """<!DOCTYPE html>
 <html>
 <head>
@@ -170,12 +163,8 @@ class ExcelDualAxisZoomChart(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-    # def __init__(self):
-    #     super().__init__()
         self.setWindowTitle("Excel → Analytics Chart")
         self.resize(1400, 780)
-        # self.pipe_tally = self.parent().pipe_tally
-        # print(f" path?? : {type(self.pipe_tally)}")
         self.df = None
         self.theme = "dark"
 
@@ -194,7 +183,6 @@ class ExcelDualAxisZoomChart(QMainWindow):
         self.x_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
         self.y_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
 
-        # self.load_btn = QPushButton("Load Excel")
         self.plot_btn = QPushButton("Plot Chart")
         self.reset_btn = QPushButton("Reset")
         self.theme_btn = QPushButton("☀ Light Mode")
@@ -205,38 +193,90 @@ class ExcelDualAxisZoomChart(QMainWindow):
         self.web = ResizableWebView()
         self.web.setHtml(HTML, QUrl("about:blank"))
 
-        # ---- Sidebar Layout ----
-        sidebar = QVBoxLayout()
-        sidebar.setSpacing(14)
+        # ---- Create Sidebar Content ----
+        sidebar_content = QWidget()
+        sidebar_content.setSizePolicy(
+            QSizePolicy.Policy.Preferred,
+            QSizePolicy.Policy.MinimumExpanding
+        )
 
-        sidebar.addWidget(self._section_label("CHART"))
-        sidebar.addWidget(QLabel("Chart Type"))
-        sidebar.addWidget(self.chart_type)
+        sidebar_layout = QVBoxLayout(sidebar_content)
+        sidebar_layout.setSpacing(14)
+        sidebar_layout.setContentsMargins(15, 15, 15, 50)  # Increased bottom margin
 
-        sidebar.addSpacing(10)
-        sidebar.addWidget(self._divider())
+        sidebar_layout.addWidget(self._section_label("CHART"))
+        sidebar_layout.addWidget(QLabel("Chart Type"))
+        sidebar_layout.addWidget(self.chart_type)
 
-        sidebar.addWidget(self._section_label("AXES"))
-        sidebar.addWidget(QLabel("Y Axes Count"))
-        sidebar.addWidget(self.axis_count)
-        sidebar.addWidget(QLabel("X Axis"))
-        sidebar.addWidget(self.x_list)
-        sidebar.addWidget(QLabel("Y Axis"))
-        sidebar.addWidget(self.y_list)
+        sidebar_layout.addSpacing(10)
+        sidebar_layout.addWidget(self._divider())
 
-        sidebar.addSpacing(10)
-        sidebar.addWidget(self._divider())
+        sidebar_layout.addWidget(self._section_label("AXES"))
+        sidebar_layout.addWidget(QLabel("Y Axes Count"))
+        sidebar_layout.addWidget(self.axis_count)
+        sidebar_layout.addWidget(QLabel("X Axis"))
+        sidebar_layout.addWidget(self.x_list)
+        sidebar_layout.addWidget(QLabel("Y Axis"))
+        sidebar_layout.addWidget(self.y_list)
 
-        sidebar.addWidget(self._section_label("ACTIONS"))
-        # sidebar.addWidget(self.load_btn)
-        sidebar.addWidget(self.plot_btn)
-        sidebar.addWidget(self.reset_btn)
-        sidebar.addWidget(self.theme_btn)
-        sidebar.addStretch()
+        sidebar_layout.addSpacing(10)
+        sidebar_layout.addWidget(self._divider())
 
-        self.left = QWidget()
-        self.left.setLayout(sidebar)
-        self.left.setFixedWidth(300)
+        sidebar_layout.addWidget(self._section_label("ACTIONS"))
+        sidebar_layout.addWidget(self.plot_btn)
+        sidebar_layout.addWidget(self.reset_btn)
+        sidebar_layout.addWidget(self.theme_btn)
+
+        # Add stretch to push everything up
+        sidebar_layout.addStretch()
+
+        # ---- Wrap Sidebar in Scroll Area ----
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setWidget(sidebar_content)
+        scroll_area.setFixedWidth(330)
+        scroll_area.setMinimumHeight(500)  # Increased minimum height
+        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+
+        scroll_area.setSizePolicy(
+            QSizePolicy.Policy.Fixed,
+            QSizePolicy.Policy.Expanding
+        )
+
+        # Make sure the scroll bar is visible and styled properly
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background: transparent;
+            }
+            QScrollArea > QWidget > QWidget {
+                background: transparent;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: #e5e7eb;
+                width: 12px;
+                margin: 0px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background: #94a3b8;
+                border-radius: 6px;
+                min-height: 40px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #64748b;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+                height: 0px;
+            }
+        """)
+
+        self.left = scroll_area
 
         self.apply_theme()
 
@@ -247,9 +287,10 @@ class ExcelDualAxisZoomChart(QMainWindow):
         container = QWidget()
         container.setLayout(main)
         self.setCentralWidget(container)
+
         self.data_con()
+
         # ---- Signals ----
-        # self.load_btn.clicked.connect(self.load_excel)
         self.plot_btn.clicked.connect(self.plot_chart)
         self.reset_btn.clicked.connect(self.reset_selection)
         self.axis_count.currentIndexChanged.connect(self.on_axis_count_changed)
@@ -263,11 +304,9 @@ class ExcelDualAxisZoomChart(QMainWindow):
         self.theme_btn.setText("☀ Light Mode" if self.theme == "dark" else "🌙 Dark Mode")
         self.apply_theme()
 
-        # 🔹 If chart already plotted, re-render fully
         if self.df is not None:
             self.plot_chart()
         else:
-            # 🔹 Apply theme immediately even without data
             self.web.page().runJavaScript(
                 f"applyThemeOnly('{self.theme}')"
             )
@@ -278,76 +317,108 @@ class ExcelDualAxisZoomChart(QMainWindow):
     def _sidebar_style(self):
         if self.theme == "light":
             return """
+            QScrollArea {
+                border: none;
+                background: #f8fafc;
+            }
             QWidget {
-                background:#f8fafc;
-                color:#0f172a;
+                background: #f8fafc;
+                color: #0f172a;
             }
-
             QLabel#section {
-                color:#64748b;
-                font-weight:600;
-                letter-spacing:1px;
+                color: #64748b;
+                font-weight: 600;
+                letter-spacing: 1px;
             }
-
             QComboBox, QListWidget {
-                background:#ffffff;
-                border:1px solid #e5e7eb;
-                padding:6px;
+                background: #ffffff;
+                border: 1px solid #e5e7eb;
+                padding: 6px;
+                min-height: 30px;
             }
-
-            /* 🔹 LIGHT MODE SELECTION */
             QListWidget::item:selected {
-                background:#dbeafe;   /* light blue */
-                color:#0f172a;        /* black text */
+                background: #dbeafe;
+                color: #0f172a;
             }
-
             QPushButton {
-                background:#ffffff;
-                border:1px solid #e5e7eb;
-                padding:8px;
+                background: #ffffff;
+                border: 1px solid #e5e7eb;
+                padding: 8px;
+                min-height: 30px;
             }
-
             QPushButton#primary {
-                background:#2563eb;
-                color:white;
-                font-weight:600;
+                background: #2563eb;
+                color: white;
+                font-weight: 600;
+            }
+            QScrollBar:vertical {
+                background: #e5e7eb;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background: #94a3b8;
+                border-radius: 6px;
+                min-height: 40px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #64748b;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
             }
             """
         else:
             return """
+            QScrollArea {
+                border: none;
+                background: #0f172a;
+            }
             QWidget {
-                background:#0f172a;
-                color:#e5e7eb;
+                background: #0f172a;
+                color: #e5e7eb;
             }
-
             QLabel#section {
-                color:#94a3b8;
-                font-weight:600;
-                letter-spacing:1px;
+                color: #94a3b8;
+                font-weight: 600;
+                letter-spacing: 1px;
             }
-
             QComboBox, QListWidget {
-                background:#020617;
-                border:1px solid #1f2937;
-                padding:6px;
+                background: #020617;
+                border: 1px solid #1f2937;
+                padding: 6px;
+                min-height: 30px;
             }
-
-            /* 🔹 DARK MODE SELECTION (LIGHT BLUE + WHITE TEXT) */
             QListWidget::item:selected {
-                background:#2563eb;   /* light blue accent */
-                color:#ffffff;        /* white text */
+                background: #2563eb;
+                color: #ffffff;
             }
-
             QPushButton {
-                background:#020617;
-                border:1px solid #1f2937;
-                padding:8px;
+                background: #020617;
+                border: 1px solid #1f2937;
+                padding: 8px;
+                min-height: 30px;
             }
-
             QPushButton#primary {
-                background:#38bdf8;
-                color:#020617;
-                font-weight:600;
+                background: #38bdf8;
+                color: #020617;
+                font-weight: 600;
+            }
+            QScrollBar:vertical {
+                background: #1f2937;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background: #4b5563;
+                border-radius: 6px;
+                min-height: 40px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #6b7280;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
             }
             """
 
@@ -366,34 +437,18 @@ class ExcelDualAxisZoomChart(QMainWindow):
     # ===================== LOGIC =====================
 
     def data_con(self):
-        self.pipe_tally = self.parent().pipe_tally
-        self.df = self.pipe_tally
-        self.x_list.clear()
-        self.y_list.clear()
+        if hasattr(self.parent(), 'pipe_tally') and self.parent().pipe_tally is not None:
+            self.pipe_tally = self.parent().pipe_tally
+            self.df = self.pipe_tally
+            self.x_list.clear()
+            self.y_list.clear()
 
-        for col in self.df.columns:
-            self.x_list.addItem(col)
-            if pd.api.types.is_numeric_dtype(self.df[col]):
-                self.y_list.addItem(col)
+            for col in self.df.columns:
+                self.x_list.addItem(col)
+                if pd.api.types.is_numeric_dtype(self.df[col]):
+                    self.y_list.addItem(col)
 
-        self.plot_btn.setEnabled(True)
-
-    # def load_excel(self):
-    #     path, _ = QFileDialog.getOpenFileName(self, "Select Excel", "", "Excel Files (*.xlsx *.xls)")
-    #     if not path:
-    #         return
-    #
-    #     self.df = pd.read_excel(path)
-    #     print(f"type {type(self.df)}")
-    #     self.x_list.clear()
-    #     self.y_list.clear()
-    #
-    #     for col in self.df.columns:
-    #         self.x_list.addItem(col)
-    #         if pd.api.types.is_numeric_dtype(self.df[col]):
-    #             self.y_list.addItem(col)
-    #
-    #     self.plot_btn.setEnabled(True)
+            self.plot_btn.setEnabled(True)
 
     def reset_selection(self):
         self.x_list.clearSelection()
@@ -438,7 +493,7 @@ class ExcelDualAxisZoomChart(QMainWindow):
 
         for i, col in enumerate(y_cols):
             y_axes.append({
-                "display_name": f"Y Axis {i+1}: {col}",
+                "display_name": f"Y Axis {i + 1}: {col}",
                 "position": "left" if i == 0 else "right",
                 "color": colors[i]
             })

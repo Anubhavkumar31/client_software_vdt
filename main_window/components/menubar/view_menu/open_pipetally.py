@@ -214,6 +214,14 @@ class PipeTallyViewer(QMainWindow):
                 font-size:13px;
             }
         """)
+
+    def closeEvent(self, event):
+        """Handle window close event."""
+        # Clear the reference in parent
+        if hasattr(self.parent(), "_pipe_tally_instance"):
+            self.parent()._pipe_tally_instance = None
+        event.accept()
+
     def showEvent(self, event):
         super().showEvent(event)
         if hasattr(self.parent(), "_pipe_spinner") and self.parent()._pipe_spinner:
@@ -355,8 +363,16 @@ def open_pipetally(self, excel_path=None):
         if excel_path is None:
             excel_path = self.pipetally_dir
 
+        # ✅ Check if instance exists AND is still valid (not closed)
         if hasattr(self, "_pipe_tally_instance") and self._pipe_tally_instance:
-            self._pipe_tally_instance.close()
+            # Check if the window is still visible (not closed)
+            if self._pipe_tally_instance.isVisible():
+                self._pipe_tally_instance.raise_()
+                self._pipe_tally_instance.activateWindow()
+                return
+            else:
+                # Window was closed, clear the reference
+                self._pipe_tally_instance = None
 
         self._pipe_spinner = PipeTallySpinner(self)
         self._pipe_spinner.show()
@@ -369,7 +385,7 @@ def open_pipetally(self, excel_path=None):
 
     except Exception as e:
         if hasattr(self, "_pipe_spinner") and self._pipe_spinner:
-            self._pipe_spinner.close()  # don't leave spinner stuck on screen
+            self._pipe_spinner.close()
         # handle_error(self, e, "Failed to open Pipe Tally. Please contact support.")
 
 

@@ -9,7 +9,8 @@ import tempfile
 
 import tkinter as tk
 from tkinter import messagebox, filedialog, ttk
-
+# import ttkbootstrap as ttk
+from ttkbootstrap import Style
 import pandas as pd
 from PIL import ImageGrab, Image, ImageTk
 import img2pdf
@@ -67,6 +68,7 @@ class Digsheet:
         self.root.state("zoomed")
         self.root.resizable(False, False)
         self.root.configure(bg="white")
+        self.style = Style()
 
         # progress holder handle
         self.progress_frame_ref = None
