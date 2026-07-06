@@ -20,7 +20,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>Pipe, Inspect, Extract: PIE</string>
+   <string>VDT: Client Software</string>
   </property>
   <property name="autoFillBackground">
    <bool>true</bool>

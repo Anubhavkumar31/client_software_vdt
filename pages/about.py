@@ -77,7 +77,7 @@ class About_Dialog(QDialog):
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
         Dialog.setWindowTitle(_translate("Dialog", "About PIE"))
-        self.label.setText(_translate("Dialog", "Pipe, Inspect, Extract: PIE"))
+        self.label.setText(_translate("Dialog", "VDT: Client Software"))
         self.label_2.setText(_translate("Dialog", "Version 1.2.2"))
         self.label_3.setText(_translate("Dialog", "Pipeline Inspection, Data Integration and Management Platform."))
         self.label_4.setText(_translate("Dialog", "Warning: This computer program is protected by copyright law. "))

@@ -52,7 +52,7 @@
     </font>
    </property>
    <property name="text">
-    <string>Pipe, Inspect, Extract: PIE</string>
+    <string>VDT: Client Software</string>
    </property>
    <property name="textFormat">
     <enum>Qt::RichText</enum>
