@@ -79,6 +79,8 @@ function renderChart(payload) {
         splitLine: { lineStyle: { color: gridLine } }
     }));
 
+    window.currentBgColor = bg;
+
     getChart().setOption({
         animation: false,
         backgroundColor: bg,
@@ -89,12 +91,21 @@ function renderChart(payload) {
         grid: { left: 80, right: 120, top: 80, bottom: 140 },
 
         toolbox: {
+            show: false,  // This hides the toolbox completely
             right: 30,
             top: 10,
             iconStyle: { borderColor: text },
             feature: {
-                restore: {},
-                saveAsImage: {}
+                saveAsImage: {
+                    show: false,  // Hide save button
+                    title: 'Save as Image',
+                    pixelRatio: 2,
+                    backgroundColor: bg,
+                    name: 'chart_image'
+                },
+                restore: {
+                    show: false  // Hide restore button
+                }
             }
         },
 
@@ -130,6 +141,7 @@ function applyThemeOnly(theme) {
     const isDark = theme === "dark";
 
     const bg = isDark ? "#0b1220" : "#ffffff";
+    window.currentBgColor = bg;
     const text = isDark ? "#e5e7eb" : "#0f172a";
     const gridLine = isDark ? "#1f2937" : "#e5e7eb";
 
@@ -148,6 +160,21 @@ function applyThemeOnly(theme) {
 
     chart.resize();
 }
+
+function saveChart() {
+    if (chart) {
+        const bgColor = window.currentBgColor || '#ffffff';
+        const url = chart.getDataURL({
+            type: 'png',
+            pixelRatio: 2,
+            backgroundColor: bgColor
+        });
+        return url;
+    }
+    return null;
+}
+
+window.saveChart = saveChart;
 
 window.applyThemeOnly = applyThemeOnly;
 
@@ -186,6 +213,7 @@ class ExcelDualAxisZoomChart(QMainWindow):
         self.plot_btn = QPushButton("Plot Chart")
         self.reset_btn = QPushButton("Reset")
         self.theme_btn = QPushButton("☀ Light Mode")
+        self.save_btn = QPushButton("💾 Save Image")
 
         self.plot_btn.setObjectName("primary")
         self.plot_btn.setEnabled(False)
@@ -226,6 +254,7 @@ class ExcelDualAxisZoomChart(QMainWindow):
         sidebar_layout.addWidget(self.plot_btn)
         sidebar_layout.addWidget(self.reset_btn)
         sidebar_layout.addWidget(self.theme_btn)
+        sidebar_layout.addWidget(self.save_btn)
 
         # Add stretch to push everything up
         sidebar_layout.addStretch()
@@ -296,6 +325,7 @@ class ExcelDualAxisZoomChart(QMainWindow):
         self.axis_count.currentIndexChanged.connect(self.on_axis_count_changed)
         self.y_list.itemSelectionChanged.connect(self.enforce_y_limit)
         self.theme_btn.clicked.connect(self.toggle_theme)
+        self.save_btn.clicked.connect(self.save_image)
 
     # ===================== THEME =====================
 
@@ -515,6 +545,64 @@ class ExcelDualAxisZoomChart(QMainWindow):
         self.web.page().runJavaScript(
             f"renderChart({json.dumps(payload)})"
         )
+
+    def save_image(self):
+        """Save the chart as an image file"""
+        if self.df is None:
+            QMessageBox.warning(self, "Error", "Please load data and plot a chart first")
+            return
+
+        # Get save file path
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Chart Image",
+            "chart_image.png",
+            "PNG Image (*.png);;JPEG Image (*.jpg *.jpeg);;All Files (*.*)"
+        )
+
+        if not file_path:
+            return
+
+        # Determine background color based on theme
+        bg_color = "#0b1220" if self.theme == "dark" else "#ffffff"
+
+        # Use JavaScript to get the image data URL from ECharts with proper background
+        js_code = f"""
+        (function() {{
+            if (window.chart) {{
+                try {{
+                    const url = window.chart.getDataURL({{
+                        type: 'png',
+                        pixelRatio: 2,
+                        backgroundColor: '{bg_color}'
+                    }});
+                    return url;
+                }} catch(e) {{
+                    return null;
+                }}
+            }}
+            return null;
+        }})();
+        """
+
+        def handle_result(data_url):
+            if data_url:
+                try:
+                    if data_url.startswith('data:image/png;base64,'):
+                        import base64
+                        base64_data = data_url.replace('data:image/png;base64,', '')
+                        image_data = base64.b64decode(base64_data)
+                        with open(file_path, 'wb') as f:
+                            f.write(image_data)
+                        QMessageBox.information(self, "Success", f"Image saved to:\n{file_path}")
+                    else:
+                        QMessageBox.warning(self, "Error", "Failed to save image: Invalid data format")
+                except Exception as e:
+                    QMessageBox.warning(self, "Error", f"Failed to save image: {str(e)}")
+            else:
+                QMessageBox.warning(self, "Error", "Failed to generate image from chart")
+
+        self.web.page().runJavaScript(js_code, handle_result)
 
 
 # ===================== RUN =====================
