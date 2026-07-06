@@ -107,6 +107,8 @@ class MainApp(QApplication):
         super().__init__(sys_argv)
         self.splash = None
         self.main_window = None
+        from PyQt6.QtGui import QIcon
+        self.setWindowIcon(QIcon(resource_path(r"D:\Aamna\client_software\client_software_vdt\ui\icons\vdt-logo.png")))
 
     def show_splash_screen(self):
         self.splash = SplashScreenWidget()
