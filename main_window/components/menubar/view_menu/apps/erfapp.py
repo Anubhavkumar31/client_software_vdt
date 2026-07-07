@@ -144,7 +144,7 @@ class ERFWindow(QMainWindow):
         self.safe_p_out = QLineEdit(); self.safe_p_out.setReadOnly(True)
 
         res_grid.addLayout(cell("ERF", self.erf_out), 0, 0)
-        res_grid.addLayout(cell("Psafe (kgf/cm² )", self.safe_p_out), 0, 1)
+        res_grid.addLayout(cell("Psafe (kg/cm² )", self.safe_p_out), 0, 1)
 
         root.addWidget(self.make_section("Results", res_grid))
 
