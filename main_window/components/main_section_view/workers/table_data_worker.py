@@ -280,7 +280,9 @@ def _populate_defect_table_from_csv(self, df: pd.DataFrame):
             if dst in header_indices:
                 c = header_indices[dst]
                 v = row[src]
-                if isinstance(v, float):
+                if pd.isna(v):
+                    v = "-"
+                elif isinstance(v, float):
                     v = f"{v:.2f}"
                 item = QTableWidgetItem(str(v))
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -379,10 +381,10 @@ def _fill_tablewidget_chunk(self):
     for r in range(start, end):
         row_vals = df.iloc[r].to_list()
         for c, v in enumerate(row_vals):
-            if isinstance(v, float):
+            if pd.isna(v):
+                text = "-"
+            elif isinstance(v, float):
                 text = f"{v:.6g}"
-            elif pd.isna(v):
-                text = ""
             else:
                 text = str(v)
             item = QTableWidgetItem(text)
