@@ -5,7 +5,8 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget,
     QVBoxLayout, QHBoxLayout, QGroupBox,
     QLineEdit, QPushButton, QRadioButton,
-    QMessageBox, QLabel, QGridLayout
+    QMessageBox, QLabel, QGridLayout,
+    QScrollArea  # Add this import
 )
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtGui import QDoubleValidator
@@ -67,14 +68,27 @@ class ERFWindow(QMainWindow):
     def __init__(self, project_root=None):
         super().__init__()
         self.setWindowTitle("ERF Calculator")
-        self.resize(450, 900)
+        self.resize(450, 700)  # Slightly smaller initial size
         self.theme = "dark"
         self.last_chart_payload = None
 
+        # Create central widget and main layout
         central = QWidget()
         self.setCentralWidget(central)
-        root = QVBoxLayout(central)
-        root.setSpacing(14)
+        main_layout = QVBoxLayout(central)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # ================= SCROLL AREA =================
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        # Container widget for scroll area
+        scroll_content = QWidget()
+        scroll_layout = QVBoxLayout(scroll_content)
+        scroll_layout.setSpacing(14)
+        scroll_layout.setContentsMargins(10, 10, 10, 10)
 
         # ================= STANDARD =================
         std_layout = QHBoxLayout()
@@ -88,7 +102,7 @@ class ERFWindow(QMainWindow):
             rb.toggled.connect(self.check_fields)
             std_layout.addWidget(rb)
 
-        root.addWidget(self.make_section("Assessment Standard", std_layout))
+        scroll_layout.addWidget(self.make_section("Assessment Standard", std_layout))
 
         # ================= INPUT PARAMETERS (3×3 GRID) =================
         v = QDoubleValidator()
@@ -140,7 +154,7 @@ class ERFWindow(QMainWindow):
         grid.addLayout(cell("SMTS (MPa)", self.smts), 3, 0)
         grid.addLayout(cell("P-op (MPa)", self.p_op), 3, 1)
 
-        root.addWidget(self.make_section("Pipeline Parameters", grid))
+        scroll_layout.addWidget(self.make_section("Pipeline Parameters", grid))
 
         # ================= RESULTS =================
         res_grid = QGridLayout()
@@ -152,7 +166,7 @@ class ERFWindow(QMainWindow):
         res_grid.addLayout(cell("ERF", self.erf_out), 0, 0)
         res_grid.addLayout(cell("Psafe (kg/cm² )", self.safe_p_out), 0, 1)
 
-        root.addWidget(self.make_section("Results", res_grid))
+        scroll_layout.addWidget(self.make_section("Results", res_grid))
 
         # ================= ACTIONS =================
         actions = QHBoxLayout()
@@ -170,15 +184,19 @@ class ERFWindow(QMainWindow):
         actions.addStretch()
         actions.addWidget(self.theme_btn)
 
-        root.addLayout(actions)
+        scroll_layout.addLayout(actions)
 
         # ================= CHART =================
         self.web = QWebEngineView()
-        self.web.setMinimumHeight(360)
+        self.web.setMinimumHeight(400)  # Slightly larger minimum height
         self.web.setHtml(ECHART_HTML)
         self.web.loadFinished.connect(self.on_web_ready)
 
-        root.addWidget(self.web, 1)
+        scroll_layout.addWidget(self.web, 1)
+
+        # Add scroll area to main layout
+        scroll.setWidget(scroll_content)
+        main_layout.addWidget(scroll)
 
         self.apply_theme()
         self.check_fields()  # Initial check
@@ -261,6 +279,22 @@ class ERFWindow(QMainWindow):
             QLineEdit { background:#020617; border:1px solid #1f2937; padding:8px; }
             QPushButton { padding:8px 14px; }
             QPushButton:disabled { background:#1f2937; color:#4b5563; }
+            QScrollArea { border: none; background: transparent; }
+            QScrollBar:vertical {
+                border: none;
+                background: #1f2937;
+                width: 12px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: #374151;
+                min-height: 20px;
+                border-radius: 6px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+            }
             """)
         else:
             self.setStyleSheet("""
@@ -270,6 +304,22 @@ class ERFWindow(QMainWindow):
             QLineEdit { background:#ffffff; border:1px solid #cbd5f5; padding:8px; }
             QPushButton { padding:8px 14px; }
             QPushButton:disabled { background:#e2e8f0; color:#94a3b8; }
+            QScrollArea { border: none; background: transparent; }
+            QScrollBar:vertical {
+                border: none;
+                background: #e2e8f0;
+                width: 12px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: #94a3b8;
+                min-height: 20px;
+                border-radius: 6px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+            }
             """)
 
     # ================= ERF DISPATCH =================
