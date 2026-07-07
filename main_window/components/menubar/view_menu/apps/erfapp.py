@@ -272,54 +272,86 @@ class ERFWindow(QMainWindow):
 
     def apply_theme(self):
         if self.theme == "dark":
-            self.setStyleSheet("""
-            QWidget { background:#0f172a; color:#e5e7eb; }
-            QLabel#sectionHeader { color:#94a3b8; font-weight:600; padding:6px 4px; }
-            QGroupBox { border:1px solid #1f2937; border-radius:6px; padding:10px; }
-            QLineEdit { background:#020617; border:1px solid #1f2937; padding:8px; }
-            QPushButton { padding:8px 14px; }
-            QPushButton:disabled { background:#1f2937; color:#4b5563; }
-            QScrollArea { border: none; background: transparent; }
-            QScrollBar:vertical {
+            # Get the circle color for radio buttons (white in dark mode)
+            radio_indicator_color = "#ffffff"
+            radio_border_color = "#ffffff"
+
+            self.setStyleSheet(f"""
+            QWidget {{ background:#0f172a; color:#e5e7eb; }}
+            QLabel#sectionHeader {{ color:#94a3b8; font-weight:600; padding:6px 4px; }}
+            QGroupBox {{ border:1px solid #1f2937; border-radius:6px; padding:10px; }}
+            QLineEdit {{ background:#020617; border:1px solid #1f2937; padding:8px; }}
+            QPushButton {{ padding:8px 14px; }}
+            QPushButton:disabled {{ background:#1f2937; color:#4b5563; }}
+            QScrollArea {{ border: none; background: transparent; }}
+            QScrollBar:vertical {{
                 border: none;
                 background: #1f2937;
                 width: 12px;
                 margin: 0px;
-            }
-            QScrollBar::handle:vertical {
+            }}
+            QScrollBar::handle:vertical {{
                 background: #374151;
                 min-height: 20px;
                 border-radius: 6px;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
                 border: none;
                 background: none;
-            }
+            }}
+            /* Radio button styling - white circles in dark mode */
+            QRadioButton::indicator {{
+                width: 13px;
+                height: 13px;
+                border-radius: 7px;
+                border: 1px solid {radio_border_color};
+                background: {radio_indicator_color};
+            }}
+            QRadioButton::indicator:checked {{
+                background: #60a5fa;
+                border: 1px solid #60a5fa;
+            }}
             """)
         else:
-            self.setStyleSheet("""
-            QWidget { background:#f8fafc; color:#0f172a; }
-            QLabel#sectionHeader { color:#475569; font-weight:600; padding:6px 4px; }
-            QGroupBox { border:1px solid #cbd5f5; border-radius:6px; padding:10px; }
-            QLineEdit { background:#ffffff; border:1px solid #cbd5f5; padding:8px; }
-            QPushButton { padding:8px 14px; }
-            QPushButton:disabled { background:#e2e8f0; color:#94a3b8; }
-            QScrollArea { border: none; background: transparent; }
-            QScrollBar:vertical {
+            # Get the circle color for radio buttons (black in light mode)
+            radio_indicator_color = "#000000"
+            radio_border_color = "#000000"
+
+            self.setStyleSheet(f"""
+            QWidget {{ background:#f8fafc; color:#0f172a; }}
+            QLabel#sectionHeader {{ color:#475569; font-weight:600; padding:6px 4px; }}
+            QGroupBox {{ border:1px solid #cbd5f5; border-radius:6px; padding:10px; }}
+            QLineEdit {{ background:#ffffff; border:1px solid #cbd5f5; padding:8px; }}
+            QPushButton {{ padding:8px 14px; }}
+            QPushButton:disabled {{ background:#e2e8f0; color:#94a3b8; }}
+            QScrollArea {{ border: none; background: transparent; }}
+            QScrollBar:vertical {{
                 border: none;
                 background: #e2e8f0;
                 width: 12px;
                 margin: 0px;
-            }
-            QScrollBar::handle:vertical {
+            }}
+            QScrollBar::handle:vertical {{
                 background: #94a3b8;
                 min-height: 20px;
                 border-radius: 6px;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
                 border: none;
                 background: none;
-            }
+            }}
+            /* Radio button styling - black circles in light mode */
+            QRadioButton::indicator {{
+                width: 13px;
+                height: 13px;
+                border-radius: 7px;
+                border: 1px solid {radio_border_color};
+                background: {radio_indicator_color};
+            }}
+            QRadioButton::indicator:checked {{
+                background: #2563eb;
+                border: 1px solid #2563eb;
+            }}
             """)
 
     # ================= ERF DISPATCH =================
