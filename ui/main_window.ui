@@ -1198,47 +1198,31 @@ QMenuBar::item:pressed {
 
    <widget class="QMenu" name="menuView">
     <property name="title">
-     <string>View</string>
+        <string>View</string>
     </property>
-    <!-- <addaction name="action_Change_Log"/>
-    <addaction name="action_View_Log"/>
-    <addaction name="separator"/> -->
-    <addaction name="action_View_Clusters"/>
-    <addaction name="action_Pipe_Locator"/>
-    <addaction name="action_ERF"/>
-    <addaction name="action_XYZ"/>
     <addaction name="action_customplot"/>
-    <addaction name="action_pipetally"/>
-    <addaction name="separator"/>
-    <!-- <addaction name="menuPlots"/> -->
+    <addaction name="action_ERF"/>
     <addaction name="action_graphs"/>
-    <!-- <addaction name="action_Info"/> -->
+    <addaction name="action_Pipe_Locator"/>
+    <addaction name="action_pipetally"/>
+    <addaction name="action_XYZ"/>
    </widget>
    <widget class="QMenu" name="menuReport">
     <property name="title">
-     <string>Report</string>
+        <string>Report</string>
     </property>
-    <widget class="QMenu" name="menu_Generate">
-     <property name="title">
-      <string>&amp;Generate</string>
-     </property>
-     <!-- <widget class="QMenu" name="menu_Dig_Sheet">
-      <property name="title">
-       <string>&amp;Dig &amp;Sheet</string>
-      </property>
-      <addaction name="actionStandard"/>
-      <addaction name="actionDetailed"/>
-     </widget> -->
-     <!-- <addaction name="action_Final_Report"/> -->
-     <addaction name="Final_Report"/>
-     <addaction name="action_Preliminary_Report"/>
-     <addaction name="action__pipetally"/>
-     <addaction name="actionStandard"/>
-     <!-- <addaction name="menu_Dig_Sheet"/> -->
-    </widget>
-    <addaction name="action_Pipe_High"/>
-    <addaction name="action_Pipe_Sch"/>
+    <addaction name="action_Pipe_High"/>      <!-- Pipe Highlight -->
+    <addaction name="action_Pipe_Sch"/>       <!-- Pipe Scheme -->
     <addaction name="separator"/>
+    <widget class="QMenu" name="menu_Generate">
+        <property name="title">
+            <string>&amp;Generate</string>
+        </property>
+        <addaction name="actionStandard"/>        <!-- Dig Sheet -->
+        <addaction name="Final_Report"/>          <!-- Final Report -->
+        <addaction name="action__pipetally"/>     <!-- Pipetally -->
+        <addaction name="action_Preliminary_Report"/> <!-- Preliminary Report -->
+    </widget>
     <addaction name="menu_Generate"/>
    </widget>
    <widget class="QMenu" name="menuWindow">
@@ -1824,12 +1808,18 @@ QToolButton::menu-arrow:open {
     <string>&amp;Pipetally</string>
    </property>
   </action>
-
   <action name="action_View_Clusters">
-    <property name="text">
-        <string>Clusters</string>
-    </property>
-</action>
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/cluster.png</normaloff>icons/cluster.png</iconset>
+   </property>
+   <property name="text">
+    <string>Clusters</string>
+   </property>
+  </action>
 
   <action name="action_Assessment">
    <property name="enabled">
