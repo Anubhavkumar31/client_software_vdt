@@ -144,7 +144,7 @@ class ERFWindow(QMainWindow):
         self.safe_p_out = QLineEdit(); self.safe_p_out.setReadOnly(True)
 
         res_grid.addLayout(cell("ERF", self.erf_out), 0, 0)
-        res_grid.addLayout(cell("Psafe (MPa)", self.safe_p_out), 0, 1)
+        res_grid.addLayout(cell("Psafe (kgf/cm² )", self.safe_p_out), 0, 1)
 
         root.addWidget(self.make_section("Results", res_grid))
 
@@ -269,14 +269,14 @@ class ERFWindow(QMainWindow):
             Pf = (2 * sigma_f * t / D) * rsf
 
             # 5) Safe operating pressure
-            Psafe = Pf / 1.39
+            Psafe = (Pf / 1.39)*10.1972
 
             # 6) ERF
             ERF = MAOP / Psafe
 
             # -------- UI outputs --------
-            self.erf_out.setText(f"{ERF:.4f}")
-            self.safe_p_out.setText(f"{Psafe:.4f}")
+            self.erf_out.setText(f"{ERF:.3f}")
+            self.safe_p_out.setText(f"{Psafe:.2f}")
 
             self._render_chart(L,d,t)
 
@@ -304,13 +304,13 @@ class ERFWindow(QMainWindow):
 
         P_fail = (2 * SMTS * t / (D - t)) * ((1 - d / t) / (1 - d / (t * Q)))
 
-        Psafe = F * P_fail
+        Psafe = (F * P_fail)*10.1972
 
         ERF = P_op / Psafe
 
         # -------- UI outputs --------
-        self.erf_out.setText(f"{ERF:.4f}")
-        self.safe_p_out.setText(f"{Psafe:.4f}")
+        self.erf_out.setText(f"{ERF:.3f}")
+        self.safe_p_out.setText(f"{Psafe:.2f}")
 
         self._render_chart(L, d, t)
         return ERF
@@ -332,11 +332,11 @@ class ERFWindow(QMainWindow):
             rsf = (1 - 0.9 * (d / t)) / (1 - (0.9 * (d / t)) / M)
 
             Pf = (2 * sigma_f * t / D) * rsf
-            Psafe = Pf / 1.5
+            Psafe = (Pf / 1.5)*10.1972
             ERF = MAOP / Psafe
 
-            self.erf_out.setText(f"{ERF:.4f}")
-            self.safe_p_out.setText(f"{Psafe:.4f}")
+            self.erf_out.setText(f"{ERF:.3f}")
+            self.safe_p_out.setText(f"{Psafe:.2f}")
 
             # chart hook
             x = list(range(0, int(max(500, L * 1.3)), 10))
@@ -390,11 +390,11 @@ class ERFWindow(QMainWindow):
 
             Estimated_failure_stress_level_SF = flow_stress * k
             estimate_failure_pressure = (2 * Estimated_failure_stress_level_SF * T) / D
-            safe_operating_pressure = estimate_failure_pressure / 1.39
+            safe_operating_pressure = (estimate_failure_pressure / 1.39)*10.1972
             ERF = MAOP / safe_operating_pressure
 
-            self.erf_out.setText(f"{ERF:.4f}")
-            self.safe_p_out.setText(f"{safe_operating_pressure:.4f}")
+            self.erf_out.setText(f"{ERF:.3f}")
+            self.safe_p_out.setText(f"{safe_operating_pressure:.2f}")
 
             x = list(range(0, int(max(500, L * 1.3)), 10))
             profile = [[i, 100 / (1 + i / 150)] for i in x]

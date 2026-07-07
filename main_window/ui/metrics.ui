@@ -431,7 +431,7 @@
          <widget class="QComboBox" name="comboBox_15">
           <item>
            <property name="text">
-            <string>MPa</string>
+            <string>kgf/cm²</string>
            </property>
           </item>
           <item>
@@ -540,7 +540,7 @@
          <widget class="QComboBox" name="comboBox_13">
           <item>
            <property name="text">
-            <string>Mpa</string>
+            <string>kgf/cm²</string>
            </property>
           </item>
           <item>
@@ -582,7 +582,7 @@
          <widget class="QComboBox" name="comboBox_8">
           <item>
            <property name="text">
-            <string>Mpa</string>
+            <string>kgf/cm²</string>
            </property>
           </item>
           <item>
@@ -596,7 +596,7 @@
          <widget class="QComboBox" name="comboBox_7">
           <item>
            <property name="text">
-            <string>Mpa </string>
+            <string>kgf/cm² </string>
            </property>
           </item>
           <item>
@@ -634,7 +634,7 @@
          <widget class="QComboBox" name="comboBox_5">
           <item>
            <property name="text">
-            <string>Mpa </string>
+            <string>kgf/cm² </string>
            </property>
           </item>
           <item>
@@ -672,7 +672,7 @@
          <widget class="QComboBox" name="comboBox_3">
           <item>
            <property name="text">
-            <string>Mpa </string>
+            <string>kgf/cm² </string>
            </property>
           </item>
           <item>
