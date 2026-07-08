@@ -247,3 +247,19 @@ def debug_all(widget, indent=0):
         if hasattr(child, "geometry"):
             debug_all(child, indent + 1)
 
+    def _force_scroll_update(self, scroll_area, graphs_widget):
+        """Force the scroll area to update its dimensions"""
+        try:
+            # Set a large fixed size to force scrollbars
+            graphs_widget.setMinimumSize(QSize(1200, 1000))
+
+            # Update the scroll area
+            scroll_area.updateGeometry()
+            scroll_area.repaint()
+
+            # Ensure scrollbars are visible
+            scroll_area.ensureVisible(0, 0, 100, 100)
+
+        except Exception as e:
+            print(f"Error updating scroll: {e}")
+
