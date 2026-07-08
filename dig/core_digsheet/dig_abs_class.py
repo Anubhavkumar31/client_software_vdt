@@ -32,12 +32,13 @@ class DigsheetABS:
         5: "Pipe Location",
     }
 
+    margin = 165
     SECTION_THRESHOLDS = {
-        "Client Description":       (0, 0, 175, 40),
-        "Feature Location on Pipe": (5, 32, 170, 93),
-        "Comment":                  (0, 85, 175, 120),
-        "Feature Description":      (0, 110, 175, 170),
-        "Pipe Location":            (0, 107, 175, 220),
+        "Client Description": (-10, -7, 175 - margin, 40),
+        "Feature Location on Pipe": (-5, 32, 170 - margin, 93),
+        "Comment": (-10, 85, 175 - margin, 120),
+        "Feature Description": (-10, 110, 175 - margin, 2),
+        "Pipe Location": (-10, -2, 174 - margin, 10),
     }
 
     ABS_COL_CANDIDATES = [
