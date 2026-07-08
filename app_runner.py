@@ -112,7 +112,12 @@ class MainApp(QApplication):
 
     def show_splash_screen(self):
         self.splash = SplashScreenWidget()
-        self.splash.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        # Tool flag prevents taskbar entry for splash screen
+        self.splash.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint |
+            Qt.WindowType.Tool |
+            Qt.WindowType.WindowStaysOnTopHint
+        )
         label = self.splash.findChild(QLabel, 'label')
         if label:
             gif_path = os.path.join(os.path.dirname(__file__), "ui", "icons", "VDT_ani.gif")
@@ -120,25 +125,28 @@ class MainApp(QApplication):
             label.setMovie(self.movie)
             self.movie.start()
         self.splash.show()
+        QApplication.processEvents()
 
     def close_splash_screen(self):
         if self.splash:
             self.splash.close()
+            self.splash = None
 
     def show_main_window(self):
         self.main_window = MyMainWindow()
+        # Set application icon for taskbar
+        self.main_window.setWindowIcon(self.windowIcon())
         self.main_window.show()
+        QApplication.processEvents()
 
     def start(self):
         self.show_splash_screen()
-        self.timer = QTimer(self)
-        self.timer.setSingleShot(True)
-        self.timer.timeout.connect(self.initialize_app)
-        self.timer.start(1200)
+        QTimer.singleShot(1200, self.initialize_app)
 
     def initialize_app(self):
-        self.close_splash_screen()
         self.show_main_window()
+        # Close splash after main window is fully shown
+        QTimer.singleShot(50, self.close_splash_screen)
 
 
 
