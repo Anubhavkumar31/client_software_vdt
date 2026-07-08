@@ -16,6 +16,12 @@ def open_digsheet_by_abs_from_selection(self):
 #load selected pipe button connection
 def load_selected_pipe(self):
     load_selected_pipe_con(self)
+    if hasattr(self, "btnToggleTable"):
+        self.btnToggleTable.setEnabled(True)
+        self.btnToggleTable.setText("Show Table")
+    if hasattr(self, "btnToggleHmLayout"):
+        self.btnToggleHmLayout.setEnabled(True)
+        self.btnToggleHmLayout.setText("Side-by-side")
 
 
 #filter button connection
