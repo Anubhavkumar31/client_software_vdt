@@ -86,10 +86,10 @@ def open_project(self):
             _force_heatmap_start(self)
             # 🔹 Force-enable Heatmap control buttons since Heatmap is the first visible tab
             if hasattr(self, "btnToggleTable"):
-                self.btnToggleTable.setEnabled(True)
+                self.btnToggleTable.setEnabled(False)
                 self.btnToggleTable.setText("Show Table")
             if hasattr(self, "btnToggleHmLayout"):
-                self.btnToggleHmLayout.setEnabled(True)
+                self.btnToggleHmLayout.setEnabled(False)
                 self.btnToggleHmLayout.setText("Side-by-side")
 
             # Show overlay instead of auto-loading

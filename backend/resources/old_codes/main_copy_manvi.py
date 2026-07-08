@@ -3256,6 +3256,7 @@ class MyMainWindow(QMainWindow):
         self.btnLoadPipe.setEnabled(False)
         self.load_selected_by_index(idx)
 
+
         # self.btnLoadPipe.clicked.connect(self.load_selected_pipe)
 
     def update_load_button_state(self, idx: int):
