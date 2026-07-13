@@ -26,7 +26,7 @@ class PipeLocatorWidget(QGraphicsView):
         self._range = None
         self._zoom = 1.0
         self._active_feature_label = None
-        self._detail_box_items = []  # Store detail box graphics items
+        self._detail_box_widget = None  # Store the overlay widget
 
         # Graphics
         self.scene = QGraphicsScene(self)
@@ -48,6 +48,7 @@ class PipeLocatorWidget(QGraphicsView):
 
     # ---------- TOP CONTROLS ----------
     def _add_controls(self):
+        # ... (keep existing controls code) ...
         self.back_btn = QPushButton("← Back", self)
         self.back_btn.move(10, 10)
         self.back_btn.clicked.connect(self.backRequested.emit)
@@ -68,6 +69,7 @@ class PipeLocatorWidget(QGraphicsView):
 
     # ---------- FILTER ----------
     def _apply_filter(self):
+        # ... (keep existing filter code) ...
         try:
             s = float(self.start_edit.text())
             e = float(self.end_edit.text())
@@ -79,6 +81,7 @@ class PipeLocatorWidget(QGraphicsView):
         self._draw_pipe()
 
     def _reset_filter(self):
+        # ... (keep existing reset code) ...
         self._range = None
         self.start_edit.clear()
         self.end_edit.clear()
@@ -86,6 +89,7 @@ class PipeLocatorWidget(QGraphicsView):
 
     # ---------- DATA ----------
     def _prepare_data(self):
+        # ... (keep existing prepare data code) ...
         if self.df.empty:
             return
 
@@ -101,7 +105,6 @@ class PipeLocatorWidget(QGraphicsView):
             d = row.get("Abs. Distance (m)")
             if pd.isna(d):
                 return ""
-            # integer distance only
             return f"{int(round(float(d)))} m" if row["__is_weld__"] else str(
                 row.get("Feature Type", "Feature")
             )
@@ -111,9 +114,10 @@ class PipeLocatorWidget(QGraphicsView):
 
     # ---------- DRAW ----------
     def _draw_pipe(self):
+        # ... (keep existing draw code) ...
         self.scene.clear()
         self._active_feature_label = None
-        self._detail_box_items = []
+        self._clear_detail_box()  # Clear the overlay widget
 
         if self.df.empty:
             return
@@ -136,7 +140,7 @@ class PipeLocatorWidget(QGraphicsView):
         # Pipe
         self.scene.addLine(0, pipe_y, pipe_len, pipe_y, QPen(Qt.GlobalColor.black, 3))
 
-        weld_index = 0  # 🔥 for zig-zag labels
+        weld_index = 0
 
         for _, r in data.iterrows():
             x = (r["Abs. Distance (m)"] - start) * scale
@@ -185,31 +189,36 @@ class PipeLocatorWidget(QGraphicsView):
 
     # ---------- CLEAR DETAIL BOX ----------
     def _clear_detail_box(self):
-        """Remove all detail box items from the scene."""
-        for item in self._detail_box_items:
-            if item.scene() == self.scene:
-                self.scene.removeItem(item)
-        self._detail_box_items = []
+        """Remove the overlay detail box widget."""
+        if self._detail_box_widget:
+            self._detail_box_widget.deleteLater()
+            self._detail_box_widget = None
 
-    # ---------- BUILD DETAIL BOX ----------
+    # ---------- BUILD DETAIL BOX (as overlay widget) ----------
     def _show_detail_box(self, row_data):
-        """Display a detail box in the upper right corner with defect information."""
+        """Display a detail box as an overlay widget in the upper right corner."""
+        # Remove existing detail box
         self._clear_detail_box()
 
-        # Box position (upper right area, below controls)
-        box_x = self.viewport().width() - 220
-        box_y = -40
-        box_width = 180
+        # Create a container widget
+        container = QDialog(self)  # Use QDialog as a lightweight overlay
+        container.setWindowFlags(Qt.WindowType.Widget)  # Make it a child widget
+        container.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        container.setStyleSheet("background: transparent;")
+
+        # Box dimensions
+        box_x = self.width() - 220 - 10  # 10px padding from right edge
+        box_y = 50  # Below the control buttons
+        box_width = 200
         line_height = 18
 
-        # Extract fields (handle missing columns gracefully)
+        # Extract fields
         feature_type = str(row_data.get("Feature Type", "Unknown"))
         distance = row_data.get("Abs. Distance (m)", "N/A")
         length = row_data.get("Length (mm)", row_data.get("Length", "N/A"))
         width = row_data.get("Width (mm)", row_data.get("Width", "N/A"))
         depth = row_data.get("Depth %", row_data.get("Depth", "N/A"))
-        # metal_loss = row_data.get("Metal Loss", row_data.get("Metal Loss (%)", "N/A"))
-        orientation = row_data.get("Orientation o' clock",row_data.get("Orientation", "N/A"))
+        orientation = row_data.get("Orientation o' clock", row_data.get("Orientation", "N/A"))
 
         # Format distance
         if pd.notna(distance):
@@ -224,42 +233,45 @@ class PipeLocatorWidget(QGraphicsView):
             f"Length: {length if pd.notna(length) else 'N/A'}",
             f"Width: {width if pd.notna(width) else 'N/A'}",
             f"Depth: {depth if pd.notna(depth) else 'N/A'}",
-            f"Oreientation:{orientation if pd.notna(orientation) else 'N/A'}",
-            # f"Metal Loss: {metal_loss if pd.notna(metal_loss) else 'N/A'}",
+            f"Orientation: {orientation if pd.notna(orientation) else 'N/A'}",
         ]
 
         box_height = len(details) * line_height + 34
 
-        # Background rectangle
-        bg = QGraphicsRectItem(box_x, box_y, box_width, box_height)
-        bg.setBrush(QBrush(QColor(240, 248, 255)))  # Light blue background
-        bg.setPen(QPen(QColor(70, 130, 180), 2))    # Steel blue border
-        self.scene.addItem(bg)
-        self._detail_box_items.append(bg)
+        # Create a frame widget with a background
+        frame = QLabel(container)
+        frame.setGeometry(0, 0, box_width, box_height)
+        frame.setStyleSheet("""
+            background-color: #F0F8FF;
+            border: 2px solid #4682B4;
+            border-radius: 4px;
+        """)
 
         # Title bar
-        title_bg = QGraphicsRectItem(box_x, box_y, box_width, 22)
-        title_bg.setBrush(QBrush(QColor(70, 130, 180)))
-        title_bg.setPen(QPen(QColor(70, 130, 180)))
-        self.scene.addItem(title_bg)
-        self._detail_box_items.append(title_bg)
+        title_bar = QLabel(frame)
+        title_bar.setGeometry(0, 0, box_width, 22)
+        title_bar.setStyleSheet("""
+            background-color: #4682B4;
+            border-radius: 2px 2px 0 0;
+        """)
 
         # Title text
-        title = QGraphicsTextItem("Defect Details")
-        title.setDefaultTextColor(Qt.GlobalColor.white)
-        title.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
-        title.setPos(box_x + 6, box_y + 2)
-        self.scene.addItem(title)
-        self._detail_box_items.append(title)
+        title = QLabel("Defect Details", frame)
+        title.setGeometry(6, 2, box_width - 12, 20)
+        title.setStyleSheet("color: white; font-weight: bold; font-size: 9pt; background: transparent;")
 
         # Detail lines
         for i, line in enumerate(details):
-            text = QGraphicsTextItem(line)
-            text.setDefaultTextColor(Qt.GlobalColor.black)
-            text.setFont(QFont("Segoe UI", 8))
-            text.setPos(box_x + 8, box_y + 26 + i * line_height)
-            self.scene.addItem(text)
-            self._detail_box_items.append(text)
+            label = QLabel(line, frame)
+            label.setGeometry(8, 26 + i * line_height, box_width - 16, line_height)
+            label.setStyleSheet("color: black; font-size: 8pt; background: transparent;")
+
+        # Position the container
+        container.setGeometry(box_x, box_y, box_width, box_height)
+        container.show()
+
+        # Store reference
+        self._detail_box_widget = container
 
     # ---------- FEATURE CLICK (show details in box) ----------
     def mousePressEvent(self, event):
@@ -281,8 +293,17 @@ class PipeLocatorWidget(QGraphicsView):
                     t.setPos(item.data(1) - 35, item.data(2) - 32)
                     self._active_feature_label = t
 
+    # ---------- RESIZE EVENT ----------
+    def resizeEvent(self, event):
+        """Reposition the detail box when the view is resized."""
+        super().resizeEvent(event)
+        if self._detail_box_widget:
+            # Reposition to top right with padding
+            self._detail_box_widget.move(self.width() - self._detail_box_widget.width() - 10, 50)
+
     # ---------- ZOOM ----------
     def wheelEvent(self, event):
+        # ... (keep existing wheel code) ...
         if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
             self._zoom *= 1.2 if event.angleDelta().y() > 0 else 1 / 1.2
             self._zoom = max(0.4, min(self._zoom, 6))
