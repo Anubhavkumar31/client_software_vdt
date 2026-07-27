@@ -99,7 +99,7 @@ class ERFWindow(QMainWindow):
         self.rb_asme.setChecked(True)
 
         for rb in (self.rb_asme, self.rb_mod, self.rb_dnv, self.rb_shell):
-            rb.toggled.connect(self.check_fields)
+            rb.toggled.connect(self.on_standard_changed)
             std_layout.addWidget(rb)
 
         scroll_layout.addWidget(self.make_section("Assessment Standard", std_layout))
@@ -199,6 +199,7 @@ class ERFWindow(QMainWindow):
         main_layout.addWidget(scroll)
 
         self.apply_theme()
+        self.update_field_states()  # Set initial field states
         self.check_fields()  # Initial check
 
     # ================= SECTION BUILDER =================
@@ -218,6 +219,45 @@ class ERFWindow(QMainWindow):
         v.addWidget(body)
 
         return container
+
+    # ================= STANDARD CHANGE HANDLER =================
+    def on_standard_changed(self):
+        """Called when any radio button is toggled"""
+        self.update_field_states()
+        self.check_fields()
+
+    # ================= FIELD STATES =================
+    def update_field_states(self):
+        """Enable only required fields for selected standard, disable others"""
+        if self.rb_asme.isChecked() or self.rb_mod.isChecked() or self.rb_shell.isChecked():
+            # ASME B31G, Mod B31G, SHELL 92 require: D, T, SMYS, MAOP, L, d
+            self.od_D.setEnabled(True)
+            self.thickness_T.setEnabled(True)
+            self.smys.setEnabled(True)
+            self.maop.setEnabled(True)
+            self.length_L.setEnabled(True)
+            self.depth_d.setEnabled(True)
+
+            self.smts.setEnabled(False)
+            self.p_op.setEnabled(False)
+            # Clear disabled fields to avoid stale data
+            self.smts.clear()
+            self.p_op.clear()
+
+        elif self.rb_dnv.isChecked():
+            # DNV-RP-F101 requires: D, T, SMTS, P_op, L, d
+            self.od_D.setEnabled(True)
+            self.thickness_T.setEnabled(True)
+            self.smts.setEnabled(True)
+            self.p_op.setEnabled(True)
+            self.length_L.setEnabled(True)
+            self.depth_d.setEnabled(True)
+
+            self.smys.setEnabled(False)
+            self.maop.setEnabled(False)
+            # Clear disabled fields to avoid stale data
+            self.smys.clear()
+            self.maop.clear()
 
     # ================= FIELD VALIDATION =================
     def check_fields(self):
@@ -240,17 +280,13 @@ class ERFWindow(QMainWindow):
 
     def get_required_fields(self):
         """Return list of required fields for the selected standard"""
-        if self.rb_asme.isChecked() or self.rb_mod.isChecked():
-            # ASME B31G and Mod B31G require: D, T, SMYS, MAOP, L, d
+        if self.rb_asme.isChecked() or self.rb_mod.isChecked() or self.rb_shell.isChecked():
+            # ASME B31G, Mod B31G, and SHELL 92 require: D, T, SMYS, MAOP, L, d
             return [self.od_D, self.thickness_T, self.smys, self.maop,
                     self.length_L, self.depth_d]
         elif self.rb_dnv.isChecked():
             # DNV-RP-F101 requires: D, T, SMTS, P_op, L, d
             return [self.od_D, self.thickness_T, self.smts, self.p_op,
-                    self.length_L, self.depth_d]
-        elif self.rb_shell.isChecked():
-            # SHELL 92 requires: D, T, SMYS, MAOP, L, d
-            return [self.od_D, self.thickness_T, self.smys, self.maop,
                     self.length_L, self.depth_d]
         return []
 
@@ -281,6 +317,7 @@ class ERFWindow(QMainWindow):
             QLabel#sectionHeader {{ color:#94a3b8; font-weight:600; padding:6px 4px; }}
             QGroupBox {{ border:1px solid #1f2937; border-radius:6px; padding:10px; }}
             QLineEdit {{ background:#020617; border:1px solid #1f2937; padding:8px; }}
+            QLineEdit:disabled {{ background:#1f2937; color:#4b5563; border:1px solid #374151; }}
             QPushButton {{ padding:8px 14px; }}
             QPushButton:disabled {{ background:#1f2937; color:#4b5563; }}
             QScrollArea {{ border: none; background: transparent; }}
@@ -322,6 +359,7 @@ class ERFWindow(QMainWindow):
             QLabel#sectionHeader {{ color:#475569; font-weight:600; padding:6px 4px; }}
             QGroupBox {{ border:1px solid #cbd5f5; border-radius:6px; padding:10px; }}
             QLineEdit {{ background:#ffffff; border:1px solid #cbd5f5; padding:8px; }}
+            QLineEdit:disabled {{ background:#e2e8f0; color:#94a3b8; border:1px solid #cbd5e1; }}
             QPushButton {{ padding:8px 14px; }}
             QPushButton:disabled {{ background:#e2e8f0; color:#94a3b8; }}
             QScrollArea {{ border: none; background: transparent; }}
@@ -514,7 +552,7 @@ class ERFWindow(QMainWindow):
             Estimated_failure_stress_level_SF = flow_stress * k
             estimate_failure_pressure = (2 * Estimated_failure_stress_level_SF * T) / D
             safe_operating_pressure = (estimate_failure_pressure / 1.39) * 10.1972
-            ERF = MAOP / safe_operating_pressure
+            ERF = MAOP / (safe_operating_pressure/ 10.1972)
 
             self.erf_out.setText(f"{ERF:.3f}")
             self.safe_p_out.setText(f"{safe_operating_pressure:.2f}")
